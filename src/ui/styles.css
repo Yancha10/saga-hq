@@ -1417,46 +1417,75 @@ p {
   flex-wrap: wrap;
 }
 @media (max-width: 639px) {
+  /* Bottom sheet that always fits the visible screen (keyboard open or not): header and action
+     bar stay put, only the content scrolls. Sizes come from the visual viewport (app/viewport.ts). */
   .modal-overlay {
     place-items: end stretch;
     padding: calc(var(--safe-t) + 24px) 0 0;
+    top: var(--vv-top, 0px);
+    bottom: auto;
+    height: var(--vvh, 100dvh);
+    overflow: hidden;
   }
   .modal,
   .modal.wide {
     width: 100%;
     border-radius: 26px 26px 0 0;
     border-bottom: 0;
-    max-height: calc(100dvh - var(--safe-t) - 24px);
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    padding-bottom: var(--safe-b);
+    max-height: calc(var(--vvh, 100dvh) - var(--safe-t) - 24px);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
   }
   .modal::before {
     content: "";
     display: block;
+    flex: none;
     width: 40px;
     height: 5px;
     border-radius: 3px;
     background: var(--line-strong);
     margin: 8px auto 0;
   }
+  .modal > .dialog {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
   .modal-head {
+    flex: none;
     padding: var(--s2) var(--s3) 0 var(--s4);
   }
   .modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
     padding: var(--s3) var(--s4) var(--s4);
   }
+  .modal > .dialog > .modal-body:last-child {
+    padding-bottom: calc(var(--s4) + var(--safe-b));
+  }
   .modal-foot {
-    position: sticky;
-    bottom: 0;
+    flex: none;
     background: var(--surface-1);
     padding: var(--s3) var(--s4) calc(var(--s3) + var(--safe-b));
-    margin-bottom: calc(-1 * var(--safe-b));
+  }
+  :root[data-kb="1"] .modal-foot,
+  :root[data-kb="1"] .modal > .dialog > .modal-body:last-child {
+    padding-bottom: var(--s3);
   }
   .modal-foot .btn {
     flex: 1;
     min-height: 48px;
     font-size: 16px;
+  }
+  /* The palette is a top sheet with its own layout */
+  .modal.palette {
+    display: block;
+    overflow-y: auto;
   }
 }
 
@@ -1518,7 +1547,7 @@ p {
   .modal.palette {
     border-radius: 22px;
     border-bottom: 1px solid var(--line-strong);
-    max-height: calc(100dvh - var(--safe-t) - 24px);
+    max-height: calc(var(--vvh, 100dvh) - var(--safe-t) - 24px);
   }
   .modal.palette::before {
     display: none;

@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './app/App';
 import { initPwa } from './app/pwa';
+import { trackVisualViewport } from './app/viewport';
 import './ui/styles.css';
 
 try {
@@ -17,4 +18,5 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 );
 void initPwa();
+trackVisualViewport();
 if (import.meta.env.VITE_E2E_MOCKS === '1') void import('./app/testHooks').then((m) => m.installTestHooks());
