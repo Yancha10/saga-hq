@@ -55,7 +55,8 @@ export async function restoreRecoveryPoint(s: Session, id: string): Promise<void
   for (const [table, rows] of Object.entries(current.tables)) {
     for (const r of rows ?? []) {
       const rid = String(r.id);
-      if (!keep.has(rid) && rid !== 'workspace') data.tombstones.push({ id: rid, entity: table, deletedAt: now, rev });
+      if (!keep.has(rid) && rid !== 'workspace')
+        data.tombstones.push({ id: rid, entity: table, deletedAt: now, rev });
     }
   }
   await replaceWorkspaceData(s.db, data);

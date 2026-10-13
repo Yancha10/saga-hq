@@ -38,13 +38,25 @@ export function parseUrl(raw: string): ParsedUrl | null {
   const u = new URL(safe);
   const host = u.hostname.replace(/^www\.|^m\./, '');
   const params = [...u.searchParams.keys()];
-  for (const k of params) if (TRACKING.test(k) && !(host.includes('youtube') && k === 'v')) u.searchParams.delete(k);
+  for (const k of params)
+    if (TRACKING.test(k) && !(host.includes('youtube') && k === 'v')) u.searchParams.delete(k);
   u.hash = '';
-  const out: ParsedUrl = { original: raw.trim(), canonical: u.toString(), host, platform: 'web', kind: 'link' };
+  const out: ParsedUrl = {
+    original: raw.trim(),
+    canonical: u.toString(),
+    host,
+    platform: 'web',
+    kind: 'link',
+  };
   const path = u.pathname.split('/').filter(Boolean);
   if (host === 'youtu.be' || host.endsWith('youtube.com')) {
     out.platform = 'youtube';
-    const id = host === 'youtu.be' ? path[0] : path[0] === 'shorts' || path[0] === 'live' ? path[1] : u.searchParams.get('v') ?? undefined;
+    const id =
+      host === 'youtu.be'
+        ? path[0]
+        : path[0] === 'shorts' || path[0] === 'live'
+          ? path[1]
+          : (u.searchParams.get('v') ?? undefined);
     if (id && /^[\w-]{6,20}$/.test(id)) {
       out.externalId = id;
       out.kind = 'video';
@@ -85,7 +97,8 @@ export function parseUrl(raw: string): ParsedUrl | null {
 }
 
 export function displayTitleForUrl(p: ParsedUrl): string {
-  const where = p.platform && p.platform !== 'web' ? p.platform[0]!.toUpperCase() + p.platform.slice(1) : p.host;
+  const where =
+    p.platform && p.platform !== 'web' ? p.platform[0]!.toUpperCase() + p.platform.slice(1) : p.host;
   if (p.handle && p.kind !== 'account') return `${where} ${p.kind ?? 'link'} · ${p.handle}`;
   if (p.handle) return `${where} · ${p.handle}`;
   return `${where} ${p.kind && p.kind !== 'link' ? p.kind : 'link'}`;

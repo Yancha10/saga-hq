@@ -1,6 +1,6 @@
 import type { Session } from '../app/session';
 import { logger } from '../diagnostics/logger';
-import { SEARCH_TABLES, SearchCore, toDoc, type SearchDoc, type SearchHit, type SearchType } from './core';
+import { SEARCH_TABLES, SearchCore, type SearchDoc, type SearchHit, type SearchType, toDoc } from './core';
 
 /**
  * Per-session search client. Uses a Web Worker when available, otherwise an in-thread index.
@@ -39,7 +39,9 @@ export class SearchClient {
       for (const e of events) {
         if (!(SEARCH_TABLES as string[]).includes(e.table) || !s.isLive()) continue;
         const type = e.table as SearchType;
-        const rows = e.ids.length ? ((await s.db.table(type).bulkGet(e.ids)) as (Record<string, unknown> | undefined)[]) : [];
+        const rows = e.ids.length
+          ? ((await s.db.table(type).bulkGet(e.ids)) as (Record<string, unknown> | undefined)[])
+          : [];
         const present = rows.filter((r): r is Record<string, unknown> => !!r);
         const missing = e.ids.filter((_id, i) => !rows[i]);
         if (this.worker) {

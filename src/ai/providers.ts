@@ -31,7 +31,10 @@ export interface ProviderConfig {
   apiKey: string;
 }
 
-export const PROVIDER_INFO: Record<ProviderId, { label: string; defaultModel: string; keyHelp: string; consoleUrl: string }> = {
+export const PROVIDER_INFO: Record<
+  ProviderId,
+  { label: string; defaultModel: string; keyHelp: string; consoleUrl: string }
+> = {
   anthropic: {
     label: 'Anthropic (Claude API)',
     defaultModel: 'claude-opus-5-5',
@@ -41,7 +44,8 @@ export const PROVIDER_INFO: Record<ProviderId, { label: string; defaultModel: st
   openai: {
     label: 'OpenAI API',
     defaultModel: '',
-    keyHelp: 'An OpenAI API key (sk-…). A ChatGPT subscription does not include API billing. Enter a current chat model id from your OpenAI dashboard.',
+    keyHelp:
+      'An OpenAI API key (sk-…). A ChatGPT subscription does not include API billing. Enter a current chat model id from your OpenAI dashboard.',
     consoleUrl: 'https://platform.openai.com/',
   },
 };
@@ -76,9 +80,12 @@ async function anthropicComplete(cfg: ProviderConfig, req: CompletionRequest): P
     if (e instanceof ProviderError) throw e;
     if (e instanceof Anthropic.AuthenticationError || e instanceof Anthropic.PermissionDeniedError)
       throw new ProviderError('auth', 'The API key was rejected. Check it in Settings › AI.');
-    if (e instanceof Anthropic.RateLimitError) throw new ProviderError('rate', 'Rate limit or credit limit reached at the provider.');
-    if (e instanceof Anthropic.APIConnectionError) throw new ProviderError('network', 'Could not reach the provider (offline?).');
-    if (e instanceof Anthropic.APIError) throw new ProviderError('other', `Provider error (${e.status ?? '?'}).`);
+    if (e instanceof Anthropic.RateLimitError)
+      throw new ProviderError('rate', 'Rate limit or credit limit reached at the provider.');
+    if (e instanceof Anthropic.APIConnectionError)
+      throw new ProviderError('network', 'Could not reach the provider (offline?).');
+    if (e instanceof Anthropic.APIError)
+      throw new ProviderError('other', `Provider error (${e.status ?? '?'}).`);
     throw e;
   }
 }
@@ -104,10 +111,14 @@ async function openaiComplete(cfg: ProviderConfig, req: CompletionRequest): Prom
     if ((e as Error).name === 'AbortError') throw e;
     throw new ProviderError('network', 'Could not reach the provider (offline?).');
   }
-  if (res.status === 401 || res.status === 403) throw new ProviderError('auth', 'The API key was rejected. Check it in Settings › AI.');
+  if (res.status === 401 || res.status === 403)
+    throw new ProviderError('auth', 'The API key was rejected. Check it in Settings › AI.');
   if (res.status === 429) throw new ProviderError('rate', 'Rate limit or quota reached at the provider.');
   if (!res.ok) throw new ProviderError('other', `Provider error (${res.status}).`);
-  const j = (await res.json()) as { model?: string; choices?: { message?: { content?: string; refusal?: string | null } }[] };
+  const j = (await res.json()) as {
+    model?: string;
+    choices?: { message?: { content?: string; refusal?: string | null } }[];
+  };
   const msg = j.choices?.[0]?.message;
   if (msg?.refusal) throw new ProviderError('refusal', 'The provider declined this request.');
   return { text: (msg?.content ?? '').trim(), model: j.model ?? cfg.model };
@@ -118,6 +129,10 @@ export function complete(cfg: ProviderConfig, req: CompletionRequest): Promise<C
 }
 
 export async function testProvider(cfg: ProviderConfig): Promise<string> {
-  const r = await complete(cfg, { system: 'Reply with the single word OK.', user: 'Connection test', maxTokens: 300 });
+  const r = await complete(cfg, {
+    system: 'Reply with the single word OK.',
+    user: 'Connection test',
+    maxTokens: 300,
+  });
   return r.model;
 }

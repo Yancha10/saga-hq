@@ -9,7 +9,8 @@ export interface Validated {
   removed: string[];
 }
 
-const NUMBERISH = /(\d{4}-\d{2}-\d{2}|\b\d{1,2}:\d{2}\b|\b\d+(?:[.,]\d+)?\s?(?:%|×|x\b|k\b|m\b)|\b\d{2,}(?:[.,]\d+)?\b)/gi;
+const NUMBERISH =
+  /(\d{4}-\d{2}-\d{2}|\b\d{1,2}:\d{2}\b|\b\d+(?:[.,]\d+)?\s?(?:%|×|x\b|k\b|m\b)|\b\d{2,}(?:[.,]\d+)?\b)/gi;
 
 export function validateAnswer(text: string, pack: ContextPack): Validated {
   const handles = new Set(pack.entities.map((e) => e.handle));
@@ -38,7 +39,13 @@ export function validateAnswer(text: string, pack: ContextPack): Validated {
     }
     out.push(kept.join(' '));
   }
-  return { text: out.join('\n').replace(/\n{3,}/g, '\n\n').trim(), removed: removed.filter(Boolean) };
+  return {
+    text: out
+      .join('\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim(),
+    removed: removed.filter(Boolean),
+  };
 }
 
 export function splitActions(text: string): { body: string; actionsJson: string | null } {

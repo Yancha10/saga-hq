@@ -1,6 +1,6 @@
-import { deriveAccountHint, deriveAccountId } from '../core/accountId';
 import { env } from '../config/env';
 import { CORE_SCOPES } from '../config/scopes';
+import { deriveAccountHint, deriveAccountId } from '../core/accountId';
 import { logger, registerSensitive } from '../diagnostics/logger';
 
 /**
@@ -65,7 +65,10 @@ export function loadGis(): Promise<void> {
   return gisPromise;
 }
 
-async function requestToken(scopes: readonly string[], hint?: string): Promise<{ value: string; expiresIn: number }> {
+async function requestToken(
+  scopes: readonly string[],
+  hint?: string,
+): Promise<{ value: string; expiresIn: number }> {
   if (!env.googleClientId) throw new Error('Google is not configured for this build.');
   await loadGis();
   return new Promise((resolve, reject) => {
@@ -74,7 +77,8 @@ async function requestToken(scopes: readonly string[], hint?: string): Promise<{
       scope: scopes.join(' '),
       include_granted_scopes: false,
       callback: (r) => {
-        if (r.error || !r.access_token) reject(new Error(r.error_description || r.error || 'Sign-in was cancelled'));
+        if (r.error || !r.access_token)
+          reject(new Error(r.error_description || r.error || 'Sign-in was cancelled'));
         else {
           registerSensitive(r.access_token);
           resolve({ value: r.access_token, expiresIn: r.expires_in ?? 3600 });
@@ -88,14 +92,22 @@ async function requestToken(scopes: readonly string[], hint?: string): Promise<{
 
 /** Fetch userinfo, derive opaque ids, and drop the raw subject. */
 export async function identify(accessToken: string): Promise<Identity> {
-  const res = await fetch('https://openidconnect.googleapis.com/v1/userinfo', { headers: { Authorization: `Bearer ${accessToken}` } });
+  const res = await fetch('https://openidconnect.googleapis.com/v1/userinfo', {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
   if (!res.ok) throw new Error(`Could not verify Google identity (${res.status})`);
   const info = (await res.json()) as { sub?: string; email?: string; name?: string; picture?: string };
   if (!info.sub) throw new Error('Google identity missing subject');
   const accountId = await deriveAccountId(info.sub);
   const accountHint = await deriveAccountHint(info.sub);
   info.sub = undefined; // raw subject is not retained anywhere
-  return { accountId, accountHint, email: info.email ?? '', displayName: info.name ?? info.email ?? 'Google account', ...(info.picture ? { avatarHint: info.picture } : {}) };
+  return {
+    accountId,
+    accountHint,
+    email: info.email ?? '',
+    displayName: info.name ?? info.email ?? 'Google account',
+    ...(info.picture ? { avatarHint: info.picture } : {}),
+  };
 }
 
 export async function signIn(): Promise<Identity> {

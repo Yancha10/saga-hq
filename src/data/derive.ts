@@ -1,5 +1,5 @@
-import type { Content, FormatTemplate, Link, Publication, ReadinessKey, SheetSection, Task } from './schema';
 import { isBlank } from '../core/util';
+import type { Content, FormatTemplate, Link, Publication, ReadinessKey, SheetSection, Task } from './schema';
 
 export interface DeriveInput {
   content: Content;
@@ -39,7 +39,9 @@ export function readinessMet(key: ReadinessKey, i: DeriveInput): boolean {
     case 'hashtags':
       return (c.hashtags?.length ?? 0) > 0;
     case 'publishDate':
-      return live(i.publications).some((p) => p.status === 'published' || (!!p.scheduledAt && p.status !== 'cancelled'));
+      return live(i.publications).some(
+        (p) => p.status === 'published' || (!!p.scheduledAt && p.status !== 'cancelled'),
+      );
   }
 }
 
@@ -72,7 +74,14 @@ export function sectionComplete(section: SheetSection, i: DeriveInput): boolean 
 export function deriveContent(i: DeriveInput): Derived {
   const required = i.template?.required ?? ['hook', 'finalExport', 'caption', 'publishDate'];
   const missing = required.filter((k) => !readinessMet(k, i));
-  const sections = i.template?.sections ?? ['concept', 'references', 'generate', 'edit', 'package', 'publish'];
+  const sections = i.template?.sections ?? [
+    'concept',
+    'references',
+    'generate',
+    'edit',
+    'package',
+    'publish',
+  ];
   const stage = sections.find((s) => !sectionComplete(s, i)) ?? null;
   const blocked = live(i.tasks).some((t) => t.isBlocker && t.status !== 'done') ? 1 : 0;
   const upcoming = live(i.publications)

@@ -27,7 +27,9 @@ describe('command layer', () => {
 
   it('rejects invalid records and does not persist them', async () => {
     s = await openDevice();
-    await expect(create(s, 'tasks', { title: '', status: 'todo', kind: 'task', isBlocker: false } as never)).rejects.toThrow();
+    await expect(
+      create(s, 'tasks', { title: '', status: 'todo', kind: 'task', isBlocker: false } as never),
+    ).rejects.toThrow();
     expect(await s.db.tasks.count()).toBe(0);
   });
 
@@ -43,8 +45,19 @@ describe('command layer', () => {
 
   it('trash cascades content children and restore brings them back', async () => {
     s = await openDevice();
-    const c = await create(s, 'content', { title: 'C', status: 'planned', formatTemplateId: 'reel', platforms: ['instagram'] });
-    const t = await create(s, 'tasks', { title: 'T', status: 'todo', kind: 'task', isBlocker: true, contentId: c.id });
+    const c = await create(s, 'content', {
+      title: 'C',
+      status: 'planned',
+      formatTemplateId: 'reel',
+      platforms: ['instagram'],
+    });
+    const t = await create(s, 'tasks', {
+      title: 'T',
+      status: 'todo',
+      kind: 'task',
+      isBlocker: true,
+      contentId: c.id,
+    });
     expect((await s.db.content.get(c.id))!._blocked).toBe(1);
     await trash(s, 'content', c.id);
     expect((await s.db.tasks.get(t.id))!.deletedAt).toBeTruthy();
@@ -70,11 +83,27 @@ describe('command layer', () => {
 
   it('derived readiness follows content edits', async () => {
     s = await openDevice();
-    const c = await create(s, 'content', { title: 'C', status: 'planned', formatTemplateId: 'reel', platforms: ['instagram'] });
+    const c = await create(s, 'content', {
+      title: 'C',
+      status: 'planned',
+      formatTemplateId: 'reel',
+      platforms: ['instagram'],
+    });
     expect((await s.db.content.get(c.id))!._missing).toContain('cover');
     await mutate(s, { label: 'x' }, async (m) => {
-      await m.update('content', c.id, { hook: 'h', script: 's', finalExportUrl: 'https://e', coverUrl: 'https://c', caption: 'cap' });
-      await m.create('publications', { contentId: c.id, platform: 'instagram', status: 'scheduled', scheduledAt: '2030-01-01T10:00:00Z' });
+      await m.update('content', c.id, {
+        hook: 'h',
+        script: 's',
+        finalExportUrl: 'https://e',
+        coverUrl: 'https://c',
+        caption: 'cap',
+      });
+      await m.create('publications', {
+        contentId: c.id,
+        platform: 'instagram',
+        status: 'scheduled',
+        scheduledAt: '2030-01-01T10:00:00Z',
+      });
     });
     const d = (await s.db.content.get(c.id))!;
     expect(d._missing).toEqual([]);

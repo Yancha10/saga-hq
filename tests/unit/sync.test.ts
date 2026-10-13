@@ -1,15 +1,15 @@
 import fc from 'fast-check';
-import { stableStringify } from '../../src/core/util';
 import { afterEach, describe, expect, it } from 'vitest';
+import { accountRef } from '../../src/account/workspaceRef';
 import type { Session } from '../../src/app/session';
-import { create, purgeNow, trash, update } from '../../src/data/store';
+import { stableStringify } from '../../src/core/util';
 import { SCHEMA_VERSION } from '../../src/data/schema';
+import { create, purgeNow, trash, update } from '../../src/data/store';
 import { DriveError } from '../../src/sync/driveApi';
 import { SyncBlockedError, SyncEngine } from '../../src/sync/engine';
 import { FakeDriveClient, FakeDriveServer } from '../../src/sync/fakeDrive';
 import { mergeRecord } from '../../src/sync/merge';
 import { ACCT_A, ACCT_B, openDevice } from '../helpers';
-import { accountRef } from '../../src/account/workspaceRef';
 
 const open: Session[] = [];
 afterEach(() => {
@@ -22,10 +22,11 @@ async function device(server: FakeDriveServer, acct = ACCT_A) {
   return { s, e: new SyncEngine(s, new FakeDriveClient(server), acct) };
 }
 async function sync(...ds: { e: SyncEngine }[]) {
-  for (let round = 0; round < 2; round++) for (const d of ds) {
-    await d.e.pull();
-    await d.e.push();
-  }
+  for (let round = 0; round < 2; round++)
+    for (const d of ds) {
+      await d.e.pull();
+      await d.e.push();
+    }
 }
 const strip = (r: Record<string, unknown> | undefined) => {
   if (!r) return r;
@@ -47,7 +48,12 @@ describe('Drive journal sync', () => {
     const srv = new FakeDriveServer();
     const a = await device(srv);
     const b = await device(srv);
-    const c = await create(a.s, 'content', { title: 'Reel', status: 'planned', formatTemplateId: 'reel', platforms: ['instagram'] });
+    const c = await create(a.s, 'content', {
+      title: 'Reel',
+      status: 'planned',
+      formatTemplateId: 'reel',
+      platforms: ['instagram'],
+    });
     await sync(a, b);
     await update(a.s, 'content', c.id, { script: 'desktop script' });
     await update(b.s, 'content', c.id, { caption: 'mobile caption' });
@@ -77,7 +83,12 @@ describe('Drive journal sync', () => {
     const srv = new FakeDriveServer();
     const a = await device(srv);
     const b = await device(srv);
-    const c = await create(a.s, 'content', { title: 'R', status: 'planned', formatTemplateId: 'reel', platforms: [] });
+    const c = await create(a.s, 'content', {
+      title: 'R',
+      status: 'planned',
+      formatTemplateId: 'reel',
+      platforms: [],
+    });
     await update(a.s, 'content', c.id, { script: 'base' });
     await sync(a, b);
     await update(a.s, 'content', c.id, { script: 'A long rewrite' });
@@ -96,7 +107,12 @@ describe('Drive journal sync', () => {
     const srv = new FakeDriveServer();
     const a = await device(srv);
     const b = await device(srv);
-    const c = await create(a.s, 'content', { title: 'R', status: 'planned', formatTemplateId: 'reel', platforms: [] });
+    const c = await create(a.s, 'content', {
+      title: 'R',
+      status: 'planned',
+      formatTemplateId: 'reel',
+      platforms: [],
+    });
     await update(a.s, 'content', c.id, { script: 'v1' });
     await sync(a, b);
     await update(b.s, 'content', c.id, { script: 'v2' });
@@ -235,7 +251,9 @@ describe('Drive journal sync', () => {
     const mine = await create(b.s, 'ideas', { title: 'local', status: 'new' });
     await create(a.s, 'ideas', { title: 'future', status: 'new' });
     await a.e.push();
-    const seg = [...srv.files.values()].find((f) => f.meta.appProperties?.sagahq === 'segment' && f.body?.includes('future'))!;
+    const seg = [...srv.files.values()].find(
+      (f) => f.meta.appProperties?.sagahq === 'segment' && f.body?.includes('future'),
+    )!;
     seg.body = JSON.stringify({ ...JSON.parse(seg.body!), schemaVersion: SCHEMA_VERSION + 1 });
     await expect(b.e.pull()).rejects.toBeInstanceOf(SyncBlockedError);
     expect((await b.s.db.ideas.get(mine.id))?.title).toBe('local');
@@ -286,10 +304,12 @@ describe('Drive journal sync', () => {
         const srv = new FakeDriveServer();
         const ds = [await device(srv), await device(srv), await device(srv)];
         const ids: string[] = [];
-        for (let k = 0; k < 3; k++) ids.push((await create(ds[0]!.s, 'ideas', { title: `i${k}`, status: 'new' })).id);
+        for (let k = 0; k < 3; k++)
+          ids.push((await create(ds[0]!.s, 'ideas', { title: `i${k}`, status: 'new' })).id);
         await sync(...ds);
         for (const o of ops) {
-          const v = o.field === 'priority' ? (['low', 'med', 'high'] as const)[o.value.length % 3] : o.value || 'v';
+          const v =
+            o.field === 'priority' ? (['low', 'med', 'high'] as const)[o.value.length % 3] : o.value || 'v';
           await update(ds[o.dev]!.s, 'ideas', ids[o.idx]!, { [o.field]: v } as never);
           if (o.syncAfter) await sync(ds[o.dev]!);
         }
@@ -310,7 +330,14 @@ describe('Drive journal sync', () => {
 
 describe('mergeRecord (pure)', () => {
   it('is idempotent', () => {
-    const r = { id: '1', rev: 'b', fieldRevs: { title: 'b' }, title: 'x', updatedAt: '', createdAt: '' } as never;
+    const r = {
+      id: '1',
+      rev: 'b',
+      fieldRevs: { title: 'b' },
+      title: 'x',
+      updatedAt: '',
+      createdAt: '',
+    } as never;
     const once = mergeRecord(r, r);
     expect(once.changed).toBe(false);
   });

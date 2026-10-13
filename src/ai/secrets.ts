@@ -1,5 +1,5 @@
-import type { Session } from '../app/session';
 import { secretScope } from '../account/workspaceRef';
+import type { Session } from '../app/session';
 import { nowIso } from '../core/util';
 import { registerSensitive } from '../diagnostics/logger';
 
@@ -17,7 +17,10 @@ async function wrappingKey(s: Session): Promise<CryptoKey> {
   const id = `wrap:${secretScope(s.ref)}`;
   const row = await s.db.cryptoKeys.get(id);
   if (row) return row.cryptoKey;
-  const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+  const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, [
+    'encrypt',
+    'decrypt',
+  ]);
   await s.db.cryptoKeys.put({ key: id, cryptoKey: key });
   return key;
 }
@@ -37,7 +40,13 @@ export async function saveSecret(s: Session, provider: ProviderId, value: string
   const key = await wrappingKey(s);
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(v));
-  await s.db.secrets.put({ key: rowKey(s, provider), iv, ciphertext, hint: maskSecret(v), updatedAt: nowIso() });
+  await s.db.secrets.put({
+    key: rowKey(s, provider),
+    iv,
+    ciphertext,
+    hint: maskSecret(v),
+    updatedAt: nowIso(),
+  });
 }
 
 export async function getSecret(s: Session, provider: ProviderId): Promise<string | null> {
@@ -45,13 +54,19 @@ export async function getSecret(s: Session, provider: ProviderId): Promise<strin
   const row = await s.db.secrets.get(rowKey(s, provider));
   if (!row) return null;
   const key = await wrappingKey(s);
-  const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: row.iv as BufferSource }, key, row.ciphertext);
+  const plain = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv: row.iv as BufferSource },
+    key,
+    row.ciphertext,
+  );
   const v = new TextDecoder().decode(plain);
   registerSensitive(v);
   return v;
 }
 
-export async function secretHints(s: Session): Promise<Partial<Record<ProviderId, { hint: string; updatedAt: string }>>> {
+export async function secretHints(
+  s: Session,
+): Promise<Partial<Record<ProviderId, { hint: string; updatedAt: string }>>> {
   const out: Partial<Record<ProviderId, { hint: string; updatedAt: string }>> = {};
   for (const p of ['openai', 'anthropic'] as ProviderId[]) {
     const r = await s.db.secrets.get(rowKey(s, p));

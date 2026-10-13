@@ -1,6 +1,6 @@
-import type { Content, FocusRef, Project, Task } from '../data/schema';
-import { DAY, HOUR, endOfDay } from './time';
 import { MISSING_LABEL } from '../data/derive';
+import type { Content, FocusRef, Project, Task } from '../data/schema';
+import { DAY, endOfDay, HOUR } from './time';
 
 /**
  * Transparent, deterministic priority engine (no AI, no black-box numbers shown).
@@ -24,7 +24,9 @@ export interface PriorityInput {
 const PRIO = { high: 25, med: 10, low: 0 } as const;
 
 export function scoreCandidates(i: PriorityInput): Candidate[] {
-  const focusProjects = new Set(i.projects.filter((p) => p.isFocus && !p.deletedAt && !p.archivedAt).map((p) => p.id));
+  const focusProjects = new Set(
+    i.projects.filter((p) => p.isFocus && !p.deletedAt && !p.archivedAt).map((p) => p.id),
+  );
   const eod = endOfDay(i.now).getTime();
   const out: Candidate[] = [];
 
@@ -41,7 +43,9 @@ export function scoreCandidates(i: PriorityInput): Candidate[] {
         reasons.push('publication late');
       } else if (next <= eod) {
         score += missing.length ? 50 : 35;
-        reasons.push(`publishes ${new Date(next).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`);
+        reasons.push(
+          `publishes ${new Date(next).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`,
+        );
       } else if (until < 2 * DAY) {
         score += missing.length ? 30 : 12;
         reasons.push(until < DAY ? 'publishes within 24h' : 'publishes within 48h');
@@ -51,7 +55,9 @@ export function scoreCandidates(i: PriorityInput): Candidate[] {
       score += 15;
       reasons.push(`only ${MISSING_LABEL[missing[0] as keyof typeof MISSING_LABEL]} missing`);
     } else if (missing.length > 0 && next !== null && next - i.now < 2 * DAY) {
-      reasons.push(`missing ${missing.map((m) => MISSING_LABEL[m as keyof typeof MISSING_LABEL]).join(', ')}`);
+      reasons.push(
+        `missing ${missing.map((m) => MISSING_LABEL[m as keyof typeof MISSING_LABEL]).join(', ')}`,
+      );
     }
     if (c.status === 'ready' && next === null) {
       score += 10;
@@ -70,7 +76,14 @@ export function scoreCandidates(i: PriorityInput): Candidate[] {
       score -= 30;
       reasons.push('blocked');
     }
-    if (reasons.length) out.push({ ref: { entity: 'content', id: c.id }, title: c.title || 'Untitled content', score, reasons, blocked });
+    if (reasons.length)
+      out.push({
+        ref: { entity: 'content', id: c.id },
+        title: c.title || 'Untitled content',
+        score,
+        reasons,
+        blocked,
+      });
   }
 
   for (const t of i.tasks) {
@@ -116,7 +129,8 @@ export function scoreCandidates(i: PriorityInput): Candidate[] {
       score += 5;
       reasons.push('waiting 2+ weeks');
     }
-    if (reasons.length) out.push({ ref: { entity: 'task', id: t.id }, title: t.title, score, reasons, blocked: false });
+    if (reasons.length)
+      out.push({ ref: { entity: 'task', id: t.id }, title: t.title, score, reasons, blocked: false });
   }
 
   return out.sort((a, b) => b.score - a.score || a.title.localeCompare(b.title));

@@ -7,7 +7,10 @@ import { getLogs } from './logger';
  * Technical-only diagnostic report for "Copy diagnostic report". No content, prompts, emails,
  * account identifiers, tokens or keys — only counts, versions, states and redacted log lines.
  */
-export async function buildDiagnostics(s: Session | null, extra: Record<string, unknown> = {}): Promise<Record<string, unknown>> {
+export async function buildDiagnostics(
+  s: Session | null,
+  extra: Record<string, unknown> = {},
+): Promise<Record<string, unknown>> {
   const counts: Record<string, number> = {};
   if (s) for (const t of SYNC_TABLES) counts[t] = await s.db.table(t).count();
   let storage: unknown = null;
@@ -26,7 +29,8 @@ export async function buildDiagnostics(s: Session | null, extra: Record<string, 
     workspaceKind: s?.ref.kind ?? 'none',
     userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'n/a',
     online: typeof navigator !== 'undefined' ? navigator.onLine : null,
-    standalone: typeof window !== 'undefined' ? window.matchMedia?.('(display-mode: standalone)').matches : null,
+    standalone:
+      typeof window !== 'undefined' ? window.matchMedia?.('(display-mode: standalone)').matches : null,
     storage,
     counts,
     ...extra,

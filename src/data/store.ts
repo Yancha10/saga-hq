@@ -1,5 +1,5 @@
 import type { Session } from '../app/session';
-import { saveStatus, setBanner, clearBanner } from '../app/status';
+import { clearBanner, saveStatus, setBanner } from '../app/status';
 import { ulid } from '../core/ulid';
 import { deepEqual, nowIso } from '../core/util';
 import { logger } from '../diagnostics/logger';
@@ -7,21 +7,30 @@ import type { HistoryEntry, HistoryOp } from './db';
 import { deriveContent } from './derive';
 
 import {
-  ENTITY_SCHEMAS,
-  META_FIELDS,
-  SCHEMA_VERSION,
-  SYNC_TABLES,
-  isDerivedField,
   type Content,
+  ENTITY_SCHEMAS,
   type EntityMap,
   type EntityTable,
+  isDerivedField,
   type Link,
+  META_FIELDS,
   type Provenance,
   type Publication,
+  SCHEMA_VERSION,
+  SYNC_TABLES,
   type Task,
 } from './schema';
 
-type MetaKey = 'id' | 'workspaceId' | 'schemaVersion' | 'createdAt' | 'updatedAt' | 'updatedByDevice' | 'rev' | 'fieldRevs' | 'fieldPrev';
+type MetaKey =
+  | 'id'
+  | 'workspaceId'
+  | 'schemaVersion'
+  | 'createdAt'
+  | 'updatedAt'
+  | 'updatedByDevice'
+  | 'rev'
+  | 'fieldRevs'
+  | 'fieldPrev';
 export type NewRecord<T extends EntityTable> = Omit<EntityMap[T], MetaKey> & { id?: string };
 export type Patch<T extends EntityTable> = Partial<Omit<EntityMap[T], MetaKey>>;
 
@@ -74,7 +83,8 @@ export class Mutator {
 
   private noteDerive(table: EntityTable, rec: Record<string, unknown>): void {
     if (table === 'content') this.deriveIds.add(rec.id as string);
-    if ((table === 'tasks' || table === 'publications') && typeof rec.contentId === 'string') this.deriveIds.add(rec.contentId);
+    if ((table === 'tasks' || table === 'publications') && typeof rec.contentId === 'string')
+      this.deriveIds.add(rec.contentId);
     if (table === 'links' && rec.fromType === 'content') this.deriveIds.add(rec.fromId as string);
   }
 
@@ -84,7 +94,8 @@ export class Mutator {
     const now = nowIso();
     const fieldRevs: Record<string, string> = {};
     for (const k of Object.keys(data)) {
-      if (!META_FIELDS.has(k) && !isDerivedField(k) && (data as Record<string, unknown>)[k] !== undefined) fieldRevs[k] = rev;
+      if (!META_FIELDS.has(k) && !isDerivedField(k) && (data as Record<string, unknown>)[k] !== undefined)
+        fieldRevs[k] = rev;
     }
     const rec = {
       ...(this.origin && !(data as Record<string, unknown>).origin ? { origin: this.origin } : {}),
@@ -106,7 +117,11 @@ export class Mutator {
     return rec;
   }
 
-  async update<T extends EntityTable>(table: T, id: string, patch: Patch<T>): Promise<EntityMap[T] | undefined> {
+  async update<T extends EntityTable>(
+    table: T,
+    id: string,
+    patch: Patch<T>,
+  ): Promise<EntityMap[T] | undefined> {
     this.s.assertLive();
     const tableRef = this.s.db.entity(table);
     const old = (await tableRef.get(id)) as unknown as Record<string, unknown> | undefined;
@@ -201,7 +216,11 @@ export async function mutate<R>(
     });
     saveStatus.set({ state: 'saved', at: Date.now() });
     clearBanner('persist');
-    const events = [...m.touched.entries()].map(([table, ids]) => ({ table, ids: [...ids], source: 'local' as const }));
+    const events = [...m.touched.entries()].map(([table, ids]) => ({
+      table,
+      ids: [...ids],
+      source: 'local' as const,
+    }));
     if (m.deriveIds.size) events.push({ table: 'content', ids: [...m.deriveIds], source: 'local' });
     s.emit(events);
     return result;
@@ -229,7 +248,12 @@ async function writeHistory(s: Session, opts: MutateOpts, ops: HistoryOp[]): Pro
   const now = Date.now();
   if (opts.coalesceKey) {
     const last = await s.db.history.orderBy('at').last();
-    if (last && last.coalesceKey === opts.coalesceKey && !last.undone && now - Date.parse(last.at) < COALESCE_MS) {
+    if (
+      last &&
+      last.coalesceKey === opts.coalesceKey &&
+      !last.undone &&
+      now - Date.parse(last.at) < COALESCE_MS
+    ) {
       // Merge: keep the earliest `before`, take the latest `after`.
       for (const op of ops) {
         const prev = last.ops.find((o) => o.table === op.table && o.id === op.id);
@@ -253,14 +277,23 @@ async function writeHistory(s: Session, opts: MutateOpts, ops: HistoryOp[]): Pro
   // Bounded local history: last 2000 entries.
   const count = await s.db.history.count();
   if (count > 2000) {
-    const old = await s.db.history.orderBy('at').limit(count - 2000).primaryKeys();
+    const old = await s.db.history
+      .orderBy('at')
+      .limit(count - 2000)
+      .primaryKeys();
     await s.db.history.bulkDelete(old);
   }
 }
 
 // ---------- Convenience commands ----------
 
-export function create<T extends EntityTable>(s: Session, table: T, data: NewRecord<T>, label?: string, origin?: Provenance) {
+export function create<T extends EntityTable>(
+  s: Session,
+  table: T,
+  data: NewRecord<T>,
+  label?: string,
+  origin?: Provenance,
+) {
   return mutate(s, { label: label ?? `Create ${table}` }, (m) => m.create(table, data), origin);
 }
 
@@ -291,7 +324,8 @@ export function trash(s: Session, table: EntityTable, id: string, label = 'Move 
     await m.update(table, id, { deletedAt: at, trashGroup: null } as never);
     for (const c of CASCADE[table] ?? []) {
       const kids = (await s.db.table(c.table).where(c.key).equals(id).toArray()) as Record<string, unknown>[];
-      for (const k of kids) if (!k.deletedAt) await m.update(c.table, k.id as string, { deletedAt: at, trashGroup: id } as never);
+      for (const k of kids)
+        if (!k.deletedAt) await m.update(c.table, k.id as string, { deletedAt: at, trashGroup: id } as never);
     }
   });
 }
@@ -301,7 +335,9 @@ export function restore(s: Session, table: EntityTable, id: string) {
     await m.update(table, id, { deletedAt: null } as never);
     for (const c of CASCADE[table] ?? []) {
       const kids = (await s.db.table(c.table).where(c.key).equals(id).toArray()) as Record<string, unknown>[];
-      for (const k of kids) if (k.trashGroup === id) await m.update(c.table, k.id as string, { deletedAt: null, trashGroup: null } as never);
+      for (const k of kids)
+        if (k.trashGroup === id)
+          await m.update(c.table, k.id as string, { deletedAt: null, trashGroup: null } as never);
     }
   });
 }

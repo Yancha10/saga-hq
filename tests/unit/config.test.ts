@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { CORE_SCOPES, FORBIDDEN_SCOPE_PATTERNS, OPTIONAL_SCOPES } from '../../src/config/scopes';
@@ -12,10 +12,16 @@ function walk(dir: string): string[] {
 
 describe('OAuth scopes (ADR-13)', () => {
   it('core scopes are exactly the approved set', () => {
-    expect([...CORE_SCOPES]).toEqual(['openid', 'email', 'profile', 'https://www.googleapis.com/auth/drive.file']);
+    expect([...CORE_SCOPES]).toEqual([
+      'openid',
+      'email',
+      'profile',
+      'https://www.googleapis.com/auth/drive.file',
+    ]);
   });
   it('no broad or restricted scope anywhere in the scope config', () => {
-    for (const s of [...CORE_SCOPES, ...Object.values(OPTIONAL_SCOPES)]) for (const re of FORBIDDEN_SCOPE_PATTERNS) expect(re.test(s), s).toBe(false);
+    for (const s of [...CORE_SCOPES, ...Object.values(OPTIONAL_SCOPES)])
+      for (const re of FORBIDDEN_SCOPE_PATTERNS) expect(re.test(s), s).toBe(false);
   });
   it('no scope URL string is used outside the central config', () => {
     for (const f of walk('src')) {

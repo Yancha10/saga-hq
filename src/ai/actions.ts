@@ -14,13 +14,57 @@ import type { ContextPack } from './context';
  */
 const iso = z.string().refine((v) => !Number.isNaN(Date.parse(v)), 'invalid date');
 export const actionSchema = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('createTask'), title: z.string().min(1).max(300), content: z.string().optional(), project: z.string().optional(), dueAt: iso.optional(), isBlocker: z.boolean().optional(), rationale: z.string().optional() }),
-  z.object({ type: z.literal('createIdea'), title: z.string().min(1).max(300), hook: z.string().max(1000).optional(), project: z.string().optional(), rationale: z.string().optional() }),
-  z.object({ type: z.literal('createContent'), title: z.string().min(1).max(300), idea: z.string().optional(), project: z.string().optional(), format: z.string().optional(), rationale: z.string().optional() }),
-  z.object({ type: z.literal('changeStatus'), target: z.string(), status: z.string(), rationale: z.string().optional() }),
-  z.object({ type: z.literal('scheduleEvent'), title: z.string().min(1).max(300), startAt: iso, content: z.string().optional(), kind: z.enum(['production_block', 'milestone', 'deadline']).optional(), rationale: z.string().optional() }),
-  z.object({ type: z.literal('linkReference'), from: z.string(), to: z.string(), rationale: z.string().optional() }),
-  z.object({ type: z.literal('saveLearning'), statement: z.string().min(1).max(1000), kind: z.enum(['observation', 'hypothesis']), evidence: z.array(z.string()).optional(), rationale: z.string().optional() }),
+  z.object({
+    type: z.literal('createTask'),
+    title: z.string().min(1).max(300),
+    content: z.string().optional(),
+    project: z.string().optional(),
+    dueAt: iso.optional(),
+    isBlocker: z.boolean().optional(),
+    rationale: z.string().optional(),
+  }),
+  z.object({
+    type: z.literal('createIdea'),
+    title: z.string().min(1).max(300),
+    hook: z.string().max(1000).optional(),
+    project: z.string().optional(),
+    rationale: z.string().optional(),
+  }),
+  z.object({
+    type: z.literal('createContent'),
+    title: z.string().min(1).max(300),
+    idea: z.string().optional(),
+    project: z.string().optional(),
+    format: z.string().optional(),
+    rationale: z.string().optional(),
+  }),
+  z.object({
+    type: z.literal('changeStatus'),
+    target: z.string(),
+    status: z.string(),
+    rationale: z.string().optional(),
+  }),
+  z.object({
+    type: z.literal('scheduleEvent'),
+    title: z.string().min(1).max(300),
+    startAt: iso,
+    content: z.string().optional(),
+    kind: z.enum(['production_block', 'milestone', 'deadline']).optional(),
+    rationale: z.string().optional(),
+  }),
+  z.object({
+    type: z.literal('linkReference'),
+    from: z.string(),
+    to: z.string(),
+    rationale: z.string().optional(),
+  }),
+  z.object({
+    type: z.literal('saveLearning'),
+    statement: z.string().min(1).max(1000),
+    kind: z.enum(['observation', 'hypothesis']),
+    evidence: z.array(z.string()).optional(),
+    rationale: z.string().optional(),
+  }),
 ]);
 export type ProposedAction = z.infer<typeof actionSchema>;
 export type Risk = 'low' | 'high';
@@ -79,7 +123,12 @@ export function parseActions(json: string | null, pack: ContextPack): ResolvedAc
         const t = r(a.target);
         if (!t || !['content', 'task', 'idea'].includes(t.type)) ra.invalid = `Unknown target ${a.target}`;
         else {
-          const allowed = t.type === 'content' ? (CONTENT_STATUSES as readonly string[]) : t.type === 'task' ? ['todo', 'doing', 'done'] : ['new', 'shortlisted', 'parked'];
+          const allowed =
+            t.type === 'content'
+              ? (CONTENT_STATUSES as readonly string[])
+              : t.type === 'task'
+                ? ['todo', 'doing', 'done']
+                : ['new', 'shortlisted', 'parked'];
           if (!allowed.includes(a.status)) ra.invalid = `Invalid status ${a.status}`;
           ra.summary = `Change ${a.target} status`;
           ra.diff = `${String(t.fields.title ?? t.handle)}: ${String(t.fields.status ?? '?')} → ${a.status}`;
@@ -122,33 +171,80 @@ export async function applyAction(s: Session, ra: ResolvedAction, pack: ContextP
     async (m) => {
       switch (a.type) {
         case 'createTask':
-          await m.create('tasks', { title: a.title, status: 'todo', kind: 'task', isBlocker: !!a.isBlocker, contentId: id(a.content), projectId: id(a.project), dueAt: a.dueAt ?? null });
+          await m.create('tasks', {
+            title: a.title,
+            status: 'todo',
+            kind: 'task',
+            isBlocker: !!a.isBlocker,
+            contentId: id(a.content),
+            projectId: id(a.project),
+            dueAt: a.dueAt ?? null,
+          });
           break;
         case 'createIdea':
-          await m.create('ideas', { title: a.title, hook: a.hook ?? null, projectId: id(a.project), status: 'new' });
+          await m.create('ideas', {
+            title: a.title,
+            hook: a.hook ?? null,
+            projectId: id(a.project),
+            status: 'new',
+          });
           break;
         case 'createContent':
-          await m.create('content', { title: a.title, ideaId: id(a.idea), projectId: id(a.project), status: 'planned', formatTemplateId: a.format ?? 'reel', platforms: [] });
+          await m.create('content', {
+            title: a.title,
+            ideaId: id(a.idea),
+            projectId: id(a.project),
+            status: 'planned',
+            formatTemplateId: a.format ?? 'reel',
+            platforms: [],
+          });
           break;
         case 'changeStatus': {
           const t = r(a.target)!;
           const table = t.type === 'content' ? 'content' : t.type === 'task' ? 'tasks' : 'ideas';
-          await m.update(table, t.id, { status: a.status, ...(table === 'tasks' && a.status === 'done' ? { doneAt: nowIso() } : {}) } as never);
+          await m.update(table, t.id, {
+            status: a.status,
+            ...(table === 'tasks' && a.status === 'done' ? { doneAt: nowIso() } : {}),
+          } as never);
           break;
         }
         case 'scheduleEvent':
-          await m.create('events', { title: a.title, kind: a.kind ?? 'production_block', startAt: a.startAt, allDay: false, contentId: id(a.content) });
+          await m.create('events', {
+            title: a.title,
+            kind: a.kind ?? 'production_block',
+            startAt: a.startAt,
+            allDay: false,
+            contentId: id(a.content),
+          });
           break;
         case 'linkReference': {
           const f = r(a.from)!;
-          await m.create('links', { fromType: f.type, fromId: f.id, toType: 'library', toId: r(a.to)!.id, type: 'references' });
+          await m.create('links', {
+            fromType: f.type,
+            fromId: f.id,
+            toType: 'library',
+            toId: r(a.to)!.id,
+            type: 'references',
+          });
           break;
         }
         case 'saveLearning': {
-          const l = await m.create('learnings', { statement: a.statement, kind: a.kind, confidence: 'low', status: 'active' });
+          const l = await m.create('learnings', {
+            statement: a.statement,
+            kind: a.kind,
+            confidence: 'low',
+            status: 'active',
+          });
           for (const h of a.evidence ?? []) {
             const e = r(h);
-            if (e && (e.type === 'content' || e.type === 'publication')) await m.create('links', { fromType: 'learning', fromId: l.id, toType: e.type, toId: e.id, type: 'evidence' });
+            if (e && (e.type === 'content' || e.type === 'publication'))
+              await m.create('links', {
+                fromType: 'learning',
+                fromId: l.id,
+                toType: e.type,
+                toId: e.id,
+                type: 'evidence',
+              });
           }
           break;
         }

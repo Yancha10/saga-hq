@@ -28,7 +28,15 @@ export interface StorageQuota {
   usage: number;
 }
 
-export type DriveErrorKind = 'auth' | 'rate' | 'quota' | 'server' | 'notFound' | 'network' | 'badToken' | 'other';
+export type DriveErrorKind =
+  | 'auth'
+  | 'rate'
+  | 'quota'
+  | 'server'
+  | 'notFound'
+  | 'network'
+  | 'badToken'
+  | 'other';
 
 export class DriveError extends Error {
   constructor(
@@ -47,15 +55,32 @@ export class DriveError extends Error {
 /** Minimal Drive v3 surface Saga HQ needs. Implemented by DriveRest (real) and FakeDrive (tests). */
 export interface DriveApi {
   find(q: DriveQuery): Promise<DriveFile[]>;
-  createFolder(name: string, parent: string | null, appProperties: Record<string, string>): Promise<DriveFile>;
-  createJson(name: string, parent: string, data: unknown, appProperties: Record<string, string>): Promise<DriveFile>;
+  createFolder(
+    name: string,
+    parent: string | null,
+    appProperties: Record<string, string>,
+  ): Promise<DriveFile>;
+  createJson(
+    name: string,
+    parent: string,
+    data: unknown,
+    appProperties: Record<string, string>,
+  ): Promise<DriveFile>;
   updateJson(fileId: string, data: unknown): Promise<void>;
   readJson<T = unknown>(fileId: string): Promise<T>;
   remove(fileId: string): Promise<void>;
-  uploadBlob(name: string, parent: string, blob: Blob, appProperties: Record<string, string>, signal?: AbortSignal): Promise<DriveFile>;
+  uploadBlob(
+    name: string,
+    parent: string,
+    blob: Blob,
+    appProperties: Record<string, string>,
+    signal?: AbortSignal,
+  ): Promise<DriveFile>;
   downloadBlob(fileId: string, signal?: AbortSignal): Promise<Blob>;
   getStartPageToken(): Promise<string>;
-  listChanges(pageToken: string): Promise<{ changes: DriveChange[]; nextPageToken?: string; newStartPageToken?: string }>;
+  listChanges(
+    pageToken: string,
+  ): Promise<{ changes: DriveChange[]; nextPageToken?: string; newStartPageToken?: string }>;
   quota(): Promise<StorageQuota>;
 }
 

@@ -1,7 +1,7 @@
 import type { Session } from '../app/session';
 import { sha256Hex } from '../core/crypto';
-import { create, update } from '../data/store';
 import type { MediaMeta } from '../data/schema';
+import { create, update } from '../data/store';
 import { logger } from '../diagnostics/logger';
 
 export const MAX_LOCAL_VIDEO_BYTES = 100 * 1024 * 1024;
@@ -11,12 +11,18 @@ const THUMB_EDGE = 512;
 
 export class MediaTooLargeError extends Error {
   constructor() {
-    super('This file is larger than 100 MB. Link it instead (e.g. a Drive or Studio URL) — Saga HQ is not a video store.');
+    super(
+      'This file is larger than 100 MB. Link it instead (e.g. a Drive or Studio URL) — Saga HQ is not a video store.',
+    );
     this.name = 'MediaTooLargeError';
   }
 }
 
-async function resizeImage(blob: Blob, maxEdge: number, quality: number): Promise<{ blob: Blob; width: number; height: number } | null> {
+async function resizeImage(
+  blob: Blob,
+  maxEdge: number,
+  quality: number,
+): Promise<{ blob: Blob; width: number; height: number } | null> {
   if (typeof createImageBitmap !== 'function' || typeof document === 'undefined') return null;
   try {
     const bmp = await createImageBitmap(blob);
@@ -31,7 +37,10 @@ async function resizeImage(blob: Blob, maxEdge: number, quality: number): Promis
     ctx.drawImage(bmp, 0, 0, w, h);
     bmp.close?.();
     const out = await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/webp', quality));
-    const fallback = out?.type === 'image/webp' ? out : await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/jpeg', quality));
+    const fallback =
+      out?.type === 'image/webp'
+        ? out
+        : await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/jpeg', quality));
     if (!fallback) return null;
     return { blob: fallback, width: w, height: h };
   } catch (e) {
@@ -68,10 +77,30 @@ export async function addMedia(s: Session, file: Blob, name?: string): Promise<M
     height: height ?? null,
     hasThumb: !!thumb,
   });
-  await s.db.mediaBlobs.put({ id: meta.id, kind: 'full', blob, bytes: blob.size, lastUsedAt: Date.now(), pinned: 1 });
-  if (thumb) await s.db.mediaBlobs.put({ id: meta.id, kind: 'thumb', blob: thumb, bytes: thumb.size, lastUsedAt: Date.now(), pinned: 0 });
+  await s.db.mediaBlobs.put({
+    id: meta.id,
+    kind: 'full',
+    blob,
+    bytes: blob.size,
+    lastUsedAt: Date.now(),
+    pinned: 1,
+  });
+  if (thumb)
+    await s.db.mediaBlobs.put({
+      id: meta.id,
+      kind: 'thumb',
+      blob: thumb,
+      bytes: thumb.size,
+      lastUsedAt: Date.now(),
+      pinned: 0,
+    });
   if (s.ref.kind === 'account' && blob.size <= AUTO_UPLOAD_MAX_BYTES) {
-    await s.db.uploads.put({ id: meta.id, state: 'queued', attempts: 0, createdAt: new Date().toISOString() });
+    await s.db.uploads.put({
+      id: meta.id,
+      state: 'queued',
+      attempts: 0,
+      createdAt: new Date().toISOString(),
+    });
   }
   return meta;
 }
@@ -83,7 +112,11 @@ export async function queueUpload(s: Session, mediaId: string): Promise<void> {
 const urlCache = new Map<string, string>();
 
 /** Object URL for local media; registers revocation with the session so nothing leaks across accounts. */
-export async function mediaUrl(s: Session, id: string, prefer: 'thumb' | 'full' = 'thumb'): Promise<string | null> {
+export async function mediaUrl(
+  s: Session,
+  id: string,
+  prefer: 'thumb' | 'full' = 'thumb',
+): Promise<string | null> {
   const cacheKey = `${s.generation}:${id}:${prefer}`;
   const hit = urlCache.get(cacheKey);
   if (hit) return hit;

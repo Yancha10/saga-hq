@@ -2,10 +2,10 @@ import { z } from 'zod';
 import type { Session } from '../app/session';
 import { sha256Hex } from '../core/crypto';
 import { nowIso } from '../core/util';
-import { createRecoveryPoint } from './recovery';
-import { ENTITY_SCHEMAS, SCHEMA_VERSION, SYNC_TABLES, tombstoneSchema, type EntityTable } from './schema';
-import { countData, replaceWorkspaceData, serializeWorkspace, type WorkspaceData } from './serialize';
 import { stripDerived } from '../sync/merge';
+import { createRecoveryPoint } from './recovery';
+import { ENTITY_SCHEMAS, type EntityTable, SCHEMA_VERSION, SYNC_TABLES, tombstoneSchema } from './schema';
+import { countData, replaceWorkspaceData, serializeWorkspace, type WorkspaceData } from './serialize';
 import { recomputeDerived } from './store';
 
 /**
@@ -32,7 +32,10 @@ const backupShape = z.object({
   workspaceName: z.string(),
   counts: z.record(z.string(), z.number()),
   checksum: z.string(),
-  data: z.object({ tables: z.record(z.string(), z.array(z.record(z.string(), z.unknown()))), tombstones: z.array(z.unknown()) }),
+  data: z.object({
+    tables: z.record(z.string(), z.array(z.record(z.string(), z.unknown()))),
+    tombstones: z.array(z.unknown()),
+  }),
   media: z.array(z.object({ id: z.string(), mime: z.string(), base64: z.string() })).optional(),
 });
 
@@ -52,7 +55,8 @@ function base64ToBlob(b64: string, mime: string): Blob {
 export async function buildBackup(s: Session, opts: { includeMedia?: boolean } = {}): Promise<BackupFile> {
   const raw = await serializeWorkspace(s.db);
   const data: WorkspaceData = { tables: {}, tombstones: raw.tombstones };
-  for (const [t, rows] of Object.entries(raw.tables)) data.tables[t as EntityTable] = (rows ?? []).map((r) => stripDerived(r));
+  for (const [t, rows] of Object.entries(raw.tables))
+    data.tables[t as EntityTable] = (rows ?? []).map((r) => stripDerived(r));
   const ws = await s.db.workspace.get('workspace');
   const file: BackupFile = {
     format: 'saga-hq-backup',
@@ -67,7 +71,9 @@ export async function buildBackup(s: Session, opts: { includeMedia?: boolean } =
   if (opts.includeMedia) {
     const blobs = await s.db.mediaBlobs.where('[id+kind]').between(['', 'full'], ['￿', 'full']).toArray();
     file.media = [];
-    for (const b of blobs) if (b.kind === 'full') file.media.push({ id: b.id, mime: b.blob.type, base64: await blobToBase64(b.blob) });
+    for (const b of blobs)
+      if (b.kind === 'full')
+        file.media.push({ id: b.id, mime: b.blob.type, base64: await blobToBase64(b.blob) });
   }
   return file;
 }
@@ -91,11 +97,23 @@ export async function previewBackup(text: string): Promise<RestorePreview> {
     return { ok: false, error: 'This file is not valid JSON.', counts: {}, invalid: 0 };
   }
   const shape = backupShape.safeParse(json);
-  if (!shape.success) return { ok: false, error: 'This is not a Saga HQ backup file.', counts: {}, invalid: 0 };
+  if (!shape.success)
+    return { ok: false, error: 'This is not a Saga HQ backup file.', counts: {}, invalid: 0 };
   const file = shape.data as unknown as BackupFile;
-  if (file.schemaVersion > SCHEMA_VERSION) return { ok: false, error: 'This backup was made by a newer Saga HQ. Update first.', counts: {}, invalid: 0 };
+  if (file.schemaVersion > SCHEMA_VERSION)
+    return {
+      ok: false,
+      error: 'This backup was made by a newer Saga HQ. Update first.',
+      counts: {},
+      invalid: 0,
+    };
   if ((await sha256Hex(JSON.stringify(file.data))) !== file.checksum)
-    return { ok: false, error: 'Checksum mismatch: the backup is corrupted or was modified.', counts: {}, invalid: 0 };
+    return {
+      ok: false,
+      error: 'Checksum mismatch: the backup is corrupted or was modified.',
+      counts: {},
+      invalid: 0,
+    };
   let invalid = 0;
   const counts: Record<string, number> = {};
   for (const t of Object.keys(file.data.tables)) {
@@ -111,9 +129,16 @@ export async function previewBackup(text: string): Promise<RestorePreview> {
   return { ok: true, file, counts, invalid, createdAt: file.createdAt, workspaceName: file.workspaceName };
 }
 
-export async function restoreBackup(s: Session, file: BackupFile, mode: 'replace' | 'merge'): Promise<Record<string, number>> {
+export async function restoreBackup(
+  s: Session,
+  file: BackupFile,
+  mode: 'replace' | 'merge',
+): Promise<Record<string, number>> {
   s.assertLive();
-  await createRecoveryPoint(s, `Before ${mode === 'replace' ? 'restoring' : 'merging'} backup from ${file.createdAt.slice(0, 10)}`);
+  await createRecoveryPoint(
+    s,
+    `Before ${mode === 'replace' ? 'restoring' : 'merging'} backup from ${file.createdAt.slice(0, 10)}`,
+  );
   s.assertLive();
   const rev = s.hlc.now();
   const clean: WorkspaceData = { tables: {}, tombstones: [] };
@@ -125,14 +150,18 @@ export async function restoreBackup(s: Session, file: BackupFile, mode: 'replace
       return { ...stripDerived(r), workspaceId: s.workspaceId, fieldRevs: fr, fieldPrev: {}, rev };
     });
   }
-  clean.tombstones = (file.data.tombstones ?? []).filter((x) => tombstoneSchema.safeParse(x).success) as WorkspaceData['tombstones'];
+  clean.tombstones = (file.data.tombstones ?? []).filter(
+    (x) => tombstoneSchema.safeParse(x).success,
+  ) as WorkspaceData['tombstones'];
   if (mode === 'replace') {
     const keep = new Set<string>();
     for (const rows of Object.values(clean.tables)) for (const r of rows ?? []) keep.add(String(r.id));
     const current = await serializeWorkspace(s.db);
     const now = nowIso();
     for (const [table, rows] of Object.entries(current.tables))
-      for (const r of rows ?? []) if (!keep.has(String(r.id)) && r.id !== 'workspace') clean.tombstones.push({ id: String(r.id), entity: table, deletedAt: now, rev });
+      for (const r of rows ?? [])
+        if (!keep.has(String(r.id)) && r.id !== 'workspace')
+          clean.tombstones.push({ id: String(r.id), entity: table, deletedAt: now, rev });
     await replaceWorkspaceData(s.db, clean);
   } else {
     await s.db.transaction('rw', [...SYNC_TABLES], async () => {
@@ -148,7 +177,14 @@ export async function restoreBackup(s: Session, file: BackupFile, mode: 'replace
   if (file.media) {
     for (const m of file.media) {
       const blob = base64ToBlob(m.base64, m.mime);
-      await s.db.mediaBlobs.put({ id: m.id, kind: 'full', blob, bytes: blob.size, lastUsedAt: Date.now(), pinned: 1 });
+      await s.db.mediaBlobs.put({
+        id: m.id,
+        kind: 'full',
+        blob,
+        bytes: blob.size,
+        lastUsedAt: Date.now(),
+        pinned: 1,
+      });
     }
   }
   const allContent = await s.db.content.toCollection().primaryKeys();
@@ -177,14 +213,46 @@ export function toCsv(rows: Record<string, unknown>[], columns: string[]): strin
 export async function exportCsv(s: Session, kind: 'content' | 'tasks' | 'analytics'): Promise<string> {
   if (kind === 'content') {
     const rows = (await s.db.content.toArray()).filter((r) => !r.deletedAt);
-    return toCsv(rows as never, ['id', 'title', 'status', 'formatTemplateId', 'platforms', 'projectId', 'hook', 'caption', '_nextPublishAt', 'createdAt', 'updatedAt']);
+    return toCsv(rows as never, [
+      'id',
+      'title',
+      'status',
+      'formatTemplateId',
+      'platforms',
+      'projectId',
+      'hook',
+      'caption',
+      '_nextPublishAt',
+      'createdAt',
+      'updatedAt',
+    ]);
   }
   if (kind === 'tasks') {
     const rows = (await s.db.tasks.toArray()).filter((r) => !r.deletedAt);
-    return toCsv(rows as never, ['id', 'title', 'status', 'kind', 'isBlocker', 'priority', 'dueAt', 'projectId', 'contentId', 'createdAt']);
+    return toCsv(rows as never, [
+      'id',
+      'title',
+      'status',
+      'kind',
+      'isBlocker',
+      'priority',
+      'dueAt',
+      'projectId',
+      'contentId',
+      'createdAt',
+    ]);
   }
   const snaps = (await s.db.snapshots.toArray()).filter((r) => !r.deletedAt);
   const keys = [...new Set(snaps.flatMap((x) => Object.keys(x.metrics)))].sort();
   const flat = snaps.map((x) => ({ ...x, ...Object.fromEntries(keys.map((k) => [`m:${k}`, x.metrics[k]])) }));
-  return toCsv(flat as never, ['id', 'publicationId', 'contentId', 'platform', 'observedAt', 'checkpoint', 'source', ...keys.map((k) => `m:${k}`)]);
+  return toCsv(flat as never, [
+    'id',
+    'publicationId',
+    'contentId',
+    'platform',
+    'observedAt',
+    'checkpoint',
+    'source',
+    ...keys.map((k) => `m:${k}`),
+  ]);
 }

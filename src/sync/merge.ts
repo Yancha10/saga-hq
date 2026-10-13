@@ -1,7 +1,12 @@
 import { deepEqual } from '../core/util';
-import { LONG_TEXT_FIELDS, META_FIELDS, isDerivedField, type Shot, type Tombstone } from '../data/schema';
+import { isDerivedField, LONG_TEXT_FIELDS, META_FIELDS, type Shot, type Tombstone } from '../data/schema';
 
-type Rec = Record<string, unknown> & { id: string; rev: string; fieldRevs: Record<string, string>; fieldPrev?: Record<string, string> };
+type Rec = Record<string, unknown> & {
+  id: string;
+  rev: string;
+  fieldRevs: Record<string, string>;
+  fieldPrev?: Record<string, string>;
+};
 
 export interface FieldConflict {
   field: string;
@@ -44,7 +49,12 @@ export function mergeRecord(local: Rec | undefined, remoteIn: Rec, tombstone?: T
     if (tombstone) {
       if (remote.rev > tombstone.rev) {
         // An edit newer than the deletion: resurrect into Trash so nothing is lost silently.
-        return { record: { ...remote, deletedAt: remote.deletedAt ?? tombstone.deletedAt }, conflicts: [], resurrected: true, changed: true };
+        return {
+          record: { ...remote, deletedAt: remote.deletedAt ?? tombstone.deletedAt },
+          conflicts: [],
+          resurrected: true,
+          changed: true,
+        };
       }
       return { record: null, conflicts: [], resurrected: false, changed: false };
     }
@@ -74,7 +84,8 @@ export function mergeRecord(local: Rec | undefined, remoteIn: Rec, tombstone?: T
       }
       continue;
     }
-    const concurrent = !!lr && remote.fieldPrev?.[k] !== lr && local.fieldPrev?.[k] !== rr && !deepEqual(local[k], remote[k]);
+    const concurrent =
+      !!lr && remote.fieldPrev?.[k] !== lr && local.fieldPrev?.[k] !== rr && !deepEqual(local[k], remote[k]);
     if (concurrent && LONG_TEXT_FIELDS.has(k)) {
       conflicts.push(
         remoteWins
@@ -92,15 +103,24 @@ export function mergeRecord(local: Rec | undefined, remoteIn: Rec, tombstone?: T
   }
   out.fieldRevs = fieldRevs;
   out.fieldPrev = fieldPrev;
-  const maxRev = Object.values(fieldRevs).reduce((a, b) => (b > a ? b : a), local.rev > remote.rev ? local.rev : remote.rev);
+  const maxRev = Object.values(fieldRevs).reduce(
+    (a, b) => (b > a ? b : a),
+    local.rev > remote.rev ? local.rev : remote.rev,
+  );
   if (maxRev !== local.rev) changed = true;
   out.rev = maxRev;
   if (remote.rev > local.rev) {
     out.updatedAt = remote.updatedAt;
     out.updatedByDevice = remote.updatedByDevice;
   }
-  if (typeof remote.createdAt === 'string' && typeof local.createdAt === 'string' && remote.createdAt < local.createdAt) out.createdAt = remote.createdAt;
-  if (typeof remote.schemaVersion === 'number' && remote.schemaVersion > (local.schemaVersion as number)) out.schemaVersion = remote.schemaVersion;
+  if (
+    typeof remote.createdAt === 'string' &&
+    typeof local.createdAt === 'string' &&
+    remote.createdAt < local.createdAt
+  )
+    out.createdAt = remote.createdAt;
+  if (typeof remote.schemaVersion === 'number' && remote.schemaVersion > (local.schemaVersion as number))
+    out.schemaVersion = remote.schemaVersion;
   return { record: out, conflicts, resurrected: false, changed };
 }
 

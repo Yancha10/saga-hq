@@ -8,12 +8,24 @@ export type WorkspaceRef =
 export function accountRef(accountId: string): WorkspaceRef {
   if (!isAccountId(accountId)) throw new Error('Invalid accountId');
   // One workspace per account in V1: the workspace id is the opaque account id.
-  return { kind: 'account', accountId, dbName: `sagahq-${accountId}`, workspaceId: accountId, key: `account:${accountId}` };
+  return {
+    kind: 'account',
+    accountId,
+    dbName: `sagahq-${accountId}`,
+    workspaceId: accountId,
+    key: `account:${accountId}`,
+  };
 }
 
 export function localRef(localId: string): WorkspaceRef {
   if (!isUlid(localId)) throw new Error('Invalid local workspace id');
-  return { kind: 'local', localId, dbName: `sagahq-local-${localId}`, workspaceId: `local-${localId}`, key: `local:${localId}` };
+  return {
+    kind: 'local',
+    localId,
+    dbName: `sagahq-local-${localId}`,
+    workspaceId: `local-${localId}`,
+    key: `local:${localId}`,
+  };
 }
 
 export function parseRefKey(key: string | null | undefined): WorkspaceRef | null {

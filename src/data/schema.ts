@@ -79,7 +79,10 @@ export const formatTemplateSchema = z.object({
 });
 export type FormatTemplate = z.infer<typeof formatTemplateSchema>;
 
-export const focusRefSchema = z.object({ entity: z.enum(['content', 'task', 'idea', 'project']), id: z.string() });
+export const focusRefSchema = z.object({
+  entity: z.enum(['content', 'task', 'idea', 'project']),
+  id: z.string(),
+});
 export type FocusRef = z.infer<typeof focusRefSchema>;
 
 export const workspaceSchema = z.looseObject({
@@ -106,7 +109,11 @@ export const projectSchema = z.looseObject({
   platforms: platforms.optional(),
 });
 
-const score = z.object({ value: z.union([z.literal(1), z.literal(2), z.literal(3)]), by: z.enum(['user', 'ai']), rationale: z.string().optional() });
+const score = z.object({
+  value: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+  by: z.enum(['user', 'ai']),
+  rationale: z.string().optional(),
+});
 
 export const ideaSchema = z.looseObject({
   ...base,
@@ -168,7 +175,14 @@ export const shotSchema = z.object({
 });
 export type Shot = z.infer<typeof shotSchema>;
 
-export const CONTENT_STATUSES = ['planned', 'producing', 'ready', 'scheduled', 'published', 'reviewed'] as const;
+export const CONTENT_STATUSES = [
+  'planned',
+  'producing',
+  'ready',
+  'scheduled',
+  'published',
+  'reviewed',
+] as const;
 export type ContentStatus = (typeof CONTENT_STATUSES)[number];
 export const CONTENT_STATUS_LABEL: Record<ContentStatus, string> = {
   planned: 'Planned',
@@ -313,7 +327,9 @@ export const librarySchema = z.looseObject({
   originalUrl: opt(z.string().max(4000)),
   canonicalUrl: opt(z.string().max(4000)),
   site: opt(z.string().max(200)),
-  platformRef: z.object({ platform: z.string(), externalId: z.string().optional(), handle: z.string().optional() }).nullish(),
+  platformRef: z
+    .object({ platform: z.string(), externalId: z.string().optional(), handle: z.string().optional() })
+    .nullish(),
   author: opt(z.string().max(200)),
   sourceDate: opt(iso),
   thumbUrl: opt(z.string().max(4000)),
@@ -347,7 +363,11 @@ export const learningSchema = z.looseObject({
   confidence: z.enum(['low', 'medium', 'high']),
   status: z.enum(['active', 'retired']),
   scope: z
-    .object({ platforms: z.array(z.enum(PLATFORMS)).optional(), formats: z.array(z.string()).optional(), projectId: opt(z.string()) })
+    .object({
+      platforms: z.array(z.enum(PLATFORMS)).optional(),
+      formats: z.array(z.string()).optional(),
+      projectId: opt(z.string()),
+    })
     .optional(),
   evidenceNote: opt(z.string().max(20000)),
   metricsSummary: z.object({ metric: z.string(), n: z.number(), effect: z.string().optional() }).nullish(),
@@ -366,7 +386,12 @@ export const linkSchema = z.looseObject({
   note: opt(z.string().max(1000)),
 });
 
-export const tombstoneSchema = z.object({ id: z.string(), entity: z.string(), deletedAt: iso, rev: z.string() });
+export const tombstoneSchema = z.object({
+  id: z.string(),
+  entity: z.string(),
+  deletedAt: iso,
+  rev: z.string(),
+});
 
 export const ENTITY_SCHEMAS = {
   workspace: workspaceSchema,

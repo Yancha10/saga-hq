@@ -1,13 +1,13 @@
 import Dexie, { type DexieOptions } from 'dexie';
 import type { WorkspaceRef } from '../account/workspaceRef';
-import { randomBytes } from '../core/crypto';
 import { base32Lower } from '../core/base32';
+import { randomBytes } from '../core/crypto';
 import { Hlc, type HlcState } from '../core/hlc';
 import { nowIso } from '../core/util';
 import { getMeta, setMeta, WorkspaceDB } from '../data/db';
 import { DEFAULT_TEMPLATES } from '../data/defaults';
 import { runMigrations } from '../data/migrations';
-import { SCHEMA_VERSION, type EntityTable, type Workspace } from '../data/schema';
+import { type EntityTable, SCHEMA_VERSION, type Workspace } from '../data/schema';
 import { logger } from '../diagnostics/logger';
 
 export class SessionClosedError extends Error {

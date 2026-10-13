@@ -3,11 +3,18 @@ import { maxHlc } from '../core/hlc';
 import { nowIso } from '../core/util';
 import { getMeta, setMeta } from '../data/db';
 import { createRecoveryPoint } from '../data/recovery';
-import { ENTITY_SCHEMAS, SCHEMA_VERSION, SYNC_TABLES, tombstoneSchema, type EntityTable, type Tombstone } from '../data/schema';
+import {
+  ENTITY_SCHEMAS,
+  type EntityTable,
+  SCHEMA_VERSION,
+  SYNC_TABLES,
+  type Tombstone,
+  tombstoneSchema,
+} from '../data/schema';
 import { serializeWorkspace } from '../data/serialize';
 import { recomputeDerived } from '../data/store';
 import { logger } from '../diagnostics/logger';
-import { DriveError, type DriveApi, type DriveFile } from './driveApi';
+import { type DriveApi, DriveError, type DriveFile } from './driveApi';
 import { applyTombstone, mergeRecord, stripDerived } from './merge';
 
 export const DRIVE_ROOT_NAME = 'Saga HQ';
@@ -103,7 +110,14 @@ export class SyncEngine {
   }
 
   async state(): Promise<SyncState> {
-    return (await getMeta<SyncState>(this.db, 'sync')) ?? { pushedRev: '', nextSeq: 1, applied: [], snapshotsApplied: [] };
+    return (
+      (await getMeta<SyncState>(this.db, 'sync')) ?? {
+        pushedRev: '',
+        nextSeq: 1,
+        applied: [],
+        snapshotsApplied: [],
+      }
+    );
   }
   private async save(st: SyncState): Promise<void> {
     this.session.assertLive();
@@ -159,21 +173,33 @@ export class SyncEngine {
 
   async verifyManifest(manifestId: string): Promise<void> {
     const m = await this.drive.readJson<Manifest>(manifestId);
-    if (m?.format !== 'saga-hq-drive') throw new SyncBlockedError('futureSchema', 'Unrecognized Saga HQ data in Drive.');
+    if (m?.format !== 'saga-hq-drive')
+      throw new SyncBlockedError('futureSchema', 'Unrecognized Saga HQ data in Drive.');
     if (m.accountId !== this.accountId)
-      throw new SyncBlockedError('accountMismatch', 'This Drive folder belongs to a different Saga HQ account. Sync is blocked to protect both workspaces.');
+      throw new SyncBlockedError(
+        'accountMismatch',
+        'This Drive folder belongs to a different Saga HQ account. Sync is blocked to protect both workspaces.',
+      );
     if (m.schemaVersion > SCHEMA_VERSION)
-      throw new SyncBlockedError('futureSchema', 'Another device uses a newer Saga HQ version. Update this app to keep syncing.');
+      throw new SyncBlockedError(
+        'futureSchema',
+        'Another device uses a newer Saga HQ version. Update this app to keep syncing.',
+      );
   }
 
   // ---------------- push ----------------
 
-  async collectOutbox(pushedRev: string): Promise<{ records: Segment['records']; tombstones: Tombstone[]; maxRev: string }> {
+  async collectOutbox(
+    pushedRev: string,
+  ): Promise<{ records: Segment['records']; tombstones: Tombstone[]; maxRev: string }> {
     const device = this.session.deviceId;
     const records: Segment['records'] = [];
     let maxRev = pushedRev;
     for (const t of SYNC_TABLES) {
-      const rows = (await this.db.table(t).where('rev').above(pushedRev).toArray()) as Record<string, unknown>[];
+      const rows = (await this.db.table(t).where('rev').above(pushedRev).toArray()) as Record<
+        string,
+        unknown
+      >[];
       for (const r of rows) {
         const fr = (r.fieldRevs ?? {}) as Record<string, string>;
         const own = Object.values(fr).filter((v) => ownDevice(v, device) && v > pushedRev);
@@ -182,7 +208,9 @@ export class SyncEngine {
         for (const v of own) maxRev = maxHlc(maxRev, v) as string;
       }
     }
-    const tombstones = (await this.db.tombstones.where('rev').above(pushedRev).toArray()).filter((x) => ownDevice(x.rev, device));
+    const tombstones = (await this.db.tombstones.where('rev').above(pushedRev).toArray()).filter((x) =>
+      ownDevice(x.rev, device),
+    );
     for (const tb of tombstones) maxRev = maxHlc(maxRev, tb.rev) as string;
     return { records, tombstones, maxRev };
   }
@@ -207,13 +235,18 @@ export class SyncEngine {
         tombstones: i === 0 ? tombstones : [],
       };
       this.session.assertLive();
-      await this.drive.createJson(`${this.session.deviceId}-${String(seq).padStart(8, '0')}.json`, st.journalId!, seg, {
-        sagahq: 'segment',
-        ws: this.ws,
-        device: this.session.deviceId,
-        seq: String(seq),
-        at: String(this.clock()),
-      });
+      await this.drive.createJson(
+        `${this.session.deviceId}-${String(seq).padStart(8, '0')}.json`,
+        st.journalId!,
+        seg,
+        {
+          sagahq: 'segment',
+          ws: this.ws,
+          device: this.session.deviceId,
+          seq: String(seq),
+          at: String(this.clock()),
+        },
+      );
       applied.add(`${this.session.deviceId}:${seq}`);
       seq++;
     }
@@ -276,7 +309,9 @@ export class SyncEngine {
     const st = await this.state();
     const applied = new Set(st.applied);
     const snapsApplied = new Set(st.snapshotsApplied);
-    const snapshots = files.filter((f) => f.appProperties?.sagahq === 'snapshot' && !snapsApplied.has(f.appProperties.hlc ?? f.id));
+    const snapshots = files.filter(
+      (f) => f.appProperties?.sagahq === 'snapshot' && !snapsApplied.has(f.appProperties.hlc ?? f.id),
+    );
     const segments = files
       .filter((f) => f.appProperties?.sagahq === 'segment')
       .filter((f) => {
@@ -285,7 +320,9 @@ export class SyncEngine {
       })
       .sort((a, b) => Number(a.appProperties!.seq) - Number(b.appProperties!.seq));
     const seen = new Set<string>();
-    for (const f of snapshots.sort((a, b) => (a.appProperties!.hlc ?? '').localeCompare(b.appProperties!.hlc ?? ''))) {
+    for (const f of snapshots.sort((a, b) =>
+      (a.appProperties!.hlc ?? '').localeCompare(b.appProperties!.hlc ?? ''),
+    )) {
       this.session.assertLive();
       let snap: DriveSnapshot;
       try {
@@ -298,9 +335,14 @@ export class SyncEngine {
         report.skippedInvalid++;
         continue;
       }
-      if (snap.schemaVersion > SCHEMA_VERSION) throw new SyncBlockedError('futureSchema', 'A newer Saga HQ wrote this workspace. Update to keep syncing.');
+      if (snap.schemaVersion > SCHEMA_VERSION)
+        throw new SyncBlockedError(
+          'futureSchema',
+          'A newer Saga HQ wrote this workspace. Update to keep syncing.',
+        );
       const recs: Segment['records'] = [];
-      for (const [t, rows] of Object.entries(snap.tables)) for (const r of rows ?? []) recs.push({ t: t as EntityTable, r });
+      for (const [t, rows] of Object.entries(snap.tables))
+        for (const r of rows ?? []) recs.push({ t: t as EntityTable, r });
       await this.applyBatch(recs, snap.tombstones ?? [], report);
       snapsApplied.add(f.appProperties!.hlc ?? f.id);
     }
@@ -328,7 +370,11 @@ export class SyncEngine {
         applied.add(key);
         continue;
       }
-      if (seg.schemaVersion > SCHEMA_VERSION) throw new SyncBlockedError('futureSchema', 'Another device uses a newer Saga HQ version. Update this app to keep syncing.');
+      if (seg.schemaVersion > SCHEMA_VERSION)
+        throw new SyncBlockedError(
+          'futureSchema',
+          'Another device uses a newer Saga HQ version. Update this app to keep syncing.',
+        );
       await this.applyBatch(seg.records, Array.isArray(seg.tombstones) ? seg.tombstones : [], report);
       applied.add(key);
       report.segments++;
@@ -339,7 +385,10 @@ export class SyncEngine {
 
   /** Validate and merge remote records. Invalid records are skipped; local state is never destroyed. */
   async applyBatch(records: Segment['records'], tombstones: Tombstone[], report: PullReport): Promise<void> {
-    const valid: { t: EntityTable; r: Record<string, unknown> & { id: string; rev: string; fieldRevs: Record<string, string> } }[] = [];
+    const valid: {
+      t: EntityTable;
+      r: Record<string, unknown> & { id: string; rev: string; fieldRevs: Record<string, string> };
+    }[] = [];
     for (const { t, r } of records) {
       if (!(SYNC_TABLES as string[]).includes(t)) {
         report.skippedInvalid++;
@@ -352,8 +401,11 @@ export class SyncEngine {
       }
       valid.push({ t, r: parsed.data as never });
     }
-    const tombs = tombstones.filter((x) => tombstoneSchema.safeParse(x).success && (SYNC_TABLES as string[]).includes(x.entity));
-    if (valid.length + tombs.length > LARGE_MERGE) await createRecoveryPoint(this.session, `Before merging ${valid.length + tombs.length} synced changes`);
+    const tombs = tombstones.filter(
+      (x) => tombstoneSchema.safeParse(x).success && (SYNC_TABLES as string[]).includes(x.entity),
+    );
+    if (valid.length + tombs.length > LARGE_MERGE)
+      await createRecoveryPoint(this.session, `Before merging ${valid.length + tombs.length} synced changes`);
     this.session.assertLive();
     const s = this.session;
     const contentIds = new Set<string>();
@@ -423,7 +475,8 @@ export class SyncEngine {
     const data = await serializeWorkspace(this.db);
     const hlc = this.session.hlc.now();
     const tables: DriveSnapshot['tables'] = {};
-    for (const [t, rows] of Object.entries(data.tables)) tables[t as EntityTable] = (rows ?? []).map((r) => stripDerived(r));
+    for (const [t, rows] of Object.entries(data.tables))
+      tables[t as EntityTable] = (rows ?? []).map((r) => stripDerived(r));
     const snap: DriveSnapshot = {
       format: 'saga-hq-snapshot',
       version: 1,
@@ -436,7 +489,11 @@ export class SyncEngine {
       tombstones: data.tombstones,
     };
     this.session.assertLive();
-    await this.drive.createJson(`snap-${hlc}.json`, st.snapshotsId!, snap, { sagahq: 'snapshot', ws: this.ws, hlc });
+    await this.drive.createJson(`snap-${hlc}.json`, st.snapshotsId!, snap, {
+      sagahq: 'snapshot',
+      ws: this.ws,
+      hlc,
+    });
     // Only delete segments this device has applied (or written) and that are old enough.
     const segs = await this.drive.find({ appProperties: { sagahq: 'segment', ws: this.ws } });
     const applied = new Set(st.applied);
@@ -444,15 +501,18 @@ export class SyncEngine {
     const stillThere = new Set<string>();
     for (const f of segs) {
       const key = `${f.appProperties!.device}:${f.appProperties!.seq}`;
-      if ((applied.has(key) || f.appProperties!.device === this.session.deviceId) && Number(f.appProperties!.at ?? 0) < cutoff) {
+      if (
+        (applied.has(key) || f.appProperties!.device === this.session.deviceId) &&
+        Number(f.appProperties!.at ?? 0) < cutoff
+      ) {
         await this.drive.remove(f.id);
       } else stillThere.add(key);
     }
     // Forget keys of segments that no longer exist (compacted by us or another device).
     const remaining = new Set([...applied].filter((k) => stillThere.has(k)));
     // Keep at least the 3 newest snapshots; older ones are pruned after 30 days.
-    const snaps = (await this.drive.find({ appProperties: { sagahq: 'snapshot', ws: this.ws } })).sort((a, b) =>
-      (b.appProperties!.hlc ?? '').localeCompare(a.appProperties!.hlc ?? ''),
+    const snaps = (await this.drive.find({ appProperties: { sagahq: 'snapshot', ws: this.ws } })).sort(
+      (a, b) => (b.appProperties!.hlc ?? '').localeCompare(a.appProperties!.hlc ?? ''),
     );
     const snapCutoff = this.clock() - 30 * 86400000;
     for (const f of snaps.slice(3)) {
@@ -460,17 +520,26 @@ export class SyncEngine {
       if (ms < snapCutoff) await this.drive.remove(f.id);
     }
     const cur = await this.state();
-    await this.save({ ...cur, applied: [...remaining], snapshotsApplied: [...new Set([...cur.snapshotsApplied, hlc])] });
+    await this.save({
+      ...cur,
+      applied: [...remaining],
+      snapshotsApplied: [...new Set([...cur.snapshotsApplied, hlc])],
+    });
     return true;
   }
 
   async maybeBackup(makeBackup: () => Promise<unknown>, force = false): Promise<boolean> {
     const st = await this.ensureLayout();
-    if (!force && st.lastBackupAt && this.clock() - Date.parse(st.lastBackupAt) < BACKUP_EVERY_MS) return false;
+    if (!force && st.lastBackupAt && this.clock() - Date.parse(st.lastBackupAt) < BACKUP_EVERY_MS)
+      return false;
     const payload = await makeBackup();
     const date = new Date(this.clock()).toISOString().slice(0, 10);
     this.session.assertLive();
-    await this.drive.createJson(`backup-${date}.json`, st.backupsId!, payload, { sagahq: 'backup', ws: this.ws, at: String(this.clock()) });
+    await this.drive.createJson(`backup-${date}.json`, st.backupsId!, payload, {
+      sagahq: 'backup',
+      ws: this.ws,
+      at: String(this.clock()),
+    });
     const all = (await this.drive.find({ appProperties: { sagahq: 'backup', ws: this.ws } })).sort(
       (a, b) => Number(b.appProperties!.at) - Number(a.appProperties!.at),
     );

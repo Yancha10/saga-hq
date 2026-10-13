@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import type { Session } from '../app/session';
 import { ulid } from '../core/ulid';
-import { nowIso } from '../core/util';
 import { safeHttpUrl } from '../core/url';
+import { nowIso } from '../core/util';
 import type { Content, LibraryItem, Project, Shot } from '../data/schema';
 import { mutate } from '../data/store';
 
@@ -30,11 +30,22 @@ export const handoffSchema = z.object({
     prompt: z.string().optional(),
     notes: z.string().optional(),
   }),
-  format: z.object({ ratio: z.string().optional(), durationSec: z.number().optional(), kind: z.enum(['video', 'image']).optional() }),
-  modelHint: z.object({ family: z.string().optional(), preferred: z.string().nullable().optional() }).optional(),
+  format: z.object({
+    ratio: z.string().optional(),
+    durationSec: z.number().optional(),
+    kind: z.enum(['video', 'image']).optional(),
+  }),
+  modelHint: z
+    .object({ family: z.string().optional(), preferred: z.string().nullable().optional() })
+    .optional(),
   characters: z.array(z.object({ name: z.string(), studioCharacterId: z.string().nullable().optional() })),
   references: z.array(
-    z.object({ kind: z.string(), url: z.string().nullable().optional(), driveFileId: z.string().nullable().optional(), caption: z.string().optional() }),
+    z.object({
+      kind: z.string(),
+      url: z.string().nullable().optional(),
+      driveFileId: z.string().nullable().optional(),
+      caption: z.string().optional(),
+    }),
   ),
   return: z.object({ mode: z.enum(['file', 'clipboard', 'link']) }),
 });
@@ -64,7 +75,10 @@ export const returnSchema = z.object({
             selected: z.boolean().optional(),
           }),
         ),
-        cost: z.object({ amount: z.number(), currency: z.string(), unit: z.string().optional() }).nullable().optional(),
+        cost: z
+          .object({ amount: z.number(), currency: z.string(), unit: z.string().optional() })
+          .nullable()
+          .optional(),
         createdAt: z.string().optional(),
       }),
     )
@@ -74,7 +88,14 @@ export type StudioReturn = z.infer<typeof returnSchema>;
 
 export const MAX_FRAGMENT_CHARS = 6000;
 
-export function buildHandoff(content: Content, project: Project | undefined, refs: LibraryItem[], shot: Shot | undefined, accountHint?: string, ratio?: string): Handoff {
+export function buildHandoff(
+  content: Content,
+  project: Project | undefined,
+  refs: LibraryItem[],
+  shot: Shot | undefined,
+  accountHint?: string,
+  ratio?: string,
+): Handoff {
   return {
     type: 'saga.handoff',
     version: 1,
@@ -95,11 +116,22 @@ export function buildHandoff(content: Content, project: Project | undefined, ref
     },
     format: {
       ...(ratio ? { ratio } : {}),
-      ...(shot?.durationSec ? { durationSec: shot.durationSec } : content.attributes?.durationSec ? { durationSec: content.attributes.durationSec } : {}),
-      kind: content.formatTemplateId === 'image_post' || content.formatTemplateId === 'carousel' ? 'image' : 'video',
+      ...(shot?.durationSec
+        ? { durationSec: shot.durationSec }
+        : content.attributes?.durationSec
+          ? { durationSec: content.attributes.durationSec }
+          : {}),
+      kind:
+        content.formatTemplateId === 'image_post' || content.formatTemplateId === 'carousel'
+          ? 'image'
+          : 'video',
     },
     characters: (content.attributes?.cast ?? []).map((name) => ({ name })),
-    references: refs.slice(0, 20).map((r) => ({ kind: r.kind, url: safeHttpUrl(r.originalUrl ?? r.thumbUrl ?? null), caption: (r.title ?? r.notes ?? '').slice(0, 200) })),
+    references: refs.slice(0, 20).map((r) => ({
+      kind: r.kind,
+      url: safeHttpUrl(r.originalUrl ?? r.thumbUrl ?? null),
+      caption: (r.title ?? r.notes ?? '').slice(0, 200),
+    })),
     return: { mode: 'file' },
   };
 }
@@ -124,7 +156,8 @@ async function pipe(bytes: Uint8Array, stream: CompressionStream | Decompression
 /** Encode for a URL fragment: gzip when available ("z1."), plain otherwise ("j1."). */
 export async function encodePayload(obj: unknown): Promise<string> {
   const json = new TextEncoder().encode(JSON.stringify(obj));
-  if (typeof CompressionStream !== 'undefined') return `z1.${b64urlEncode(await pipe(json, new CompressionStream('gzip')))}`;
+  if (typeof CompressionStream !== 'undefined')
+    return `z1.${b64urlEncode(await pipe(json, new CompressionStream('gzip')))}`;
   return `j1.${b64urlEncode(json)}`;
 }
 
@@ -132,8 +165,11 @@ export async function decodePayload(s: string): Promise<unknown> {
   const [prefix, data] = [s.slice(0, 3), s.slice(3)];
   if (s.length > 200_000) throw new Error('Payload too large');
   if (prefix === 'z1.') {
-    if (typeof DecompressionStream === 'undefined') throw new Error('This browser cannot decompress the payload');
-    return JSON.parse(new TextDecoder().decode(await pipe(b64urlDecode(data), new DecompressionStream('gzip'))));
+    if (typeof DecompressionStream === 'undefined')
+      throw new Error('This browser cannot decompress the payload');
+    return JSON.parse(
+      new TextDecoder().decode(await pipe(b64urlDecode(data), new DecompressionStream('gzip'))),
+    );
   }
   if (prefix === 'j1.') return JSON.parse(new TextDecoder().decode(b64urlDecode(data)));
   return JSON.parse(s); // raw JSON pasted
@@ -160,7 +196,8 @@ export async function previewReturn(s: Session, raw: unknown, accountHint?: stri
   const p = returnSchema.safeParse(raw);
   if (!p.success) return { ok: false, error: 'This is not a valid saga.return v1 payload.' };
   const content = await s.db.content.get(p.data.target.contentId);
-  if (!content || content.deletedAt) return { ok: false, error: 'The content this result belongs to is not in this workspace.' };
+  if (!content || content.deletedAt)
+    return { ok: false, error: 'The content this result belongs to is not in this workspace.' };
   const mismatch = !!(p.data.source?.accountHint && accountHint && p.data.source.accountHint !== accountHint);
   return { ok: true, data: p.data, content, accountMismatch: mismatch };
 }
@@ -201,14 +238,29 @@ export async function applyReturn(s: Session, ret: StudioReturn): Promise<number
               .join('\n'),
             projectId: content.projectId ?? null,
           });
-          await m.create('links', { fromType: 'content', fromId: content.id, toType: 'library', toId: lib.id, type: 'references', note: 'Saga Studio output' });
+          await m.create('links', {
+            fromType: 'content',
+            fromId: content.id,
+            toType: 'library',
+            toId: lib.id,
+            type: 'references',
+            note: 'Saga Studio output',
+          });
           attached++;
         }
       }
-      const patch: Partial<Content> = { attributes: { ...(content.attributes ?? {}), aiModels: [...models] } };
+      const patch: Partial<Content> = {
+        attributes: { ...(content.attributes ?? {}), aiModels: [...models] },
+      };
       if (ret.target.shotId && content.shots) {
         patch.shots = content.shots.map((sh) =>
-          sh.id === ret.target.shotId ? { ...sh, ...(selectedUrl ? { selectedOutput: selectedUrl, status: 'selected' as const } : {}), rev: s.hlc.now() } : sh,
+          sh.id === ret.target.shotId
+            ? {
+                ...sh,
+                ...(selectedUrl ? { selectedOutput: selectedUrl, status: 'selected' as const } : {}),
+                rev: s.hlc.now(),
+              }
+            : sh,
         );
       }
       await m.update('content', content.id, patch);

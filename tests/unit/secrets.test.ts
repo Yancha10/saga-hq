@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import type { Session } from '../../src/app/session';
 import { getSecret, removeAllSecrets, saveSecret, secretHints } from '../../src/ai/secrets';
+import type { Session } from '../../src/app/session';
 import { buildBackup, previewBackup, restoreBackup } from '../../src/data/backup';
 import { createRecoveryPoint } from '../../src/data/recovery';
 import { serializeWorkspace } from '../../src/data/serialize';
@@ -37,7 +37,14 @@ describe('secret isolation (release gate)', () => {
     const logs = JSON.stringify(getLogs());
     const diag = JSON.stringify(await buildDiagnostics(s));
 
-    for (const [name, blob] of Object.entries({ driveDump, backup, serialized, recovery: rp.data, logs, diag })) {
+    for (const [name, blob] of Object.entries({
+      driveDump,
+      backup,
+      serialized,
+      recovery: rp.data,
+      logs,
+      diag,
+    })) {
       expect(blob.includes(MARKER), `${name} leaked the secret`).toBe(false);
       expect(blob.includes('TESTMARKER'), `${name} leaked part of the secret`).toBe(false);
     }
@@ -70,7 +77,12 @@ describe('backup / restore', () => {
     expect((await s.db.ideas.get(i.id))?.title).toBe('precious');
 
     const target = await openDevice();
-    await create(target, 'tasks', { title: 'will be replaced', status: 'todo', kind: 'task', isBlocker: false });
+    await create(target, 'tasks', {
+      title: 'will be replaced',
+      status: 'todo',
+      kind: 'task',
+      isBlocker: false,
+    });
     const p = await previewBackup(text);
     expect(p.ok).toBe(true);
     const after = await restoreBackup(target, p.file!, 'replace');

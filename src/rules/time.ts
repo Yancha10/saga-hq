@@ -30,7 +30,10 @@ export function startOfWeek(t: number | Date): Date {
 export function fmtTime(iso: string): string {
   return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 }
-export function fmtDay(iso: string | Date, opts: Intl.DateTimeFormatOptions = { weekday: 'short', day: 'numeric', month: 'short' }): string {
+export function fmtDay(
+  iso: string | Date,
+  opts: Intl.DateTimeFormatOptions = { weekday: 'short', day: 'numeric', month: 'short' },
+): string {
   return new Date(iso).toLocaleDateString(undefined, opts);
 }
 export function relDays(iso: string, now = Date.now()): string {

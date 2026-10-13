@@ -4,7 +4,7 @@ import { nowIso } from '../core/util';
 import { getMeta, setMeta } from '../data/db';
 import type { SearchClient } from '../search/client';
 import { parseActions, type ResolvedAction } from './actions';
-import { resolveContext, summarizePack, type ContextPack, type Focus, type Intent } from './context';
+import { type ContextPack, type Focus, type Intent, resolveContext, summarizePack } from './context';
 import { buildPrompt } from './prompts';
 import { complete, PROVIDER_INFO, type ProviderConfig } from './providers';
 import { getSecret, type ProviderId } from './secrets';
@@ -27,7 +27,11 @@ export async function providerConfig(s: Session): Promise<ProviderConfig | null>
   if (!st.provider) return null;
   const key = await getSecret(s, st.provider);
   if (!key) return null;
-  return { provider: st.provider, apiKey: key, model: st.models[st.provider] || PROVIDER_INFO[st.provider].defaultModel };
+  return {
+    provider: st.provider,
+    apiKey: key,
+    model: st.models[st.provider] || PROVIDER_INFO[st.provider].defaultModel,
+  };
 }
 
 export interface SecretaryAnswer {
@@ -38,11 +42,22 @@ export interface SecretaryAnswer {
   model: string;
 }
 
-export async function prepare(s: Session, intent: Intent, question: string, focus: Focus, search?: SearchClient): Promise<ContextPack> {
+export async function prepare(
+  s: Session,
+  intent: Intent,
+  question: string,
+  focus: Focus,
+  search?: SearchClient,
+): Promise<ContextPack> {
   return resolveContext(s, intent, question, focus, search);
 }
 
-export async function ask(s: Session, pack: ContextPack, question: string, signal?: AbortSignal): Promise<SecretaryAnswer> {
+export async function ask(
+  s: Session,
+  pack: ContextPack,
+  question: string,
+  signal?: AbortSignal,
+): Promise<SecretaryAnswer> {
   const cfg = await providerConfig(s);
   if (!cfg) throw new Error('No AI provider configured.');
   s.assertLive();
@@ -52,7 +67,15 @@ export async function ask(s: Session, pack: ContextPack, question: string, signa
   const { body, actionsJson } = splitActions(res.text);
   const v = validateAnswer(body, pack);
   const actions = parseActions(actionsJson, pack);
-  await s.db.secretary.put({ id: ulid(), at: nowIso(), intent: pack.intent, question, contextSummary: summarizePack(pack), answer: v.text, provider: cfg.provider });
+  await s.db.secretary.put({
+    id: ulid(),
+    at: nowIso(),
+    intent: pack.intent,
+    question,
+    contextSummary: summarizePack(pack),
+    answer: v.text,
+    provider: cfg.provider,
+  });
   const all = await s.db.secretary.orderBy('at').primaryKeys();
   if (all.length > 50) await s.db.secretary.bulkDelete(all.slice(0, all.length - 50));
   return { pack, text: v.text, removed: v.removed, actions, model: res.model };

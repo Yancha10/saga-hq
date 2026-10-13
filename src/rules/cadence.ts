@@ -1,6 +1,6 @@
 import type { Publication, Workspace } from '../data/schema';
 import { PLATFORM_LABEL } from '../data/schema';
-import { addDays, startOfDay, startOfWeek, DAY } from './time';
+import { addDays, DAY, startOfDay, startOfWeek } from './time';
 
 export interface Gap {
   platform: Publication['platform'];
@@ -12,14 +12,25 @@ export interface Gap {
 }
 
 /** Compare planned publications for this and next week against the optional cadence targets. */
-export function cadenceGaps(ws: Workspace | undefined, pubs: Publication[], now = Date.now(), horizonDays = 7): Gap[] {
+export function cadenceGaps(
+  ws: Workspace | undefined,
+  pubs: Publication[],
+  now = Date.now(),
+  horizonDays = 7,
+): Gap[] {
   if (!ws?.cadence?.length) return [];
   const out: Gap[] = [];
   const today = startOfDay(now).getTime();
   const end = today + horizonDays * DAY;
   for (const c of ws.cadence) {
     if (!c.perWeek) continue;
-    const mine = pubs.filter((p) => !p.deletedAt && p.platform === c.platform && p.status !== 'cancelled' && (p.scheduledAt || p.publishedAt));
+    const mine = pubs.filter(
+      (p) =>
+        !p.deletedAt &&
+        p.platform === c.platform &&
+        p.status !== 'cancelled' &&
+        (p.scheduledAt || p.publishedAt),
+    );
     const at = (p: Publication) => Date.parse((p.publishedAt ?? p.scheduledAt)!);
     const weekStart = startOfWeek(now).getTime();
     const thisWeek = mine.filter((p) => at(p) >= weekStart && at(p) < weekStart + 7 * DAY).length;

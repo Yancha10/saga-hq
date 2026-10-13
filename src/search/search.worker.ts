@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 import Dexie from 'dexie';
-import { SEARCH_TABLES, SearchCore, toDoc, type SearchDoc, type SearchType } from './core';
+import { SEARCH_TABLES, SearchCore, type SearchDoc, type SearchType, toDoc } from './core';
 
 /**
  * Search runs off the main thread. The worker opens ONLY the workspace database it is told to
@@ -39,6 +39,11 @@ self.onmessage = async (ev: MessageEvent<Msg>) => {
   } else if (m.kind === 'remove') {
     for (const id of m.ids) core.upsert(null, `${m.type}:${id}`);
   } else if (m.kind === 'query') {
-    (self as unknown as Worker).postMessage({ kind: 'result', id: m.id, ready, hits: core.search(m.q, m.limit) });
+    (self as unknown as Worker).postMessage({
+      kind: 'result',
+      id: m.id,
+      ready,
+      hits: core.search(m.q, m.limit),
+    });
   }
 };

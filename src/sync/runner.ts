@@ -1,10 +1,10 @@
 import type { Session } from '../app/session';
 import { clearBanner, createStore, setBanner } from '../app/status';
-import { getMeta } from '../data/db';
 import { buildBackup } from '../data/backup';
-import { evictCache, markUploaded } from '../media/store';
+import { getMeta } from '../data/db';
 import { logger } from '../diagnostics/logger';
-import { DriveError, type DriveApi } from './driveApi';
+import { evictCache, markUploaded } from '../media/store';
+import { type DriveApi, DriveError } from './driveApi';
 import { SyncBlockedError, SyncEngine } from './engine';
 
 export type SyncPhase = 'off' | 'idle' | 'syncing' | 'offline' | 'needs_auth' | 'blocked' | 'error';
@@ -80,7 +80,9 @@ export class SyncRunner {
       window.removeEventListener('pointerdown', onInput);
       window.removeEventListener('keydown', onInput);
     });
-    void getMeta<{ lastSyncAt?: string }>(s.db, 'sync').then((st) => syncStatus.set({ phase: 'idle', ...(st?.lastSyncAt ? { lastSyncAt: st.lastSyncAt } : {}) }));
+    void getMeta<{ lastSyncAt?: string }>(s.db, 'sync').then((st) =>
+      syncStatus.set({ phase: 'idle', ...(st?.lastSyncAt ? { lastSyncAt: st.lastSyncAt } : {}) }),
+    );
     this.kick();
   }
 
@@ -191,7 +193,13 @@ export class SyncRunner {
       clearBanner('sync');
       const st = await this.engine.state();
       const pendingUploads = await this.session.db.uploads.count();
-      syncStatus.set((p) => ({ ...p, phase: 'idle', message: undefined, pendingUploads, ...(st.lastSyncAt ? { lastSyncAt: st.lastSyncAt } : {}) }));
+      syncStatus.set((p) => ({
+        ...p,
+        phase: 'idle',
+        message: undefined,
+        pendingUploads,
+        ...(st.lastSyncAt ? { lastSyncAt: st.lastSyncAt } : {}),
+      }));
     } catch (e) {
       this.handleError(e);
     } finally {
@@ -212,19 +220,32 @@ export class SyncRunner {
     if (e instanceof SyncBlockedError) {
       this.stop();
       syncStatus.set((p) => ({ ...p, phase: 'blocked', message: e.message }));
-      setBanner({ id: 'sync', kind: 'error', message: `Sync stopped: ${e.message} Your local data is safe.` });
+      setBanner({
+        id: 'sync',
+        kind: 'error',
+        message: `Sync stopped: ${e.message} Your local data is safe.`,
+      });
       return;
     }
     if (e instanceof DriveError) {
       if (e.kind === 'auth') {
-        syncStatus.set((p) => ({ ...p, phase: 'needs_auth', message: 'Sync paused — reconnect Google to resume.' }));
+        syncStatus.set((p) => ({
+          ...p,
+          phase: 'needs_auth',
+          message: 'Sync paused — reconnect Google to resume.',
+        }));
         this.failures = 0;
         if (this.timer) clearTimeout(this.timer);
         this.stopped = false;
         return;
       }
       if (e.kind === 'quota') {
-        setBanner({ id: 'sync', kind: 'warning', message: 'Your Google Drive is full. Saga HQ keeps working locally; free Drive space to resume syncing.' });
+        setBanner({
+          id: 'sync',
+          kind: 'warning',
+          message:
+            'Your Google Drive is full. Saga HQ keeps working locally; free Drive space to resume syncing.',
+        });
       }
       if (e.kind === 'network') {
         syncStatus.set((p) => ({ ...p, phase: 'offline' }));
@@ -232,7 +253,11 @@ export class SyncRunner {
         return;
       }
       this.failures = Math.min(this.failures + 1, 8);
-      syncStatus.set((p) => ({ ...p, phase: 'error', message: e.retryable ? 'Drive is busy — retrying automatically.' : e.message }));
+      syncStatus.set((p) => ({
+        ...p,
+        phase: 'error',
+        message: e.retryable ? 'Drive is busy — retrying automatically.' : e.message,
+      }));
       logger.warn('sync', `drive error ${e.kind} ${e.status}`);
       return;
     }
@@ -251,7 +276,12 @@ export class SyncRunner {
       const q = await this.drive.quota();
       syncStatus.set((p) => ({ ...p, quota: q }));
       if (q.limit !== undefined && q.limit - q.usage < LOW_SPACE_BYTES)
-        setBanner({ id: 'drive-space', kind: 'warning', message: 'Your Google Drive has less than 1 GB free. Saga HQ never deletes your content automatically — free space in Drive or Settings › Storage.' });
+        setBanner({
+          id: 'drive-space',
+          kind: 'warning',
+          message:
+            'Your Google Drive has less than 1 GB free. Saga HQ never deletes your content automatically — free space in Drive or Settings › Storage.',
+        });
       else clearBanner('drive-space');
     }
   }
@@ -259,7 +289,9 @@ export class SyncRunner {
   /** Media uploads run separately and never block text sync. */
   async processUploads(limit = 2): Promise<void> {
     const s = this.session;
-    const jobs = (await s.db.uploads.toArray()).filter((j) => j.state !== 'failed' || j.attempts < 5).slice(0, limit);
+    const jobs = (await s.db.uploads.toArray())
+      .filter((j) => j.state !== 'failed' || j.attempts < 5)
+      .slice(0, limit);
     if (!jobs.length) return;
     const st = await this.engine.ensureLayout();
     for (const job of jobs) {
@@ -273,13 +305,23 @@ export class SyncRunner {
       try {
         await s.db.uploads.update(job.id, { state: 'uploading' });
         const ext = (meta.mime.split('/')[1] ?? 'bin').replace(/[^a-z0-9]/gi, '');
-        const f = await this.drive.uploadBlob(`${meta.id}.${ext}`, st.mediaId!, row.blob, { sagahq: 'media', ws: s.workspaceId, mediaId: meta.id }, s.signal);
+        const f = await this.drive.uploadBlob(
+          `${meta.id}.${ext}`,
+          st.mediaId!,
+          row.blob,
+          { sagahq: 'media', ws: s.workspaceId, mediaId: meta.id },
+          s.signal,
+        );
         s.assertLive();
         await markUploaded(s, meta.id, f.id);
         await s.db.uploads.delete(job.id);
       } catch (e) {
         if ((e as Error).name === 'SessionClosedError') throw e;
-        await s.db.uploads.update(job.id, { state: 'failed', attempts: job.attempts + 1, lastError: (e as Error).message });
+        await s.db.uploads.update(job.id, {
+          state: 'failed',
+          attempts: job.attempts + 1,
+          lastError: (e as Error).message,
+        });
         if (e instanceof DriveError && (e.kind === 'auth' || e.kind === 'quota')) throw e;
       }
     }

@@ -1,5 +1,5 @@
 import type { WorkspaceDB } from './db';
-import { SYNC_TABLES, type EntityTable, type Tombstone } from './schema';
+import { type EntityTable, SYNC_TABLES, type Tombstone } from './schema';
 
 /**
  * The single serializer for anything that leaves the live database (recovery points, backups,

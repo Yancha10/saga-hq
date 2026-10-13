@@ -1,13 +1,19 @@
 import type { ContextPack, Intent } from './context';
 
 const ROLE: Record<Intent, string> = {
-  brief: 'Write a short daily brief: what matters today, what is late or blocked, what can be finished quickly, what needs a decision.',
+  brief:
+    'Write a short daily brief: what matters today, what is late or blocked, what can be finished quickly, what needs a decision.',
   ask: 'Answer the question using only the workspace context.',
-  producer: 'Act as a producer: say exactly what is missing before items can publish, which items are closest to done, and the shortest path to finish.',
-  creative: 'Act as a creative director: propose or challenge ideas, variants and hooks. Ground suggestions in the ideas, references and learnings provided. Never claim an idea exists unless it is in the context.',
-  planner: 'Act as a planner: propose a realistic sequence or schedule. Every change is only a proposal the user must confirm.',
-  analyst: 'Act as an analyst: compare results only from the metrics provided, state sample sizes, use correlational language (never claim causation), and label claims as observation or hypothesis.',
-  librarian: 'Act as a librarian: point to the records in the context that match the request, by handle, and say briefly why each matches. If nothing matches, say so.',
+  producer:
+    'Act as a producer: say exactly what is missing before items can publish, which items are closest to done, and the shortest path to finish.',
+  creative:
+    'Act as a creative director: propose or challenge ideas, variants and hooks. Ground suggestions in the ideas, references and learnings provided. Never claim an idea exists unless it is in the context.',
+  planner:
+    'Act as a planner: propose a realistic sequence or schedule. Every change is only a proposal the user must confirm.',
+  analyst:
+    'Act as an analyst: compare results only from the metrics provided, state sample sizes, use correlational language (never claim causation), and label claims as observation or hypothesis.',
+  librarian:
+    'Act as a librarian: point to the records in the context that match the request, by handle, and say briefly why each matches. If nothing matches, say so.',
 };
 
 export const SYSTEM_RULES = `You are the Secretary inside Saga HQ, a creator's production workspace.

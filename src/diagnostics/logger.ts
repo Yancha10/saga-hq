@@ -53,7 +53,12 @@ function stringify(parts: unknown[]): string {
 }
 
 export function log(level: Level, area: string, ...parts: unknown[]): void {
-  const entry: LogEntry = { at: new Date().toISOString(), level, area, message: redact(stringify(parts)).slice(0, 2000) };
+  const entry: LogEntry = {
+    at: new Date().toISOString(),
+    level,
+    area,
+    message: redact(stringify(parts)).slice(0, 2000),
+  };
   buffer.push(entry);
   if (buffer.length > MAX) buffer.shift();
   if (import.meta.env?.DEV && import.meta.env.MODE !== 'test' && level !== 'debug') {

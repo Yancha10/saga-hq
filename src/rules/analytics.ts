@@ -1,5 +1,5 @@
-import type { Content, Publication, Snapshot } from '../data/schema';
 import { median } from '../core/util';
+import type { Content, Publication, Snapshot } from '../data/schema';
 
 /** Platform-scoped metric keys. Cross-platform totals are deliberately not computed. */
 export const COMMON_METRICS = [
@@ -73,7 +73,15 @@ export function findOutliers(
       const m = median(others)!;
       if (m <= 0) continue;
       const ratio = it.v / m;
-      if (ratio >= 2 || ratio <= 0.5) out.push({ publicationId: it.pub.id, contentId: it.pub.contentId, ratio, n: others.length, metric, checkpoint });
+      if (ratio >= 2 || ratio <= 0.5)
+        out.push({
+          publicationId: it.pub.id,
+          contentId: it.pub.contentId,
+          ratio,
+          n: others.length,
+          metric,
+          checkpoint,
+        });
     }
   }
   return out.sort((a, b) => Math.abs(Math.log(b.ratio)) - Math.abs(Math.log(a.ratio)));
@@ -94,7 +102,9 @@ export function patternBy(
   checkpoint: CheckpointKey = '24h',
 ): PatternRow[] {
   const val = new Map<string, number>();
-  for (const s of snaps) if (!s.deletedAt && s.checkpoint === checkpoint && typeof s.metrics[metric] === 'number') val.set(s.publicationId, s.metrics[metric]!);
+  for (const s of snaps)
+    if (!s.deletedAt && s.checkpoint === checkpoint && typeof s.metrics[metric] === 'number')
+      val.set(s.publicationId, s.metrics[metric]!);
   const groups = new Map<string, number[]>();
   for (const p of pubs) {
     const v = val.get(p.id);
@@ -105,5 +115,7 @@ export function patternBy(
     if (!groups.has(a)) groups.set(a, []);
     groups.get(a)!.push(v);
   }
-  return [...groups.entries()].map(([value, vs]) => ({ value, n: vs.length, median: median(vs)! })).sort((a, b) => b.median - a.median);
+  return [...groups.entries()]
+    .map(([value, vs]) => ({ value, n: vs.length, median: median(vs)! }))
+    .sort((a, b) => b.median - a.median);
 }

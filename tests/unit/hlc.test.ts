@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Hlc, parseHlc } from '../../src/core/hlc';
-import { ulid, isUlid } from '../../src/core/ulid';
+import { isUlid, ulid } from '../../src/core/ulid';
 
 describe('HLC', () => {
   it('is monotonic even when the wall clock stalls or goes back', () => {

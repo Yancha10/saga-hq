@@ -5,12 +5,30 @@ import { findOutliers, snapCheckpoint } from '../../src/rules/analytics';
 import { cadenceGaps } from '../../src/rules/cadence';
 import { scoreCandidates } from '../../src/rules/priority';
 import { buildToday } from '../../src/rules/today';
-import { SearchCore, parseQuery, toDoc } from '../../src/search/core';
+import { parseQuery, SearchCore, toDoc } from '../../src/search/core';
 
-const base = { workspaceId: 'w', schemaVersion: 1, updatedByDevice: 'd', rev: 'r', fieldRevs: {}, createdAt: '2026-10-01T00:00:00Z', updatedAt: '2026-10-01T00:00:00Z' };
+const base = {
+  workspaceId: 'w',
+  schemaVersion: 1,
+  updatedByDevice: 'd',
+  rev: 'r',
+  fieldRevs: {},
+  createdAt: '2026-10-01T00:00:00Z',
+  updatedAt: '2026-10-01T00:00:00Z',
+};
 const NOW = Date.parse('2026-10-13T09:00:00');
-const content = (o: Partial<Content>): Content => ({ ...base, id: 'c', title: 'Reel', status: 'producing', formatTemplateId: 'reel', platforms: ['instagram'], ...o }) as Content;
-const task = (o: Partial<Task>): Task => ({ ...base, id: 't', title: 'Task', status: 'todo', kind: 'task', isBlocker: false, ...o }) as Task;
+const content = (o: Partial<Content>): Content =>
+  ({
+    ...base,
+    id: 'c',
+    title: 'Reel',
+    status: 'producing',
+    formatTemplateId: 'reel',
+    platforms: ['instagram'],
+    ...o,
+  }) as Content;
+const task = (o: Partial<Task>): Task =>
+  ({ ...base, id: 't', title: 'Task', status: 'todo', kind: 'task', isBlocker: false, ...o }) as Task;
 
 describe('priority engine', () => {
   it('ranks publishing-today-with-missing-items first and explains why', () => {
@@ -19,7 +37,12 @@ describe('priority engine', () => {
       projects: [],
       content: [
         content({ id: 'a', title: 'Later', _nextPublishAt: '2026-10-20T10:00:00Z', _missing: ['cover'] }),
-        content({ id: 'b', title: 'Today', _nextPublishAt: new Date(NOW + 6 * 3600e3).toISOString(), _missing: ['cover', 'caption'] }),
+        content({
+          id: 'b',
+          title: 'Today',
+          _nextPublishAt: new Date(NOW + 6 * 3600e3).toISOString(),
+          _missing: ['cover', 'caption'],
+        }),
       ],
       tasks: [task({ id: 'x', title: 'Overdue', dueAt: '2026-10-10T10:00:00Z' })],
     });
@@ -28,7 +51,12 @@ describe('priority engine', () => {
     expect(c.find((x) => x.title === 'Overdue')!.reasons).toContain('overdue');
   });
   it('blocked items are demoted and flagged', () => {
-    const c = scoreCandidates({ now: NOW, projects: [], tasks: [], content: [content({ id: 'a', priority: 'high', _blocked: 1 })] });
+    const c = scoreCandidates({
+      now: NOW,
+      projects: [],
+      tasks: [],
+      content: [content({ id: 'a', priority: 'high', _blocked: 1 })],
+    });
     expect(c[0]!.blocked).toBe(true);
     expect(c[0]!.reasons).toContain('blocked');
   });
@@ -45,8 +73,24 @@ describe('Today model', () => {
       events: [],
       captures: [],
       ideas: [],
-      content: [content({ id: 'a', title: 'Almost', _missing: ['cover'], _nextPublishAt: new Date(NOW + 3600e3 * 20).toISOString() })],
-      publications: [{ ...base, id: 'p', contentId: 'a', platform: 'instagram', status: 'scheduled', scheduledAt: new Date(NOW + 3600e3 * 20).toISOString() } as Publication],
+      content: [
+        content({
+          id: 'a',
+          title: 'Almost',
+          _missing: ['cover'],
+          _nextPublishAt: new Date(NOW + 3600e3 * 20).toISOString(),
+        }),
+      ],
+      publications: [
+        {
+          ...base,
+          id: 'p',
+          contentId: 'a',
+          platform: 'instagram',
+          status: 'scheduled',
+          scheduledAt: new Date(NOW + 3600e3 * 20).toISOString(),
+        } as Publication,
+      ],
     });
     expect(t.focus.pinned).toHaveLength(0);
     expect(t.focus.suggested.length).toBeGreaterThan(0);
@@ -57,7 +101,11 @@ describe('Today model', () => {
 
 describe('cadence', () => {
   it('reports gaps against weekly targets without scheduling anything', () => {
-    const gaps = cadenceGaps({ cadence: [{ platform: 'instagram', perWeek: 4, preferredDays: [4] }] } as unknown as Workspace, [], NOW);
+    const gaps = cadenceGaps(
+      { cadence: [{ platform: 'instagram', perWeek: 4, preferredDays: [4] }] } as unknown as Workspace,
+      [],
+      NOW,
+    );
     expect(gaps.some((g) => g.message.includes('0/4'))).toBe(true);
     expect(gaps.some((g) => g.day)).toBe(true);
   });
@@ -71,8 +119,25 @@ describe('analytics', () => {
     const snaps: Snapshot[] = [];
     const cmap = new Map<string, Content>();
     for (let i = 0; i < 7; i++) {
-      pubs.push({ ...base, id: `p${i}`, contentId: `c${i}`, platform: 'tiktok', status: 'published' } as Publication);
-      snaps.push({ ...base, id: `s${i}`, publicationId: `p${i}`, contentId: `c${i}`, platform: 'tiktok', observedAt: '', ageHours: 24, checkpoint: '24h', source: 'manual', metrics: { views: i === 6 ? 10000 : 1000 } } as Snapshot);
+      pubs.push({
+        ...base,
+        id: `p${i}`,
+        contentId: `c${i}`,
+        platform: 'tiktok',
+        status: 'published',
+      } as Publication);
+      snaps.push({
+        ...base,
+        id: `s${i}`,
+        publicationId: `p${i}`,
+        contentId: `c${i}`,
+        platform: 'tiktok',
+        observedAt: '',
+        ageHours: 24,
+        checkpoint: '24h',
+        source: 'manual',
+        metrics: { views: i === 6 ? 10000 : 1000 },
+      } as Snapshot);
       cmap.set(`c${i}`, content({ id: `c${i}` }));
     }
     const o = findOutliers(pubs, snaps, cmap);
@@ -89,7 +154,9 @@ describe('URL parsing (local only)', () => {
     expect(y.externalId).toBe('dQw4w9WgXcQ');
     expect(y.canonical).not.toContain('si=');
     expect(y.original).toBe('https://youtu.be/dQw4w9WgXcQ?si=abc');
-    expect(parseUrl('https://www.tiktok.com/@saga/video/7300000000000000000')!.externalId).toBe('7300000000000000000');
+    expect(parseUrl('https://www.tiktok.com/@saga/video/7300000000000000000')!.externalId).toBe(
+      '7300000000000000000',
+    );
     expect(parseUrl('https://instagram.com/reel/ABC123/')!.kind).toBe('video');
     expect(parseUrl('javascript:alert(1)')).toBeNull();
   });
@@ -99,9 +166,21 @@ describe('search core', () => {
   it('finds by keyword with filters and prefix', () => {
     const core = new SearchCore();
     core.addAll([
-      toDoc('library', { ...base, id: 'r1', title: 'Old man watching TV in a bar', role: 'reference', kind: 'image' })!,
+      toDoc('library', {
+        ...base,
+        id: 'r1',
+        title: 'Old man watching TV in a bar',
+        role: 'reference',
+        kind: 'image',
+      })!,
       toDoc('ideas', { ...base, id: 'i1', title: 'GTA heist cold open', status: 'new' })!,
-      toDoc('ideas', { ...base, id: 'i2', title: 'Archived idea about bars', status: 'parked', archivedAt: 'x' })!,
+      toDoc('ideas', {
+        ...base,
+        id: 'i2',
+        title: 'Archived idea about bars',
+        status: 'parked',
+        archivedAt: 'x',
+      })!,
     ]);
     expect(core.search('old man bar')[0]?.id).toBe('r1');
     expect(core.search('hei type:idea')[0]?.id).toBe('i1');
@@ -111,7 +190,17 @@ describe('search core', () => {
   });
   it('stays interactive at scale (benchmark)', () => {
     const core = new SearchCore();
-    const docs = Array.from({ length: 20000 }, (_, i) => toDoc('content', { ...base, id: `c${i}`, title: `Content ${i} ${i % 7 === 0 ? 'halloween' : 'gta'}`, script: `script body ${i} lorem ipsum`, status: 'planned' })!);
+    const docs = Array.from(
+      { length: 20000 },
+      (_, i) =>
+        toDoc('content', {
+          ...base,
+          id: `c${i}`,
+          title: `Content ${i} ${i % 7 === 0 ? 'halloween' : 'gta'}`,
+          script: `script body ${i} lorem ipsum`,
+          status: 'planned',
+        })!,
+    );
     const t0 = performance.now();
     core.addAll(docs);
     const build = performance.now() - t0;

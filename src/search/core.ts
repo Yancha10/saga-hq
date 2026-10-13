@@ -1,7 +1,24 @@
 import MiniSearch from 'minisearch';
 
-export type SearchType = 'projects' | 'ideas' | 'captures' | 'content' | 'tasks' | 'library' | 'learnings' | 'events';
-export const SEARCH_TABLES: SearchType[] = ['projects', 'ideas', 'captures', 'content', 'tasks', 'library', 'learnings', 'events'];
+export type SearchType =
+  | 'projects'
+  | 'ideas'
+  | 'captures'
+  | 'content'
+  | 'tasks'
+  | 'library'
+  | 'learnings'
+  | 'events';
+export const SEARCH_TABLES: SearchType[] = [
+  'projects',
+  'ideas',
+  'captures',
+  'content',
+  'tasks',
+  'library',
+  'learnings',
+  'events',
+];
 
 export interface SearchDoc {
   key: string; // `${type}:${id}`
@@ -39,7 +56,9 @@ export function toDoc(type: SearchType, r: Record<string, unknown>): SearchDoc |
       break;
     case 'ideas':
       title = s(r.title);
-      body = [r.raw, r.hook, r.concept, r.notes, r.whyItWorks, r.cast, r.topic, r.variantLabel].map(s).join('\n');
+      body = [r.raw, r.hook, r.concept, r.notes, r.whyItWorks, r.cast, r.topic, r.variantLabel]
+        .map(s)
+        .join('\n');
       break;
     case 'captures':
       title = s(r.text).slice(0, 120) || s(r.url);
@@ -47,7 +66,9 @@ export function toDoc(type: SearchType, r: Record<string, unknown>): SearchDoc |
       break;
     case 'content':
       title = s(r.title);
-      body = [r.hook, r.concept, r.script, r.caption, r.coverText, r.hashtags, r.productionNotes].map(s).join('\n');
+      body = [r.hook, r.concept, r.script, r.caption, r.coverText, r.hashtags, r.productionNotes]
+        .map(s)
+        .join('\n');
       break;
     case 'tasks':
       title = s(r.title);
@@ -118,7 +139,8 @@ export function parseQuery(q: string): ParsedQuery {
       continue;
     }
     const [, k, v] = m;
-    if (k!.toLowerCase() === 'type' && TYPE_ALIASES[v!.toLowerCase()]) out.type = TYPE_ALIASES[v!.toLowerCase()];
+    if (k!.toLowerCase() === 'type' && TYPE_ALIASES[v!.toLowerCase()])
+      out.type = TYPE_ALIASES[v!.toLowerCase()];
     else if (k!.toLowerCase() === 'status') out.status = v!.toLowerCase();
     else if (k!.toLowerCase() === 'is' && v!.toLowerCase() === 'archived') out.includeArchived = true;
     else if (k!.toLowerCase() === 'project') out.projectId = v;
@@ -167,8 +189,19 @@ export class SearchCore {
       const body = String(r.body ?? '');
       const term = (r.terms?.[0] as string | undefined) ?? '';
       const idx = term ? body.toLowerCase().indexOf(term.toLowerCase()) : -1;
-      const snippet = idx >= 0 ? body.slice(Math.max(0, idx - 40), idx + 80).replace(/\s+/g, ' ') : body.slice(0, 100).replace(/\s+/g, ' ');
-      return { id: r.id as string, type: r.type as SearchType, title: String(r.title), snippet, status: String(r.status), projectId: String(r.projectId), score: r.score };
+      const snippet =
+        idx >= 0
+          ? body.slice(Math.max(0, idx - 40), idx + 80).replace(/\s+/g, ' ')
+          : body.slice(0, 100).replace(/\s+/g, ' ');
+      return {
+        id: r.id as string,
+        type: r.type as SearchType,
+        title: String(r.title),
+        snippet,
+        status: String(r.status),
+        projectId: String(r.projectId),
+        score: r.score,
+      };
     });
   }
 }

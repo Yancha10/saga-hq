@@ -1,4 +1,11 @@
-import { DriveError, FOLDER_MIME, type DriveApi, type DriveChange, type DriveFile, type DriveQuery } from './driveApi';
+import {
+  type DriveApi,
+  type DriveChange,
+  DriveError,
+  type DriveFile,
+  type DriveQuery,
+  FOLDER_MIME,
+} from './driveApi';
 
 interface Stored {
   meta: DriveFile;
@@ -58,12 +65,26 @@ export class FakeDriveClient implements DriveApi {
 
   async find(q: DriveQuery): Promise<DriveFile[]> {
     this.server.check('find');
-    return [...this.server.files.values()].map((s) => s.meta).filter((f) => this.matches(f, q)).map((f) => ({ ...f }));
+    return [...this.server.files.values()]
+      .map((s) => s.meta)
+      .filter((f) => this.matches(f, q))
+      .map((f) => ({ ...f }));
   }
-  async createFolder(name: string, parent: string | null, appProperties: Record<string, string>): Promise<DriveFile> {
+  async createFolder(
+    name: string,
+    parent: string | null,
+    appProperties: Record<string, string>,
+  ): Promise<DriveFile> {
     this.server.check('createFolder');
     const id = this.server.nextId();
-    const meta: DriveFile = { id, name, mimeType: FOLDER_MIME, parents: parent ? [parent] : [], appProperties, createdTime: new Date().toISOString() };
+    const meta: DriveFile = {
+      id,
+      name,
+      mimeType: FOLDER_MIME,
+      parents: parent ? [parent] : [],
+      appProperties,
+      createdTime: new Date().toISOString(),
+    };
     this.server.files.set(id, { meta });
     this.server.record(id);
     return { ...meta };
@@ -72,12 +93,25 @@ export class FakeDriveClient implements DriveApi {
     if (this.server.quotaLimit !== undefined && this.server.usage() + add > this.server.quotaLimit)
       throw new DriveError('quota', 403, 'storageQuotaExceeded');
   }
-  async createJson(name: string, parent: string, data: unknown, appProperties: Record<string, string>): Promise<DriveFile> {
+  async createJson(
+    name: string,
+    parent: string,
+    data: unknown,
+    appProperties: Record<string, string>,
+  ): Promise<DriveFile> {
     this.server.check(`createJson:${name}`);
     const body = JSON.stringify(data);
     this.quotaCheck(body.length);
     const id = this.server.nextId();
-    const meta: DriveFile = { id, name, mimeType: 'application/json', parents: [parent], appProperties, createdTime: new Date().toISOString(), size: String(body.length) };
+    const meta: DriveFile = {
+      id,
+      name,
+      mimeType: 'application/json',
+      parents: [parent],
+      appProperties,
+      createdTime: new Date().toISOString(),
+      size: String(body.length),
+    };
     this.server.files.set(id, { meta, body });
     this.server.record(id);
     return { ...meta };
@@ -101,11 +135,23 @@ export class FakeDriveClient implements DriveApi {
     this.server.files.delete(fileId);
     this.server.record(fileId, true);
   }
-  async uploadBlob(name: string, parent: string, blob: Blob, appProperties: Record<string, string>): Promise<DriveFile> {
+  async uploadBlob(
+    name: string,
+    parent: string,
+    blob: Blob,
+    appProperties: Record<string, string>,
+  ): Promise<DriveFile> {
     this.server.check('uploadBlob');
     this.quotaCheck(blob.size);
     const id = this.server.nextId();
-    const meta: DriveFile = { id, name, mimeType: blob.type, parents: [parent], appProperties, size: String(blob.size) };
+    const meta: DriveFile = {
+      id,
+      name,
+      mimeType: blob.type,
+      parents: [parent],
+      appProperties,
+      size: String(blob.size),
+    };
     this.server.files.set(id, { meta, blob });
     this.server.record(id);
     return { ...meta };
@@ -123,7 +169,8 @@ export class FakeDriveClient implements DriveApi {
   async listChanges(pageToken: string) {
     this.server.check('listChanges');
     const start = Number(pageToken);
-    if (!Number.isFinite(start) || start < 0 || start > this.server.changes.length) throw new DriveError('badToken', 400, 'Invalid page token');
+    if (!Number.isFinite(start) || start < 0 || start > this.server.changes.length)
+      throw new DriveError('badToken', 400, 'Invalid page token');
     const PAGE = 50;
     const slice = this.server.changes.slice(start, start + PAGE);
     const next = start + slice.length;

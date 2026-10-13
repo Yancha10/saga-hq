@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { ACCOUNT_NAMESPACE, HANDOFF_NAMESPACE, deriveAccountHint, deriveAccountId, isAccountId } from '../../src/core/accountId';
+import {
+  ACCOUNT_NAMESPACE,
+  deriveAccountHint,
+  deriveAccountId,
+  HANDOFF_NAMESPACE,
+  isAccountId,
+} from '../../src/core/accountId';
 import { base32Lower } from '../../src/core/base32';
 
 // Fixed vectors computed independently (Python hashlib + base64.b32encode).
