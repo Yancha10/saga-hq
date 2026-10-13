@@ -198,13 +198,13 @@ export function Welcome() {
   return (
     <div className="welcome">
       <div className="welcome-card">
-        <div className="hstack">
+        <div className="hstack" style={{ justifyContent: 'space-between' }}>
           <span className="brand-mark" aria-hidden>
             S
           </span>
-          <h1 style={{ fontSize: 24, flex: 1 }}>Saga HQ</h1>
           <LanguageSelect compact />
         </div>
+        <h1>Saga HQ</h1>
         <p className="muted">{t('welcome.intro')}</p>
         {googleConfigured() && (
           <button

@@ -73,8 +73,8 @@ export function SettingsPage() {
   return (
     <div className="page">
       <PageHeader title={t('nav.settings')} />
-      <div className="grid2" style={{ gridTemplateColumns: 'minmax(160px, 220px) minmax(0, 1fr)' }}>
-        <nav className="list" aria-label={t('settings.sections')} style={{ alignSelf: 'start' }}>
+      <div className="settings-layout">
+        <nav className="list settings-nav" aria-label={t('settings.sections')}>
           {SECTIONS.map((k) => (
             <button
               key={k}

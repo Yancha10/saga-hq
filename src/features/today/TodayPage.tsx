@@ -170,7 +170,9 @@ export function TodayPage() {
         sub={date}
         actions={
           <>
-            <Button onClick={() => openCapture()}>{t('capture.button')}</Button>
+            <Button className="hide-mobile" onClick={() => openCapture()}>
+              {t('capture.button')}
+            </Button>
             <Button variant="ghost" onClick={() => toggleSecretary({ intent: 'brief' })}>
               <Sparkles size={15} /> {t('today.brief_btn')}
             </Button>

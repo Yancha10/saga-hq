@@ -1,6 +1,6 @@
 import { useRouter } from '@tanstack/react-router';
 import { ChevronLeft, Search, Sparkles } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect } from 'react';
 import { useApp } from '../app/context';
 import { useT } from '../i18n';
 import { IconButton } from './kit';
@@ -20,6 +20,7 @@ export function PageHeader({
   const { openPalette, toggleSecretary } = useApp();
   const router = useRouter();
   const { t } = useT();
+  useCollapsingTitle();
   return (
     <>
       <header className="topbar">
@@ -28,7 +29,9 @@ export function PageHeader({
             <ChevronLeft size={20} />
           </IconButton>
         )}
-        <h1>{title}</h1>
+        <div className="topbar-title" aria-hidden>
+          {title}
+        </div>
         <IconButton label={t('common.search')} onClick={openPalette}>
           <Search size={19} />
         </IconButton>
@@ -46,4 +49,15 @@ export function PageHeader({
       </div>
     </>
   );
+}
+
+/** Marks the document as scrolled so the compact top-bar title can fade in (phone only, via CSS). */
+function useCollapsingTitle(): void {
+  useEffect(() => {
+    const root = document.documentElement;
+    const on = () => root.toggleAttribute('data-scrolled', window.scrollY > 36);
+    on();
+    window.addEventListener('scroll', on, { passive: true });
+    return () => window.removeEventListener('scroll', on);
+  }, []);
 }

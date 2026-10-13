@@ -20,6 +20,7 @@ export async function capture(page: Page, text: string): Promise<number> {
   await box.fill(text);
   await page.keyboard.press('Control+Enter');
   await expect(page.getByText('Saved to Inbox').last()).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveCount(0); // sheet finished its close transition
   return Date.now() - t0;
 }
 

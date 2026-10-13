@@ -89,7 +89,9 @@ export function InboxPage() {
         sub={items.length ? t('inbox.sub', { count: items.length }) : t('inbox.sub_empty')}
         actions={
           <>
-            <Button onClick={() => openCapture()}>{t('capture.button')}</Button>
+            <Button className="hide-mobile" onClick={() => openCapture()}>
+              {t('capture.button')}
+            </Button>
             <Button variant="ghost" onClick={() => toggleSecretary({ intent: 'ask' })}>
               <Sparkles size={15} /> {t('common.ask')}
             </Button>

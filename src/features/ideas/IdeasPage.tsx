@@ -52,7 +52,7 @@ export function IdeasPage() {
   return (
     <div className="page">
       <PageHeader title={t('nav.ideas')} sub={t('common.n_shown', { count: filtered.length })} />
-      <div className="hstack" style={{ marginBottom: 12 }}>
+      <div className="hstack filters" style={{ marginBottom: 12 }}>
         <Tabs
           label={t('ideas.filter_label')}
           value={filter}

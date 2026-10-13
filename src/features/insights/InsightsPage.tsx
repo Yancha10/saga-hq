@@ -407,7 +407,7 @@ function Learnings({
   return (
     <div className="grid2">
       <div>
-        <div className="hstack" style={{ marginBottom: 12 }}>
+        <div className="hstack filters" style={{ marginBottom: 12 }}>
           <Tabs
             label={t('insights.learning_status')}
             value={filter}

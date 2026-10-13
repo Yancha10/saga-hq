@@ -1,7 +1,7 @@
 # Personal deployment to GitHub Pages: every push to main is tested, built and published; can also be run by hand.
 # One-time setup: Settings › Pages › Source: "GitHub Actions" (and main as the default branch).
 # Host-specific files (.nojekyll) are added here, not in the application (host neutrality, revision 3).
-# Optional: repository variable VITE_GOOGLE_CLIENT_ID (public OAuth client id). Empty = local workspaces only.
+# Build configuration (incl. the public Google OAuth client id) lives in .env.production.
 name: Deploy (GitHub Pages)
 on:
   push:
@@ -25,10 +25,8 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts
       - run: npm test
+      # Configuration comes from the committed .env.production (public values only).
       - run: npm run build
-        env:
-          VITE_ENV_NAME: dev
-          VITE_GOOGLE_CLIENT_ID: ${{ vars.VITE_GOOGLE_CLIENT_ID }}
       - run: touch dist/.nojekyll
       - uses: actions/upload-pages-artifact@v3
         with:

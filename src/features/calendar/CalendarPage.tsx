@@ -237,7 +237,7 @@ export function CalendarPage() {
           </Button>
         }
       />
-      <div className="hstack" style={{ marginBottom: 12 }}>
+      <div className="hstack filters" style={{ marginBottom: 12 }}>
         <Tabs
           label={t('calendar.view_label')}
           value={view}

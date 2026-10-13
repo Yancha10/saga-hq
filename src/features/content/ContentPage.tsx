@@ -138,7 +138,7 @@ export function ContentPage() {
           </Button>
         }
       />
-      <div className="hstack" style={{ marginBottom: 12 }}>
+      <div className="hstack filters" style={{ marginBottom: 12 }}>
         {!phone && (
           <Tabs
             label={t('common.view')}
