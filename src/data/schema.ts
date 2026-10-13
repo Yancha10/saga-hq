@@ -99,6 +99,8 @@ export const workspaceSchema = z.looseObject({
   voiceInboxFileId: opt(z.string().max(200)),
   /** Voice inbox key: only allows appending text to the inbox via the user's own script. Shared by the user's devices. */
   voiceKey: opt(z.string().max(80)),
+  voiceUrl: opt(z.string().max(500)),
+  voiceVerifiedAt: opt(iso),
 });
 
 export const PROJECT_KINDS = ['project', 'series', 'campaign', 'season'] as const;

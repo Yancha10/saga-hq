@@ -24,7 +24,7 @@ import {
   newCaptureKey,
   readInbox,
 } from '../../capture/voiceInbox';
-import { getMeta, setMeta } from '../../data/db';
+import { getMeta } from '../../data/db';
 import { update } from '../../data/store';
 import { logger } from '../../diagnostics/logger';
 import { t, useT } from '../../i18n';
@@ -125,10 +125,18 @@ export function VoiceCaptureSec() {
   const key = ws?.voiceKey ?? meta.key;
   const setKey = (k: string) =>
     update(s, 'workspace', 'workspace', { voiceKey: k }, { label: 'h.voiceSetup', history: false });
+  // URL and verification are shared by all devices too (older setups kept them per device).
+  const url = ws?.voiceUrl ?? meta.url;
+  const verifiedAt = ws?.voiceVerifiedAt ?? meta.verifiedAt;
+  const setShared = (patch: { voiceUrl?: string; voiceVerifiedAt?: string | null }) =>
+    update(s, 'workspace', 'workspace', patch, { label: 'h.voiceSetup', history: false });
+  useEffect(() => {
+    if (ws && !ws.voiceUrl && meta.url && meta.verifiedAt)
+      void setShared({ voiceUrl: meta.url, voiceVerifiedAt: meta.verifiedAt });
+  }, [ws?.voiceUrl, meta.url, meta.verifiedAt]);
   useEffect(() => {
     if (ws && !ws.voiceKey && meta.key) void setKey(meta.key);
   }, [ws?.voiceKey, meta.key]);
-  const save = (patch: VoiceMeta) => setMeta(s.db, META, { ...meta, ...patch });
 
   const createInbox = async () => {
     if (!runner) return;
@@ -152,7 +160,7 @@ export function VoiceCaptureSec() {
    * sign-in page because access isn't "Anyone"), we still check whether the message reached Drive.
    */
   const test = async () => {
-    if (!runner || !fileId || !key || !meta.url) return;
+    if (!runner || !fileId || !key || !url) return;
     setBusy('test');
     setDiag(null);
     setHint(null);
@@ -161,7 +169,7 @@ export function VoiceCaptureSec() {
     let reply: 'json-ok' | 'json-key' | 'json-old' | 'html-login' | 'html-other' | 'unreadable' =
       'unreadable';
     try {
-      const res = await fetch(meta.url, {
+      const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body,
@@ -177,7 +185,7 @@ export function VoiceCaptureSec() {
       }
     } catch {
       // CORS-blocked or network: send once more without reading the reply, then check Drive.
-      await fetch(meta.url, {
+      await fetch(url, {
         method: 'POST',
         mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -189,7 +197,7 @@ export function VoiceCaptureSec() {
     let adopted = false;
     if (reply === 'json-key' || reply === 'json-old') {
       try {
-        const res = await fetch(meta.url, {
+        const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({ key: MASKED_KEY, text: nonce, source: 'test' }),
@@ -228,7 +236,7 @@ export function VoiceCaptureSec() {
                 : 'blocked';
     setDiag(d);
     if (d === 'ok') {
-      await save({ verifiedAt: new Date().toISOString() });
+      await setShared({ voiceVerifiedAt: new Date().toISOString() });
       toast(adopted ? t('voice.test_ok_adopted') : t('voice.test_ok'));
     } else logger.warn('voice', `connection test: ${d}`);
     setBusy(null);
@@ -240,14 +248,14 @@ export function VoiceCaptureSec() {
     setBusy('report');
     const lines: string[] = [
       `Saga HQ build: ${typeof __BUILD__ === 'string' ? __BUILD__ : 'dev'}`,
-      `URL: ${meta.url ?? '—'}`,
+      `URL: ${url ?? '—'}`,
       `Clave app: ${key ? `${key.slice(0, 4)}… (${key.length})` : '—'} · ${ws?.voiceKey ? 'espacio' : 'local'}`,
       `Buzón: ${fileId ?? '—'}`,
     ];
     const probe = async (label: string, k: string) => {
-      if (!meta.url) return;
+      if (!url) return;
       try {
-        const res = await fetch(meta.url, {
+        const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({ key: k, text: 'saga-report', source: 'test' }),
@@ -318,7 +326,7 @@ export function VoiceCaptureSec() {
             </span>
           </div>
         </div>
-        {meta.verifiedAt && (
+        {verifiedAt && (
           <span className="pill ok voice-status">
             <CheckCircle2 size={13} aria-hidden /> {t('voice.working')}
           </span>
@@ -336,7 +344,7 @@ export function VoiceCaptureSec() {
         )}
       </Step>
 
-      <Step n={2} title={t('voice.s2_title')} done={!!meta.url}>
+      <Step n={2} title={t('voice.s2_title')} done={!!url}>
         {fileId && key ? (
           <>
             <ol className="voice-howto">
@@ -375,13 +383,13 @@ export function VoiceCaptureSec() {
                   className="input"
                   inputMode="url"
                   placeholder="https://script.google.com/macros/s/…/exec"
-                  value={urlDraft || meta.url || ''}
+                  value={urlDraft || url || ''}
                   onChange={(e) => setUrlDraft(e.target.value.trim())}
                 />
                 <Button
                   disabled={!URL_RE.test(urlDraft)}
                   onClick={() =>
-                    void save({ url: urlDraft, verifiedAt: undefined }).then(() =>
+                    void setShared({ voiceUrl: urlDraft, voiceVerifiedAt: null }).then(() =>
                       toast(t('voice.url_saved')),
                     )
                   }
@@ -399,9 +407,9 @@ export function VoiceCaptureSec() {
         )}
       </Step>
 
-      <Step n={3} title={t('voice.s3_title')} done={!!meta.verifiedAt}>
+      <Step n={3} title={t('voice.s3_title')} done={!!verifiedAt}>
         <p className="meta">{t('voice.s3_body')}</p>
-        <Button disabled={!meta.url || busy === 'test'} onClick={() => void test()}>
+        <Button disabled={!url || busy === 'test'} onClick={() => void test()}>
           <RefreshCw size={14} aria-hidden className={busy === 'test' ? 'spin' : ''} />{' '}
           {busy === 'test' ? t('voice.testing') : t('voice.test_btn')}
         </Button>
@@ -444,9 +452,7 @@ export function VoiceCaptureSec() {
                 </div>
               </form>
             )}
-            {meta.url && (
-              <span className="meta">{t('voice.testing_url', { tail: `…${meta.url.slice(-22)}` })}</span>
-            )}
+            {url && <span className="meta">{t('voice.testing_url', { tail: `…${url.slice(-22)}` })}</span>}
           </div>
         )}
         {diag === 'ok' && (
@@ -458,11 +464,11 @@ export function VoiceCaptureSec() {
           <ClipboardCopy size={14} aria-hidden /> {t('voice.report')}
         </Button>
         {reportText && <pre className="voice-report">{reportText}</pre>}
-        {meta.url && key && (
+        {url && key && (
           <p className="meta">
             {t('voice.manual_check')}{' '}
             <a
-              href={`${meta.url}?key=${encodeURIComponent(key)}&source=test&text=${encodeURIComponent('saga-test')}`}
+              href={`${url}?key=${encodeURIComponent(key)}&source=test&text=${encodeURIComponent('saga-test')}`}
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -474,9 +480,9 @@ export function VoiceCaptureSec() {
 
       <Step n={4} title={t('voice.s4_title')}>
         <p className="meta">{t('voice.s4_body')}</p>
-        {meta.url && key && (
+        {url && key && (
           <div className="copy-box">
-            <CopyRow label="URL" value={meta.url} />
+            <CopyRow label="URL" value={url} />
             <CopyRow label="key" value={key} secret />
           </div>
         )}
@@ -565,7 +571,7 @@ export function VoiceCaptureSec() {
             size="sm"
             variant="ghost"
             onClick={() =>
-              void Promise.all([setKey(newCaptureKey()), save({ verifiedAt: undefined })]).then(() =>
+              void Promise.all([setKey(newCaptureKey()), setShared({ voiceVerifiedAt: null })]).then(() =>
                 toast(t('voice.key_rotated')),
               )
             }
