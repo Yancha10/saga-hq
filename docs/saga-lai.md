@@ -37,3 +37,19 @@ honest precision (day, range, several dates, month, season, year, every year) an
   card, art/sound/continuity, master prompt, stories, pinned comment, variants, editorial checklist
   (versioned), continuity/dependency/reuse relations; extended shot direction, reorder, duplicate.
 - Metrics: shares/reach and saves/reach, "no data" without reach; windows are never invented.
+
+## Voice capture (Settings › Voice capture)
+
+Siri / Share sheet → an iOS Shortcut → the user's own Google Apps Script (free, their account) →
+appends to an inbox JSON file that Saga HQ created in its Drive folder → Saga HQ reads it on sync
+(every ~30 s while open, and on open) and files each item:
+
+- leading word routes it: `Idea:`, `Tarea:` (with spoken dates), `Guion/Gancho/Caption/Prompt para
+  <pieza>:` (variant, never replaces approved text), `Radar:` (unverified, honest precision),
+  `Pieza:`; a `[SAGA] … [/SAGA]` block from ChatGPT/Claude is parsed field by field;
+- anything else waits in the Inbox with a suggestion. Today shows "Arrivals" with an undo per item.
+
+The app never rewrites the inbox file (no race with the script); records use ids derived from the
+item id, so several devices converge without duplicates. The capture key lives only in this device's
+local meta and in the user's script; it is never synced or backed up. The script prunes items older
+than 60 days. The app keeps only the `drive.file` scope.

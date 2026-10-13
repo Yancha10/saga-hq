@@ -1,8 +1,10 @@
 import type { Session } from '../app/session';
-import { clearBanner, createStore, setBanner } from '../app/status';
+import { clearBanner, createStore, setBanner, toast } from '../app/status';
+import { pullVoiceInbox } from '../capture/voiceInbox';
 import { buildBackup } from '../data/backup';
 import { getMeta } from '../data/db';
 import { logger } from '../diagnostics/logger';
+import { t } from '../i18n';
 import { evictCache, markUploaded } from '../media/store';
 import { type DriveApi, DriveError } from './driveApi';
 import { SyncBlockedError, SyncEngine } from './engine';
@@ -34,6 +36,7 @@ const PUSH_MAX_WAIT_MS = 30_000;
 const IDLE_AFTER_MS = 2 * 60_000;
 const QUOTA_EVERY_MS = 6 * 3600_000;
 const LOW_SPACE_BYTES = 1024 ** 3;
+const VOICE_EVERY_MS = 30_000;
 
 /**
  * Adaptive scheduler: fast when active, slow when idle, immediate on focus/reconnect, nothing while
@@ -196,6 +199,7 @@ export class SyncRunner {
     syncStatus.set((p) => ({ ...p, phase: 'syncing' }));
     try {
       if (kind === 'full') await this.engine.pull();
+      if (kind === 'full') await this.pullVoice();
       await this.engine.push();
       if (kind === 'full') await this.housekeeping();
       this.failures = 0;
@@ -218,6 +222,22 @@ export class SyncRunner {
         setTimeout(() => void this.run('push'), 50);
       }
       this.reschedule();
+    }
+  }
+
+  /** Voice/share inbox (Siri Shortcut → Apps Script → Drive). Never blocks text sync. */
+  private lastVoiceAt = 0;
+  async pullVoice(force = false): Promise<number> {
+    if (!force && Date.now() - this.lastVoiceAt < VOICE_EVERY_MS) return 0;
+    this.lastVoiceAt = Date.now();
+    try {
+      const n = await pullVoiceInbox(this.session, this.drive);
+      if (n) toast(t('voice.arrived', { count: n }));
+      return n;
+    } catch (e) {
+      if (e instanceof DriveError && e.kind === 'auth') throw e;
+      logger.warn('sync', 'voice inbox read failed', e);
+      return 0;
     }
   }
 

@@ -199,7 +199,22 @@ describe('dictionaries', () => {
 
 describe('hardcoded-string audit', () => {
   it('no user-facing English literals in TSX (text nodes, a11y/label props, toasts, dialogs)', () => {
-    const ALLOW = new Set(['Saga HQ', 'Saga Studio', 'ChatGPT', 'Claude', 'S', 'https://…']);
+    // Brand names and technical identifiers the user must type verbatim (Shortcut JSON keys, file names, URLs).
+    const ALLOW = new Set([
+      'Saga HQ',
+      'Saga Studio',
+      'ChatGPT',
+      'Claude',
+      'S',
+      'https://…',
+      'ChatGPT · Claude',
+      'Code.gs',
+      'URL',
+      'key',
+      'text',
+      'source',
+      'https://script.google.com/macros/s/…/exec',
+    ]);
     const findings: string[] = [];
     for (const f of SOURCES.filter((x) => x.endsWith('.tsx'))) {
       readFileSync(f, 'utf8')

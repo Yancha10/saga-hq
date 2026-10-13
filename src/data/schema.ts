@@ -96,6 +96,7 @@ export const workspaceSchema = z.looseObject({
   ownerName: opt(z.string().max(120)),
   checklist: z.array(checkItemSchema).max(60).optional(),
   checklistVersion: opt(z.number().int().min(0)),
+  voiceInboxFileId: opt(z.string().max(200)),
 });
 
 export const PROJECT_KINDS = ['project', 'series', 'campaign', 'season'] as const;
@@ -178,6 +179,11 @@ export const captureSchema = z.looseObject({
     .nullish(),
   resultRef: z.object({ entity: z.string(), id: z.string() }).nullish(),
   projectId: opt(z.string()),
+  // Voice/share capture (Siri Shortcut → Drive inbox): where it came from and where it was filed
+  channel: z.enum(['app', 'voice']).optional(),
+  inboxId: opt(z.string().max(80)),
+  inboxSource: opt(z.string().max(40)),
+  routedAs: z.enum(['idea', 'task', 'variant', 'radar', 'piece', 'inbox']).nullish(),
 });
 
 export const shotSchema = z.object({

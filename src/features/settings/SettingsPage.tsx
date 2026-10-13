@@ -11,6 +11,7 @@ import {
   Keyboard,
   Languages,
   type LucideIcon,
+  Mic,
   Send,
   SlidersHorizontal,
   Stethoscope,
@@ -59,11 +60,13 @@ import { downloadText, PlatformPicker, templateName } from '../common';
 import { ImportPackageSec } from './ImportPackage';
 import { LanguageSelect } from './LanguageSelect';
 import { PlanningPrefs } from './PlanningPrefs';
+import { VoiceCaptureSec } from './VoiceCapture';
 
 const SECTIONS = [
   'workspace',
   'language',
   'account',
+  'voice',
   'import',
   'storage',
   'backup',
@@ -80,6 +83,7 @@ const SEC_ICON: Record<Sec, LucideIcon> = {
   workspace: SlidersHorizontal,
   language: Languages,
   account: Cloud,
+  voice: Mic,
   import: FileUp,
   storage: HardDrive,
   backup: DatabaseBackup,
@@ -94,7 +98,7 @@ const SEC_ICON: Record<Sec, LucideIcon> = {
 /** Phone menu groups, iOS Settings style. Keyboard shortcuts are desktop-only. */
 const PHONE_GROUPS: Sec[][] = [
   ['account', 'workspace', 'language'],
-  ['ai', 'integrations'],
+  ['voice', 'ai', 'integrations'],
   ['import', 'backup', 'recovery', 'storage', 'trash'],
   ['diagnostics', 'about'],
 ];
@@ -162,6 +166,7 @@ export function SettingsPage() {
           {sec === 'workspace' && <WorkspaceSec />}
           {sec === 'language' && <LanguageSec />}
           {sec === 'account' && <AccountSec />}
+          {sec === 'voice' && <VoiceCaptureSec />}
           {sec === 'import' && <ImportPackageSec />}
           {sec === 'storage' && <StorageSec />}
           {sec === 'backup' && <BackupSec />}

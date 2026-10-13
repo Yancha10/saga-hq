@@ -251,6 +251,7 @@ test('Saga Lai screens fit phone widths', async ({ page }) => {
       '#/workshop',
       '#/more',
       '#/settings?section=import',
+      '#/settings?section=voice',
     ]) {
       await go(page, hash);
       await page.waitForTimeout(300);
@@ -259,4 +260,13 @@ test('Saga Lai screens fit phone widths', async ({ page }) => {
     }
   }
   expect(failures).toEqual([]);
+});
+
+test('Voice capture settings explain the setup and need Google for a local workspace', async ({ page }) => {
+  await start(page);
+  await go(page, '#/settings?section=voice');
+  await expect(page.getByText('Dilo y ya está en Saga HQ')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Conectar Google' })).toBeVisible();
+  const r = await new AxeBuilder({ page: page as never }).withTags(['wcag2a', 'wcag2aa']).analyze();
+  expect(r.violations.map((v) => v.id)).toEqual([]);
 });

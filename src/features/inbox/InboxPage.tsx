@@ -139,6 +139,7 @@ export function InboxPage() {
                   <div className="sub hstack" style={{ gap: 6, marginTop: 4 }}>
                     <span>{relDays(c.createdAt)}</span>
                     <span>· {t(`capture.mode.${c.mode}`)}</span>
+                    {c.channel === 'voice' && <span className="tag accent">{t('voice.badge')}</span>}
                     {c.url && <ExtLink href={c.url} />}
                     {c.suggestion && (
                       <Pill tone="ai">
