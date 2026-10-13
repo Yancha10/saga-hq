@@ -1,0 +1,41 @@
+# Initial personal/dev deployment to GitHub Pages. MANUAL ONLY (workflow_dispatch) — never on push.
+# Host-specific files (.nojekyll) are added here, not in the application (host neutrality, revision 3).
+# Requires: repository variable VITE_GOOGLE_CLIENT_ID (public OAuth client id of the DEV Google project).
+name: Deploy (GitHub Pages, dev)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm test
+      - run: npm run build
+        env:
+          VITE_ENV_NAME: dev
+          VITE_GOOGLE_CLIENT_ID: ${{ vars.VITE_GOOGLE_CLIENT_ID }}
+      - run: touch dist/.nojekyll
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

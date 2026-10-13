@@ -8,12 +8,12 @@ import {
   Outlet,
   type RouteComponent,
 } from '@tanstack/react-router';
+import { logger } from '../diagnostics/logger';
 import { ContentPage } from '../features/content/ContentPage';
 import { IdeaDetail } from '../features/ideas/IdeaDetail';
 import { IdeasPage } from '../features/ideas/IdeasPage';
 import { InboxPage } from '../features/inbox/InboxPage';
 import { TodayPage } from '../features/today/TodayPage';
-import { logger } from '../diagnostics/logger';
 import { Shell } from './Shell';
 
 const anySearch = (s: Record<string, unknown>) => s as Record<string, string | undefined>;
@@ -33,20 +33,59 @@ const routeTree = root.addChildren([
   r('/inbox', InboxPage),
   r('/ideas', IdeasPage),
   r('/ideas/$id', IdeaDetail),
-  r('/projects', lazyRouteComponent(() => import('../features/projects/ProjectsPage'), 'ProjectsPage')),
-  r('/projects/$id', lazyRouteComponent(() => import('../features/projects/ProjectHome'), 'ProjectHome')),
+  r(
+    '/projects',
+    lazyRouteComponent(() => import('../features/projects/ProjectsPage'), 'ProjectsPage'),
+  ),
+  r(
+    '/projects/$id',
+    lazyRouteComponent(() => import('../features/projects/ProjectHome'), 'ProjectHome'),
+  ),
   r('/content', ContentPage),
-  r('/content/$id', lazyRouteComponent(() => import('../features/content/ContentDetail'), 'ContentDetail')),
-  r('/tasks', lazyRouteComponent(() => import('../features/tasks/TasksPage'), 'TasksPage')),
-  r('/calendar', lazyRouteComponent(() => import('../features/calendar/CalendarPage'), 'CalendarPage')),
-  r('/library', lazyRouteComponent(() => import('../features/library/LibraryPage'), 'LibraryPage')),
-  r('/library/$id', lazyRouteComponent(() => import('../features/library/LibraryDetail'), 'LibraryDetail')),
-  r('/insights', lazyRouteComponent(() => import('../features/insights/InsightsPage'), 'InsightsPage')),
-  r('/learnings/$id', lazyRouteComponent(() => import('../features/insights/LearningDetail'), 'LearningDetail')),
-  r('/search', lazyRouteComponent(() => import('../features/search/SearchPage'), 'SearchPage')),
-  r('/more', lazyRouteComponent(() => import('../features/more/MorePage'), 'MorePage')),
-  r('/settings', lazyRouteComponent(() => import('../features/settings/SettingsPage'), 'SettingsPage')),
-  r('/studio/import', lazyRouteComponent(() => import('../features/studio/StudioImportPage'), 'StudioImportPage')),
+  r(
+    '/content/$id',
+    lazyRouteComponent(() => import('../features/content/ContentDetail'), 'ContentDetail'),
+  ),
+  r(
+    '/tasks',
+    lazyRouteComponent(() => import('../features/tasks/TasksPage'), 'TasksPage'),
+  ),
+  r(
+    '/calendar',
+    lazyRouteComponent(() => import('../features/calendar/CalendarPage'), 'CalendarPage'),
+  ),
+  r(
+    '/library',
+    lazyRouteComponent(() => import('../features/library/LibraryPage'), 'LibraryPage'),
+  ),
+  r(
+    '/library/$id',
+    lazyRouteComponent(() => import('../features/library/LibraryDetail'), 'LibraryDetail'),
+  ),
+  r(
+    '/insights',
+    lazyRouteComponent(() => import('../features/insights/InsightsPage'), 'InsightsPage'),
+  ),
+  r(
+    '/learnings/$id',
+    lazyRouteComponent(() => import('../features/insights/LearningDetail'), 'LearningDetail'),
+  ),
+  r(
+    '/search',
+    lazyRouteComponent(() => import('../features/search/SearchPage'), 'SearchPage'),
+  ),
+  r(
+    '/more',
+    lazyRouteComponent(() => import('../features/more/MorePage'), 'MorePage'),
+  ),
+  r(
+    '/settings',
+    lazyRouteComponent(() => import('../features/settings/SettingsPage'), 'SettingsPage'),
+  ),
+  r(
+    '/studio/import',
+    lazyRouteComponent(() => import('../features/studio/StudioImportPage'), 'StudioImportPage'),
+  ),
 ]);
 
 /** A screen failed to render: data is untouched; offer a way back instead of a dead end. */

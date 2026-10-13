@@ -1,7 +1,9 @@
+import { existsSync } from 'node:fs';
 import { defineConfig, devices } from '@playwright/test';
 
-const executablePath = process.env.CHROMIUM_PATH || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
-const launchOptions = { executablePath };
+// Local cloud sandbox ships Chromium at a fixed path; CI uses `npx playwright install chromium`.
+const localChromium = process.env.CHROMIUM_PATH || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const launchOptions = existsSync(localChromium) ? { executablePath: localChromium } : {};
 
 /**
  * The exact production artifact (dist/) is served at `/` and at `/saga-hq/`. Tests that need mock
@@ -17,13 +19,33 @@ export default defineConfig({
   use: { trace: 'retain-on-failure', launchOptions },
   webServer: [
     { command: 'node scripts/serve-static.mjs dist 4173 /', port: 4173, reuseExistingServer: true },
-    { command: 'node scripts/serve-static.mjs dist 4174 /saga-hq/', url: 'http://localhost:4174/saga-hq/', reuseExistingServer: true },
+    {
+      command: 'node scripts/serve-static.mjs dist 4174 /saga-hq/',
+      url: 'http://localhost:4174/saga-hq/',
+      reuseExistingServer: true,
+    },
     { command: 'node scripts/serve-static.mjs dist-e2e 4175 /', port: 4175, reuseExistingServer: true },
   ],
   projects: [
-    { name: 'prod-root', testMatch: /(daily|offline|essential|pwa)\.spec\.ts/, use: { ...devices['Desktop Chrome'], baseURL: 'http://localhost:4173/', launchOptions } },
-    { name: 'prod-subpath', testMatch: /(essential|offline)\.spec\.ts/, use: { ...devices['Desktop Chrome'], baseURL: 'http://localhost:4174/saga-hq/', launchOptions } },
-    { name: 'prod-mobile', testMatch: /(essential|mobile)\.spec\.ts/, use: { ...devices['Pixel 7'], baseURL: 'http://localhost:4173/', launchOptions } },
-    { name: 'e2e-build', testMatch: /(accounts|a11y|responsive|perf)\.spec\.ts/, use: { ...devices['Desktop Chrome'], baseURL: 'http://localhost:4175/', launchOptions } },
+    {
+      name: 'prod-root',
+      testMatch: /(daily|offline|essential|pwa)\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'], baseURL: 'http://localhost:4173/', launchOptions },
+    },
+    {
+      name: 'prod-subpath',
+      testMatch: /(essential|offline)\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'], baseURL: 'http://localhost:4174/saga-hq/', launchOptions },
+    },
+    {
+      name: 'prod-mobile',
+      testMatch: /(essential|mobile)\.spec\.ts/,
+      use: { ...devices['Pixel 7'], baseURL: 'http://localhost:4173/', launchOptions },
+    },
+    {
+      name: 'e2e-build',
+      testMatch: /(accounts|a11y|responsive|perf)\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'], baseURL: 'http://localhost:4175/', launchOptions },
+    },
   ],
 });

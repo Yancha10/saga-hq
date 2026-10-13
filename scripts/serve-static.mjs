@@ -5,7 +5,16 @@ import { createServer } from 'node:http';
 import { extname, join, normalize } from 'node:path';
 
 const [dir, port, base = '/'] = process.argv.slice(2);
-const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.svg': 'image/svg+xml', '.png': 'image/png', '.woff2': 'font/woff2' };
+const types = {
+  '.html': 'text/html',
+  '.js': 'text/javascript',
+  '.css': 'text/css',
+  '.json': 'application/json',
+  '.webmanifest': 'application/manifest+json',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.woff2': 'font/woff2',
+};
 createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
   if (!url.pathname.startsWith(base)) {
@@ -19,6 +28,9 @@ createServer((req, res) => {
     res.writeHead(404).end('not found');
     return;
   }
-  res.writeHead(200, { 'Content-Type': types[extname(file)] ?? 'application/octet-stream', 'Cache-Control': 'no-cache' });
+  res.writeHead(200, {
+    'Content-Type': types[extname(file)] ?? 'application/octet-stream',
+    'Cache-Control': 'no-cache',
+  });
   createReadStream(file).pipe(res);
 }).listen(Number(port), () => console.log(`serving ${dir} at http://localhost:${port}${base}`));

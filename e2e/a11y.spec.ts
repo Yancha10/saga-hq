@@ -25,7 +25,9 @@ test('no serious or critical axe violations on main screens', async ({ page }) =
   for (const h of pages) {
     await go(page, h);
     await page.waitForTimeout(400);
-    const r = await new AxeBuilder({ page: page as never }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
+    const r = await new AxeBuilder({ page: page as never })
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
+      .analyze();
     results[h] = r.violations
       .filter((v) => v.impact === 'serious' || v.impact === 'critical')
       .map((v) => `${v.id}: ${v.nodes.length} — ${v.nodes[0]?.target.join(' ')}`);

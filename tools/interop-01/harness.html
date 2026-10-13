@@ -1,0 +1,45 @@
+<!doctype html>
+<!-- INTEROP-01 throwaway harness. NOT part of Saga HQ. drive.file scope only. -->
+<html lang="en">
+<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width" /><title>INTEROP-01 harness</title>
+<style>body{font:14px system-ui;margin:24px;max-width:760px}button{margin:4px 4px 4px 0}pre{background:#f3f3f3;padding:8px;white-space:pre-wrap}</style>
+<script src="https://accounts.google.com/gsi/client" async></script>
+</head>
+<body>
+<h1>INTEROP-01 harness — <span id="origin"></span></h1>
+<p>Client id from <code>?client=</code>. Scope: <code>https://www.googleapis.com/auth/drive.file</code> only.</p>
+<button id="auth">1. Authorize</button>
+<button id="create">Create handoff file</button>
+<input id="fid" placeholder="file id" size="40" />
+<button id="read">Read file by id</button>
+<button id="update">Update file</button>
+<button id="list">List my handoff folder</button>
+<pre id="out"></pre>
+<script>
+const params = new URLSearchParams(location.search);
+const CLIENT = params.get('client');
+let token = null;
+const out = (x) => (document.getElementById('out').textContent = typeof x === 'string' ? x : JSON.stringify(x, null, 2));
+document.getElementById('origin').textContent = location.origin;
+const api = async (url, init = {}) => {
+  const r = await fetch(url, { ...init, headers: { ...(init.headers || {}), Authorization: `Bearer ${token}` } });
+  const t = await r.text();
+  return { status: r.status, body: t.slice(0, 2000) };
+};
+document.getElementById('auth').onclick = () => {
+  google.accounts.oauth2.initTokenClient({ client_id: CLIENT, scope: 'https://www.googleapis.com/auth/drive.file', callback: (r) => { token = r.access_token; out('authorized'); } }).requestAccessToken();
+};
+document.getElementById('create').onclick = async () => {
+  const meta = { name: `interop-${Date.now()}.json`, mimeType: 'application/json', appProperties: { interop: '1' } };
+  const b = 'xx' + Math.random().toString(36).slice(2);
+  const body = `--${b}\r\nContent-Type: application/json\r\n\r\n${JSON.stringify(meta)}\r\n--${b}\r\nContent-Type: application/json\r\n\r\n{"type":"saga.handoff","version":1}\r\n--${b}--`;
+  const r = await api('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name', { method: 'POST', headers: { 'Content-Type': `multipart/related; boundary=${b}` }, body });
+  out(r);
+  try { document.getElementById('fid').value = JSON.parse(r.body).id; } catch {}
+};
+document.getElementById('read').onclick = async () => out(await api(`https://www.googleapis.com/drive/v3/files/${document.getElementById('fid').value}?alt=media`));
+document.getElementById('update').onclick = async () => out(await api(`https://www.googleapis.com/upload/drive/v3/files/${document.getElementById('fid').value}?uploadType=media`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: '{"updated":true}' }));
+document.getElementById('list').onclick = async () => out(await api("https://www.googleapis.com/drive/v3/files?q=" + encodeURIComponent("appProperties has { key='interop' and value='1' } and trashed=false") + "&fields=files(id,name)"));
+</script>
+</body>
+</html>

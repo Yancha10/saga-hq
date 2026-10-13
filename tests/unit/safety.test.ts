@@ -2,7 +2,7 @@ import { IDBFactory, IDBKeyRange } from 'fake-indexeddb';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { accountRef } from '../../src/account/workspaceRef';
 import { FutureSchemaError, Session } from '../../src/app/session';
-import { saveStatus, banners, dirtyEdits, markDirty } from '../../src/app/status';
+import { banners, dirtyEdits, markDirty, saveStatus } from '../../src/app/status';
 import { deriveAccountId } from '../../src/core/accountId';
 import { MIGRATIONS, runMigrations } from '../../src/data/migrations';
 import { SCHEMA_VERSION } from '../../src/data/schema';
@@ -39,7 +39,9 @@ describe('schema migrations', () => {
     await create(s, 'ideas', { title: 'from the future', status: 'new' });
     await s.db.meta.put({ key: 'schemaVersion', value: SCHEMA_VERSION + 5 });
     s.close();
-    await expect(Session.open(accountRef(ACCT_A), { indexedDB: factory, IDBKeyRange })).rejects.toBeInstanceOf(FutureSchemaError);
+    await expect(
+      Session.open(accountRef(ACCT_A), { indexedDB: factory, IDBKeyRange }),
+    ).rejects.toBeInstanceOf(FutureSchemaError);
     // Data still there, untouched
     const raw = await new Promise<unknown[]>((res) => {
       const r = factory.open(`sagahq-${ACCT_A}`);
@@ -58,7 +60,9 @@ describe('storage failures are never silent', () => {
     const s = await openDevice();
     open.push(s);
     const proto = Object.getPrototypeOf(s.db.ideas) as { add: (...a: unknown[]) => Promise<unknown> };
-    const spy = vi.spyOn(proto, 'add').mockRejectedValueOnce(Object.assign(new Error('QuotaExceededError'), { name: 'QuotaExceededError' }));
+    const spy = vi
+      .spyOn(proto, 'add')
+      .mockRejectedValueOnce(Object.assign(new Error('QuotaExceededError'), { name: 'QuotaExceededError' }));
     await expect(create(s, 'ideas', { title: 'x', status: 'new' })).rejects.toThrow();
     spy.mockRestore();
     expect(saveStatus.get().state).toBe('error');
@@ -133,7 +137,8 @@ describe('account isolation under pending operations', () => {
       for (const st of Array.from(db.objectStoreNames)) {
         dump += await new Promise<string>((res) => {
           const g = db.transaction(st, 'readonly').objectStore(st).getAll();
-          g.onsuccess = () => res(JSON.stringify(g.result, (_k, v) => (v instanceof ArrayBuffer ? '[bin]' : v)));
+          g.onsuccess = () =>
+            res(JSON.stringify(g.result, (_k, v) => (v instanceof ArrayBuffer ? '[bin]' : v)));
         });
       }
       db.close();
@@ -148,8 +153,18 @@ describe('media cache safety', () => {
     const s = await openDevice();
     open.push(s);
     const m1 = await create(s, 'media', { mime: 'image/png', bytes: 600, sha256: 'a' });
-    const m2 = await create(s, 'media', { mime: 'image/png', bytes: 600, sha256: 'b', driveFileId: 'drive-2' });
-    const m3 = await create(s, 'media', { mime: 'image/png', bytes: 600, sha256: 'c', driveFileId: 'drive-3' });
+    const m2 = await create(s, 'media', {
+      mime: 'image/png',
+      bytes: 600,
+      sha256: 'b',
+      driveFileId: 'drive-2',
+    });
+    const m3 = await create(s, 'media', {
+      mime: 'image/png',
+      bytes: 600,
+      sha256: 'c',
+      driveFileId: 'drive-3',
+    });
     const blob = new Blob([new Uint8Array(600)]);
     await s.db.mediaBlobs.bulkPut([
       { id: m1.id, kind: 'full', blob, bytes: 600, lastUsedAt: 1, pinned: 1 },
