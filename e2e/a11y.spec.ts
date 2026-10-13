@@ -25,21 +25,21 @@ test('no serious or critical axe violations on main screens', async ({ page }) =
   for (const h of pages) {
     await go(page, h);
     await page.waitForTimeout(400);
-    const r = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
+    const r = await new AxeBuilder({ page: page as never }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
     results[h] = r.violations
       .filter((v) => v.impact === 'serious' || v.impact === 'critical')
       .map((v) => `${v.id}: ${v.nodes.length} — ${v.nodes[0]?.target.join(' ')}`);
   }
   await go(page, '#/ideas');
   await page.getByRole('link', { name: /Accessibility idea/ }).click();
-  const r = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
+  const r = await new AxeBuilder({ page: page as never }).withTags(['wcag2a', 'wcag2aa']).analyze();
   results['idea-detail'] = r.violations
     .filter((v) => v.impact === 'serious' || v.impact === 'critical')
     .map((v) => `${v.id}: ${v.nodes.length} — ${v.nodes[0]?.target.join(' ')}`);
   await page.getByRole('button', { name: 'Make content' }).click();
   await page.getByRole('button', { name: 'Create content' }).click();
   await page.waitForTimeout(400);
-  const r2 = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
+  const r2 = await new AxeBuilder({ page: page as never }).withTags(['wcag2a', 'wcag2aa']).analyze();
   results['content-detail'] = r2.violations
     .filter((v) => v.impact === 'serious' || v.impact === 'critical')
     .map((v) => `${v.id}: ${v.nodes.length} — ${v.nodes[0]?.target.join(' ')}`);
