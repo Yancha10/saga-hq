@@ -1725,6 +1725,10 @@ export const en = {
   'voice.diag.login': "Google asks to sign in: the web app isn't public.",
   'voice.diag.notjson': 'Your script answered with a Google page instead of its reply.',
   'voice.diag.old': "The published script doesn't use this app's key.",
+  'voice.direct_body':
+    'Dictate Text → URL Encode → Get Contents of URL (method GET) with this link plus the “URL Encoded Text” bubble at the end.',
+  'voice.direct_link': 'Direct link',
+  'voice.direct_title': 'Automatic, without opening anything:',
   'voice.fix.blocked':
     "Usually it's the access setting: Deploy › Manage deployments › ✏️ › Who has access: “Anyone”, Execute as: Me, Version: New version › Deploy. If Google asked for permissions, accept them. Then use “Open the check” below to see what Google answers.",
   'voice.fix.drive':

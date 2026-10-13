@@ -1752,6 +1752,10 @@ export const es: Record<MessageKey, string> = {
   'voice.diag.login': 'Google pide iniciar sesión: la aplicación web no es pública.',
   'voice.diag.notjson': 'Tu script respondió con una página de Google en lugar de su respuesta.',
   'voice.diag.old': 'El script publicado no usa la clave de esta app.',
+  'voice.direct_body':
+    'Dictar texto → Codificar URL → Obtener contenido de URL (método GET) con este enlace y, al final, la burbuja de «Codificar URL».',
+  'voice.direct_link': 'Enlace directo',
+  'voice.direct_title': 'Automático, sin abrir nada:',
   'voice.fix.blocked':
     'Casi siempre es el acceso: Implementar › Gestionar implementaciones › ✏️ › Quién tiene acceso: «Cualquier usuario», Ejecutar como: yo, Versión: Nueva versión › Implementar. Si Google pidió permisos, acéptalos. Después usa «Abrir comprobación» de abajo para ver qué responde Google.',
   'voice.fix.drive':

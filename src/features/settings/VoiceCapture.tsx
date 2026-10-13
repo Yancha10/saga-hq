@@ -556,6 +556,20 @@ export function VoiceCaptureSec() {
           <li>{t('voice.s4_b')}</li>
           <li>{t('voice.s4_c')}</li>
         </ol>
+        {url && key && (
+          <div className="voice-planb">
+            <p className="meta">
+              <b>{t('voice.direct_title')}</b> {t('voice.direct_body')}
+            </p>
+            <div className="copy-box">
+              <CopyRow
+                label={t('voice.direct_link')}
+                value={`${url}?key=${encodeURIComponent(key)}&source=voz&text=`}
+                secret
+              />
+            </div>
+          </div>
+        )}
         {quickUrl && (
           <div className="voice-planb">
             <p className="meta">
