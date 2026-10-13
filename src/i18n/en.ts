@@ -1721,15 +1721,15 @@ export const en = {
   'voice.dest.variant': 'Variant on a piece',
   'voice.diag.blocked': "The browser couldn't reach your script.",
   'voice.diag.drive': "Your script works, but the message didn't reach this inbox.",
-  'voice.diag.key': "Your script answered, but the key doesn't match.",
+  'voice.diag.key': 'The published script has a different key from this app.',
   'voice.diag.login': "Google asks to sign in: the web app isn't public.",
   'voice.diag.notjson': 'Your script answered with a Google page instead of its reply.',
   'voice.fix.blocked':
     "Usually it's the access setting: Deploy › Manage deployments › ✏️ › Who has access: “Anyone”, Execute as: Me, Version: New version › Deploy. If Google asked for permissions, accept them. Then use “Open the check” below to see what Google answers.",
   'voice.fix.drive':
-    "The script points to another file: copy the script again from here (it includes this inbox's id), paste it, save and publish a new version.",
+    "The script points to another inbox: copy the script again (it includes this inbox's id), paste it, save, Deploy › New deployment and paste the new URL here.",
   'voice.fix.key':
-    'Copy the script again with the button, paste it replacing everything, save, and publish a new version: Deploy › Manage deployments › ✏️ › Version: New version › Deploy.',
+    'Easiest fix: 1) Copy script (button) and paste it in Apps Script replacing everything. 2) Save. 3) Deploy › New deployment (not “Manage”) › Web app · Me · Anyone › Deploy. 4) Paste the NEW URL here and Save. 5) Test again.',
   'voice.fix.login':
     'Deploy › Manage deployments › ✏️ › Who has access: “Anyone” (not “Anyone with a Google account”) › Deploy.',
   'voice.fix.notjson':
@@ -1743,6 +1743,7 @@ export const en = {
   'voice.hide': 'Hide',
   'voice.inbox_ready': 'Inbox created',
   'voice.instr_copied': 'Instructions copied',
+  'voice.key_hint': "Published key starts with {deployed}; this app's starts with {mine}.",
   'voice.key_rotated': 'New key created: copy the script again and update the shortcut',
   'voice.manage': 'Manage',
   'voice.manual_check': 'To see exactly what Google answers:',
@@ -1767,7 +1768,7 @@ export const en = {
     "Authorize. Google shows “Google hasn't verified this app” because the script is yours: Advanced › Go to project.",
   'voice.s2_e': 'Copy the web app URL (ends in /exec) and paste it below.',
   'voice.s2_note':
-    "The script runs in your Google account, only appends to your inbox file and needs your key. Google asks for Drive access because a script can't be limited to one file.",
+    "The script runs in your Google account, only appends to your inbox file and needs your key. Google asks for Drive access because a script can't be limited to one file. If you ever change the script, make a New deployment and paste its new URL here.",
   'voice.s2_title': 'Paste your script in Google (once)',
   'voice.s3_body':
     'Sends a test message through your script and checks it reached your Drive. It never becomes a record.',

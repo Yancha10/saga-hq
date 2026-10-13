@@ -256,7 +256,8 @@ function guardar_(e, body) {
   try { data = body ? JSON.parse(body) : {}; } catch (err) { data = { text: body }; }
   var key = data.key || p.key;
   var text = String(data.text || p.text || '').trim();
-  if (key !== KEY) return respuesta_({ ok: false, error: 'clave' });
+  // keyHint helps Saga HQ tell an outdated deployment apart (first 4 characters only)
+  if (key !== KEY) return respuesta_({ ok: false, error: 'clave', v: 2, keyHint: String(KEY).slice(0, 4) });
   if (!text) return respuesta_({ ok: true, vacio: true, message: 'Nada que guardar' });
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
@@ -275,7 +276,7 @@ function guardar_(e, body) {
     };
     inbox.items.push(item);
     file.setContent(JSON.stringify(inbox));
-    return respuesta_({ ok: true, id: item.id, message: 'Guardado en Saga HQ' });
+    return respuesta_({ ok: true, v: 2, id: item.id, message: 'Guardado en Saga HQ' });
   } finally {
     lock.releaseLock();
   }

@@ -1748,15 +1748,15 @@ export const es: Record<MessageKey, string> = {
   'voice.dest.variant': 'Variante en una pieza',
   'voice.diag.blocked': 'El navegador no ha podido usar tu script.',
   'voice.diag.drive': 'Tu script funciona, pero el mensaje no ha llegado a este buzón.',
-  'voice.diag.key': 'Tu script respondió, pero la clave no coincide.',
+  'voice.diag.key': 'El script publicado tiene una clave distinta a la de esta app.',
   'voice.diag.login': 'Google pide iniciar sesión: la aplicación web no es pública.',
   'voice.diag.notjson': 'Tu script respondió con una página de Google en lugar de su respuesta.',
   'voice.fix.blocked':
     'Casi siempre es el acceso: Implementar › Gestionar implementaciones › ✏️ › Quién tiene acceso: «Cualquier usuario», Ejecutar como: yo, Versión: Nueva versión › Implementar. Si Google pidió permisos, acéptalos. Después usa «Abrir comprobación» de abajo para ver qué responde Google.',
   'voice.fix.drive':
-    'El script apunta a otro archivo: vuelve a copiar el script desde aquí (lleva el id de este buzón), pégalo, guarda y publica una versión nueva.',
+    'El script apunta a otro buzón: vuelve a copiar el script (lleva el id de este buzón), pégalo, guarda, Implementar › Nueva implementación y pega aquí la URL nueva.',
   'voice.fix.key':
-    'Vuelve a copiar el script con el botón, pégalo sustituyendo todo, guarda y publica una versión nueva: Implementar › Gestionar implementaciones › ✏️ › Versión: Nueva versión › Implementar.',
+    'Solución más fácil: 1) Copiar script (botón) y pégalo en Apps Script sustituyendo todo. 2) Guarda. 3) Implementar › Nueva implementación (no «Gestionar») › Aplicación web · Yo · Cualquier usuario › Implementar. 4) Pega aquí la URL NUEVA y Guardar. 5) Prueba otra vez.',
   'voice.fix.login':
     'Implementar › Gestionar implementaciones › ✏️ › Quién tiene acceso: «Cualquier usuario» (no «…con cuenta de Google») › Implementar.',
   'voice.fix.notjson':
@@ -1770,6 +1770,7 @@ export const es: Record<MessageKey, string> = {
   'voice.hide': 'Ocultar',
   'voice.inbox_ready': 'Buzón creado',
   'voice.instr_copied': 'Instrucciones copiadas',
+  'voice.key_hint': 'La clave publicada empieza por {deployed}; la de esta app, por {mine}.',
   'voice.key_rotated': 'Clave nueva creada: vuelve a copiar el script y actualiza el atajo',
   'voice.manage': 'Gestionar',
   'voice.manual_check': 'Para ver exactamente qué responde Google:',
@@ -1795,7 +1796,7 @@ export const es: Record<MessageKey, string> = {
     'Autoriza. Google mostrará «Google no ha verificado esta aplicación» porque el script es tuyo: Configuración avanzada › Ir al proyecto.',
   'voice.s2_e': 'Copia la URL de la aplicación web (termina en /exec) y pégala abajo.',
   'voice.s2_note':
-    'El script corre en tu cuenta de Google, solo añade texto a tu archivo buzón y exige tu clave. Google pide acceso a Drive porque un script no se puede limitar a un solo archivo.',
+    'El script corre en tu cuenta de Google, solo añade texto a tu archivo buzón y exige tu clave. Google pide acceso a Drive porque un script no se puede limitar a un solo archivo. Si alguna vez cambias el script, haz una Nueva implementación y pega aquí su URL nueva.',
   'voice.s2_title': 'Pega tu script en Google (una vez)',
   'voice.s3_body':
     'Envía un mensaje de prueba por tu script y comprueba que llega a tu Drive. Nunca se convierte en registro.',

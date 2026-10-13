@@ -115,6 +115,7 @@ export function VoiceCaptureSec() {
   const [busy, setBusy] = useState<string | null>(null);
   const [urlDraft, setUrlDraft] = useState('');
   const [diag, setDiag] = useState<Diag | null>(null);
+  const [hint, setHint] = useState<string | null>(null);
   const fileId = ws?.voiceInboxFileId;
   const key = meta.key;
   const save = (patch: VoiceMeta) => setMeta(s.db, META, { ...meta, ...patch });
@@ -144,6 +145,7 @@ export function VoiceCaptureSec() {
     if (!runner || !fileId || !key || !meta.url) return;
     setBusy('test');
     setDiag(null);
+    setHint(null);
     const nonce = `test-${Math.random().toString(36).slice(2, 10)}`;
     const body = JSON.stringify({ key, text: nonce, source: 'test' });
     let reply: 'json-ok' | 'json-key' | 'html-login' | 'html-other' | 'unreadable' = 'unreadable';
@@ -155,8 +157,9 @@ export function VoiceCaptureSec() {
       });
       const text = await res.text();
       try {
-        const j = JSON.parse(text) as { ok?: boolean; error?: string };
+        const j = JSON.parse(text) as { ok?: boolean; error?: string; keyHint?: string };
         reply = j.ok ? 'json-ok' : j.error === 'clave' ? 'json-key' : 'html-other';
+        if (j.keyHint !== undefined) setHint(j.keyHint);
       } catch {
         reply = /accounts\.google\.com|ServiceLogin|signin/i.test(text) ? 'html-login' : 'html-other';
       }
@@ -336,6 +339,9 @@ export function VoiceCaptureSec() {
         {diag && diag !== 'ok' && (
           <div className="banner error voice-diag" role="alert">
             <strong>{t(`voice.diag.${diag}`)}</strong>
+            {diag === 'key' && hint !== null && (
+              <span>{t('voice.key_hint', { deployed: `${hint}…`, mine: `${key?.slice(0, 4)}…` })}</span>
+            )}
             <span>{t(`voice.fix.${diag}`)}</span>
           </div>
         )}

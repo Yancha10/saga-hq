@@ -222,7 +222,7 @@ describe('Apps Script (run against a simulated Google runtime)', () => {
     const bad = JSON.parse(
       fns.doPost({ postData: { contents: JSON.stringify({ key: 'nope', text: 'x' }) } }).body,
     );
-    expect(bad).toEqual({ ok: false, error: 'clave' });
+    expect(bad).toEqual({ ok: false, error: 'clave', v: 2, keyHint: 'secr' });
     expect(read().items).toHaveLength(1);
     JSON.parse(fns.doGet({ parameter: { key: 'secretkey', text: 'Tarea: algo' } }).body);
     expect(read().items).toHaveLength(2);
