@@ -19,7 +19,7 @@ export async function capture(page: Page, text: string): Promise<number> {
   const box = page.getByRole('textbox', { name: 'What’s on your mind?' });
   await box.fill(text);
   await page.keyboard.press('Control+Enter');
-  await expect(page.getByText('Saved to Inbox')).toBeVisible();
+  await expect(page.getByText('Saved to Inbox').last()).toBeVisible();
   return Date.now() - t0;
 }
 

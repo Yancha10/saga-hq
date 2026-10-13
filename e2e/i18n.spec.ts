@@ -27,7 +27,7 @@ async function captureEs(page: Page, text: string): Promise<void> {
   await page.keyboard.press('c');
   await page.getByRole('textbox', { name: '¿Qué tienes en mente?' }).fill(text);
   await page.keyboard.press('Control+Enter');
-  await expect(page.getByText('Guardado en la bandeja')).toBeVisible();
+  await expect(page.getByText('Guardado en la bandeja').last()).toBeVisible();
 }
 
 /** No dictionary key may ever be rendered as text or as an accessible name. */
@@ -179,7 +179,7 @@ test('hot switch keeps state: open modal with a draft, a field being edited, and
     'Borrador sin guardar',
   );
   await page.keyboard.press('Control+Enter');
-  await expect(page.getByText('Guardado en la bandeja')).toBeVisible();
+  await expect(page.getByText('Guardado en la bandeja').last()).toBeVisible();
   // User content is never translated
   await go(page, '#/inbox');
   await expect(page.getByText('Borrador sin guardar')).toBeVisible();

@@ -14,7 +14,7 @@ test('essential: open, local workspace, capture persists across reload, navigati
     await page.getByRole('button', { name: 'Capture', exact: true }).last().click();
     await page.getByRole('textbox', { name: 'What’s on your mind?' }).fill('Phone capture idea');
     await page.getByRole('button', { name: 'Save' }).click();
-    await expect(page.getByText('Saved to Inbox')).toBeVisible();
+    await expect(page.getByText('Saved to Inbox').last()).toBeVisible();
   } else {
     await capture(page, 'Essential capture idea');
   }

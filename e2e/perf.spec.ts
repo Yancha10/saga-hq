@@ -67,7 +67,7 @@ test('performance with a large synthetic workspace', async ({ page }) => {
     await page.keyboard.press('c');
     await page.getByRole('textbox', { name: 'What’s on your mind?' }).fill('perf capture');
     await page.keyboard.press('Control+Enter');
-    await expect(page.getByText('Saved to Inbox')).toBeVisible();
+    await expect(page.getByText('Saved to Inbox').last()).toBeVisible();
   });
   await time('accountSwitchReload', async () => {
     await page.evaluate(() => location.reload());
