@@ -288,6 +288,19 @@ p {
     opacity: 1;
   }
 }
+@keyframes page-in {
+  from {
+    transform: translateY(6px);
+  }
+  to {
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .page {
+    animation: none !important;
+  }
+}
 @keyframes sheet-up {
   from {
     transform: translateY(100%);
@@ -422,7 +435,8 @@ p {
   max-width: 1320px;
   width: 100%;
   margin: 0 auto;
-  animation: fade 0.25s var(--ease);
+  /* Entry motion without transparency: text is always at full contrast (and measurable as such). */
+  animation: page-in 0.28s var(--ease);
 }
 .page.narrow {
   max-width: 880px;
