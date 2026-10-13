@@ -127,7 +127,7 @@ export class DriveRest implements DriveApi {
   async readJson<T>(fileId: string): Promise<T> {
     const text = (await this.req(
       `${API}/files/${encodeURIComponent(fileId)}?alt=media`,
-      {},
+      { cache: 'no-store' }, // files can change outside this app (e.g. the voice inbox script)
       'text',
     )) as string;
     return JSON.parse(text) as T; // SyntaxError on malformed content is handled by the engine

@@ -36,6 +36,7 @@ interface VoiceMeta {
   verifiedAt?: string;
 }
 const META = 'voiceCapture';
+type Diag = 'ok' | 'key' | 'drive' | 'login' | 'notjson' | 'blocked';
 const URL_RE = /^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/;
 
 async function copy(text: string, ok: string): Promise<void> {
@@ -113,6 +114,7 @@ export function VoiceCaptureSec() {
   const meta = useLive((ss) => getMeta<VoiceMeta>(ss.db, META), [], undefined) ?? {};
   const [busy, setBusy] = useState<string | null>(null);
   const [urlDraft, setUrlDraft] = useState('');
+  const [diag, setDiag] = useState<Diag | null>(null);
   const fileId = ws?.voiceInboxFileId;
   const key = meta.key;
   const save = (patch: VoiceMeta) => setMeta(s.db, META, { ...meta, ...patch });
@@ -133,34 +135,66 @@ export function VoiceCaptureSec() {
     }
   };
 
+  /**
+   * Connection test with a precise diagnosis. Apps Script answers simple cross-origin POSTs with
+   * CORS headers, so we can read its JSON reply; if the browser can't read it (usually Google's
+   * sign-in page because access isn't "Anyone"), we still check whether the message reached Drive.
+   */
   const test = async () => {
     if (!runner || !fileId || !key || !meta.url) return;
     setBusy('test');
+    setDiag(null);
     const nonce = `test-${Math.random().toString(36).slice(2, 10)}`;
+    const body = JSON.stringify({ key, text: nonce, source: 'test' });
+    let reply: 'json-ok' | 'json-key' | 'html-login' | 'html-other' | 'unreadable' = 'unreadable';
     try {
-      // Apps Script web apps accept simple cross-origin POSTs; the response is opaque, so we verify
-      // by reading the inbox file back from Drive.
+      const res = await fetch(meta.url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body,
+      });
+      const text = await res.text();
+      try {
+        const j = JSON.parse(text) as { ok?: boolean; error?: string };
+        reply = j.ok ? 'json-ok' : j.error === 'clave' ? 'json-key' : 'html-other';
+      } catch {
+        reply = /accounts\.google\.com|ServiceLogin|signin/i.test(text) ? 'html-login' : 'html-other';
+      }
+    } catch {
+      // CORS-blocked or network: send once more without reading the reply, then check Drive.
       await fetch(meta.url, {
         method: 'POST',
         mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ key, text: nonce, source: 'test' }),
-      });
-      let ok = false;
-      for (let i = 0; i < 8 && !ok; i++) {
-        await new Promise((r) => setTimeout(r, 1500));
-        ok = (await readInbox(runner.drive, fileId)).some((x) => x.text === nonce);
-      }
-      if (ok) {
-        await save({ verifiedAt: new Date().toISOString() });
-        toast(t('voice.test_ok'));
-      } else toast(t('voice.test_fail'), { kind: 'error' });
-    } catch (e) {
-      logger.warn('voice', 'test failed', e);
-      toast(t('voice.test_fail'), { kind: 'error' });
-    } finally {
-      setBusy(null);
+        body,
+      }).catch(() => undefined);
     }
+    let arrived = false;
+    if (reply === 'json-ok' || reply === 'unreadable') {
+      for (let i = 0; i < 8 && !arrived; i++) {
+        await new Promise((r) => setTimeout(r, 1500));
+        arrived = await readInbox(runner.drive, fileId)
+          .then((items) => items.some((x) => x.text === nonce))
+          .catch(() => false);
+      }
+    }
+    const d: Diag = arrived
+      ? 'ok'
+      : reply === 'json-key'
+        ? 'key'
+        : reply === 'json-ok'
+          ? 'drive'
+          : reply === 'html-login'
+            ? 'login'
+            : reply === 'html-other'
+              ? 'notjson'
+              : 'blocked';
+    setDiag(d);
+    if (d === 'ok') {
+      await save({ verifiedAt: new Date().toISOString() });
+      toast(t('voice.test_ok'));
+    } else logger.warn('voice', `connection test: ${d}`);
+    setBusy(null);
   };
 
   if (!account || !runner)
@@ -299,6 +333,29 @@ export function VoiceCaptureSec() {
           <RefreshCw size={14} aria-hidden className={busy === 'test' ? 'spin' : ''} />{' '}
           {busy === 'test' ? t('voice.testing') : t('voice.test_btn')}
         </Button>
+        {diag && diag !== 'ok' && (
+          <div className="banner error voice-diag" role="alert">
+            <strong>{t(`voice.diag.${diag}`)}</strong>
+            <span>{t(`voice.fix.${diag}`)}</span>
+          </div>
+        )}
+        {diag === 'ok' && (
+          <div className="banner ok voice-diag" role="status">
+            {t('voice.test_ok')}
+          </div>
+        )}
+        {meta.url && key && (
+          <p className="meta">
+            {t('voice.manual_check')}{' '}
+            <a
+              href={`${meta.url}?key=${encodeURIComponent(key)}&source=test&text=${encodeURIComponent('saga-test')}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {t('voice.open_check')} <ExternalLink size={12} aria-hidden />
+            </a>
+          </p>
+        )}
       </Step>
 
       <Step n={4} title={t('voice.s4_title')}>

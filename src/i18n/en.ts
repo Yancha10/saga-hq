@@ -1719,6 +1719,21 @@ export const en = {
   'voice.dest.radar': 'Radar · to check',
   'voice.dest.task': 'Task',
   'voice.dest.variant': 'Variant on a piece',
+  'voice.diag.blocked': "The browser couldn't reach your script.",
+  'voice.diag.drive': "Your script works, but the message didn't reach this inbox.",
+  'voice.diag.key': "Your script answered, but the key doesn't match.",
+  'voice.diag.login': "Google asks to sign in: the web app isn't public.",
+  'voice.diag.notjson': 'Your script answered with a Google page instead of its reply.',
+  'voice.fix.blocked':
+    "Usually it's the access setting: Deploy › Manage deployments › ✏️ › Who has access: “Anyone”, Execute as: Me, Version: New version › Deploy. If Google asked for permissions, accept them. Then use “Open the check” below to see what Google answers.",
+  'voice.fix.drive':
+    "The script points to another file: copy the script again from here (it includes this inbox's id), paste it, save and publish a new version.",
+  'voice.fix.key':
+    'Copy the script again with the button, paste it replacing everything, save, and publish a new version: Deploy › Manage deployments › ✏️ › Version: New version › Deploy.',
+  'voice.fix.login':
+    'Deploy › Manage deployments › ✏️ › Who has access: “Anyone” (not “Anyone with a Google account”) › Deploy.',
+  'voice.fix.notjson':
+    "Open the check below to read it. If it says a function isn't found, save the code and publish a new version (Manage deployments › ✏️ › New version). If it asks for authorization, run the script once and accept.",
   'voice.flow_label': 'How it travels',
   'voice.flow_script': 'your script',
   'voice.go_account': 'Connect Google',
@@ -1730,11 +1745,13 @@ export const en = {
   'voice.instr_copied': 'Instructions copied',
   'voice.key_rotated': 'New key created: copy the script again and update the shortcut',
   'voice.manage': 'Manage',
+  'voice.manual_check': 'To see exactly what Google answers:',
   'voice.mock_label': 'Shortcut actions',
   'voice.needs_google':
     'Voice capture uses your Google Drive as the mailbox. Connect Google first (Settings › Account & sync).',
   'voice.not_here': 'Not here: back to Inbox',
   'voice.nothing_new': 'Nothing new in the inbox',
+  'voice.open_check': 'Open the check',
   'voice.privacy':
     'The key stays on this device and in your script; it is never synced, backed up or sent anywhere else. Texts live in your own Drive; items older than 60 days are pruned by the script.',
   'voice.rotate_key': 'New key (update the script and shortcut)',
@@ -1744,7 +1761,8 @@ export const en = {
   'voice.s1_title': 'Create your inbox in Drive',
   'voice.s2_a': 'Open',
   'voice.s2_b': "Delete what's there and paste the script (button below), then save.",
-  'voice.s2_c': 'Deploy › New deployment › type “Web app”. Execute as: Me. Who has access: Anyone.',
+  'voice.s2_c':
+    'Deploy › New deployment › gear ⚙ › “Web app”. Execute as: Me. Who has access: “Anyone” (not “Anyone with a Google account”). Deploy.',
   'voice.s2_d':
     "Authorize. Google shows “Google hasn't verified this app” because the script is yours: Advanced › Go to project.",
   'voice.s2_e': 'Copy the web app URL (ends in /exec) and paste it below.',

@@ -4304,3 +4304,11 @@ fieldset.box legend {
     grid-template-columns: 30px minmax(0, 1fr);
   }
 }
+.voice-diag {
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  align-self: stretch;
+}

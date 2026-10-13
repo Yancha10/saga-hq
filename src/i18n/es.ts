@@ -1746,6 +1746,21 @@ export const es: Record<MessageKey, string> = {
   'voice.dest.radar': 'Radar · por comprobar',
   'voice.dest.task': 'Tarea',
   'voice.dest.variant': 'Variante en una pieza',
+  'voice.diag.blocked': 'El navegador no ha podido usar tu script.',
+  'voice.diag.drive': 'Tu script funciona, pero el mensaje no ha llegado a este buzón.',
+  'voice.diag.key': 'Tu script respondió, pero la clave no coincide.',
+  'voice.diag.login': 'Google pide iniciar sesión: la aplicación web no es pública.',
+  'voice.diag.notjson': 'Tu script respondió con una página de Google en lugar de su respuesta.',
+  'voice.fix.blocked':
+    'Casi siempre es el acceso: Implementar › Gestionar implementaciones › ✏️ › Quién tiene acceso: «Cualquier usuario», Ejecutar como: yo, Versión: Nueva versión › Implementar. Si Google pidió permisos, acéptalos. Después usa «Abrir comprobación» de abajo para ver qué responde Google.',
+  'voice.fix.drive':
+    'El script apunta a otro archivo: vuelve a copiar el script desde aquí (lleva el id de este buzón), pégalo, guarda y publica una versión nueva.',
+  'voice.fix.key':
+    'Vuelve a copiar el script con el botón, pégalo sustituyendo todo, guarda y publica una versión nueva: Implementar › Gestionar implementaciones › ✏️ › Versión: Nueva versión › Implementar.',
+  'voice.fix.login':
+    'Implementar › Gestionar implementaciones › ✏️ › Quién tiene acceso: «Cualquier usuario» (no «…con cuenta de Google») › Implementar.',
+  'voice.fix.notjson':
+    'Abre la comprobación de abajo para leerla. Si dice que no encuentra una función, guarda el código y publica una versión nueva (Gestionar implementaciones › ✏️ › Nueva versión). Si pide autorización, ejecuta el script una vez y acepta.',
   'voice.flow_label': 'Cómo viaja',
   'voice.flow_script': 'tu script',
   'voice.go_account': 'Conectar Google',
@@ -1757,11 +1772,13 @@ export const es: Record<MessageKey, string> = {
   'voice.instr_copied': 'Instrucciones copiadas',
   'voice.key_rotated': 'Clave nueva creada: vuelve a copiar el script y actualiza el atajo',
   'voice.manage': 'Gestionar',
+  'voice.manual_check': 'Para ver exactamente qué responde Google:',
   'voice.mock_label': 'Acciones del atajo',
   'voice.needs_google':
     'La captura por voz usa tu Google Drive como buzón. Conecta Google primero (Ajustes › Cuenta y sincronización).',
   'voice.not_here': 'Aquí no: devolver a la Bandeja',
   'voice.nothing_new': 'Nada nuevo en el buzón',
+  'voice.open_check': 'Abrir comprobación',
   'voice.privacy':
     'La clave se queda en este dispositivo y en tu script; nunca se sincroniza, ni va a copias, ni a ningún otro sitio. Los textos viven en tu propio Drive; el script borra los de más de 60 días.',
   'voice.rotate_key': 'Nueva clave (actualiza el script y el atajo)',
@@ -1773,7 +1790,7 @@ export const es: Record<MessageKey, string> = {
   'voice.s2_a': 'Abre',
   'voice.s2_b': 'Borra lo que haya, pega el script (botón de abajo) y guarda.',
   'voice.s2_c':
-    'Implementar › Nueva implementación › tipo «Aplicación web». Ejecutar como: yo. Quién tiene acceso: cualquier usuario.',
+    'Implementar › Nueva implementación › rueda ⚙ › «Aplicación web». Ejecutar como: yo. Quién tiene acceso: «Cualquier usuario» (no «Cualquier usuario con cuenta de Google»). Implementar.',
   'voice.s2_d':
     'Autoriza. Google mostrará «Google no ha verificado esta aplicación» porque el script es tuyo: Configuración avanzada › Ir al proyecto.',
   'voice.s2_e': 'Copia la URL de la aplicación web (termina en /exec) y pégala abajo.',
