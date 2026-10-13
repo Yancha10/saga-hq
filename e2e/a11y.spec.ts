@@ -34,6 +34,9 @@ test('no serious or critical axe violations on main screens', async ({ page }) =
   }
   await go(page, '#/ideas');
   await page.getByRole('link', { name: /Accessibility idea/ }).click();
+  // let the screen's fade-in finish: axe measures contrast on the rendered (possibly translucent) text
+  await expect(page.getByRole('button', { name: 'Make content' })).toBeVisible();
+  await page.waitForTimeout(400);
   const r = await new AxeBuilder({ page: page as never }).withTags(['wcag2a', 'wcag2aa']).analyze();
   results['idea-detail'] = r.violations
     .filter((v) => v.impact === 'serious' || v.impact === 'critical')
