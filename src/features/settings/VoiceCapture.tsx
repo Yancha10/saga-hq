@@ -290,7 +290,7 @@ export function VoiceCaptureSec() {
                   <ClipboardCopy size={14} aria-hidden /> {t('voice.copy_script')}
                 </Button>
               </div>
-              <pre>{appsScriptCode(fileId, '••••••••')}</pre>
+              <pre>{appsScriptCode(fileId, key)}</pre>
             </div>
             <p className="meta explain">{t('voice.s2_note')}</p>
             <div className="field">
