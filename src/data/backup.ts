@@ -94,23 +94,22 @@ export async function previewBackup(text: string): Promise<RestorePreview> {
   try {
     json = JSON.parse(text);
   } catch {
-    return { ok: false, error: 'This file is not valid JSON.', counts: {}, invalid: 0 };
+    return { ok: false, error: 'BACKUP_NOT_JSON', counts: {}, invalid: 0 };
   }
   const shape = backupShape.safeParse(json);
-  if (!shape.success)
-    return { ok: false, error: 'This is not a Saga HQ backup file.', counts: {}, invalid: 0 };
+  if (!shape.success) return { ok: false, error: 'BACKUP_NOT_SAGA', counts: {}, invalid: 0 };
   const file = shape.data as unknown as BackupFile;
   if (file.schemaVersion > SCHEMA_VERSION)
     return {
       ok: false,
-      error: 'This backup was made by a newer Saga HQ. Update first.',
+      error: 'BACKUP_NEWER',
       counts: {},
       invalid: 0,
     };
   if ((await sha256Hex(JSON.stringify(file.data))) !== file.checksum)
     return {
       ok: false,
-      error: 'Checksum mismatch: the backup is corrupted or was modified.',
+      error: 'BACKUP_CHECKSUM',
       counts: {},
       invalid: 0,
     };
@@ -135,10 +134,9 @@ export async function restoreBackup(
   mode: 'replace' | 'merge',
 ): Promise<Record<string, number>> {
   s.assertLive();
-  await createRecoveryPoint(
-    s,
-    `Before ${mode === 'replace' ? 'restoring' : 'merging'} backup from ${file.createdAt.slice(0, 10)}`,
-  );
+  await createRecoveryPoint(s, mode === 'replace' ? 'restore_backup' : 'merge_backup', {
+    date: file.createdAt.slice(0, 10),
+  });
   s.assertLive();
   const rev = s.hlc.now();
   const clean: WorkspaceData = { tables: {}, tombstones: [] };

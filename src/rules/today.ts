@@ -1,4 +1,3 @@
-import { MISSING_LABEL } from '../data/derive';
 import type {
   Capture,
   Content,
@@ -10,7 +9,6 @@ import type {
   Task,
   Workspace,
 } from '../data/schema';
-import { PLATFORM_LABEL } from '../data/schema';
 import { findOutliers, type Outlier } from './analytics';
 import { cadenceGaps, type Gap } from './cadence';
 import { type Candidate, scoreCandidates } from './priority';
@@ -33,18 +31,24 @@ export interface ScheduleItem {
   kind: 'publication' | 'event' | 'task';
   id: string;
   at: string | null; // null = all day
-  title: string;
-  sub?: string;
+  title: string; // user content
+  platform?: Publication['platform'];
+  eventKind?: HQEvent['kind'];
+  deadline?: boolean;
   contentId?: string;
   done?: boolean;
 }
 
+/** Language-neutral attention item; the UI renders `attention.<kind>` with these fields. */
 export interface AttentionItem {
   kind: 'blocked' | 'overdue' | 'late' | 'missing' | 'decision';
   id: string;
   entity: 'content' | 'task';
-  title: string;
-  detail: string;
+  title: string; // user content
+  blockers?: string[]; // user content (task titles)
+  at?: string;
+  platform?: Publication['platform'];
+  missing?: string[]; // readiness keys
 }
 
 export interface ResultsDue {
@@ -58,9 +62,24 @@ export interface ResultsDue {
 
 export interface Suggestion {
   id: string;
-  message: string;
+  kind: 'ready_unscheduled' | 'project_no_content' | 'outlier' | 'inbox_waiting';
   target?: { entity: 'content' | 'project' | 'idea' | 'publication'; id: string };
-  kind: 'ready_unscheduled' | 'project_no_content' | 'outlier' | 'inbox_waiting' | 'conflict';
+  params: Record<string, string | number>;
+}
+
+export type FactKey =
+  | 'pub_today'
+  | 'blocked'
+  | 'overdue'
+  | 'late'
+  | 'ready'
+  | 'results'
+  | 'gaps'
+  | 'inbox'
+  | 'decisions';
+export interface Fact {
+  key: FactKey;
+  count: number;
 }
 
 export interface TodayModel {
@@ -74,7 +93,7 @@ export interface TodayModel {
   inboxOldDays: number;
   suggestions: Suggestion[];
   outliers: Outlier[];
-  facts: string[];
+  facts: Fact[];
   readyCount: number;
   nextPublication: ScheduleItem | null;
 }
@@ -124,8 +143,8 @@ export function buildToday(d: TodayData): TodayModel {
         kind: 'publication',
         id: p.id,
         at,
-        title: contentById.get(p.contentId)?.title ?? 'Publication',
-        sub: p.platform,
+        title: contentById.get(p.contentId)?.title ?? '',
+        platform: p.platform,
         contentId: p.contentId,
         done: p.status === 'published',
       });
@@ -139,7 +158,7 @@ export function buildToday(d: TodayData): TodayModel {
         id: e.id,
         at: e.allDay ? null : e.startAt,
         title: e.title,
-        sub: e.kind,
+        eventKind: e.kind,
       });
   }
   for (const t of tasks) {
@@ -151,7 +170,7 @@ export function buildToday(d: TodayData): TodayModel {
         id: t.id,
         at: null,
         title: t.title,
-        sub: t.hardDeadline ? 'deadline' : 'due',
+        deadline: !!t.hardDeadline,
       });
   }
   schedule.sort((a, b) => (a.at ?? '').localeCompare(b.at ?? ''));
@@ -171,7 +190,7 @@ export function buildToday(d: TodayData): TodayModel {
         id: np.id,
         at: np.scheduledAt!,
         title: contentById.get(np.contentId)?.title ?? '',
-        sub: np.platform,
+        platform: np.platform,
         contentId: np.contentId,
       }
     : null;
@@ -183,13 +202,7 @@ export function buildToday(d: TodayData): TodayModel {
       const reasons = tasks
         .filter((t) => t.contentId === c.id && t.isBlocker && t.status !== 'done')
         .map((t) => t.title);
-      attention.push({
-        kind: 'blocked',
-        id: c.id,
-        entity: 'content',
-        title: c.title,
-        detail: reasons.join(' · ') || 'flagged as blocked',
-      });
+      attention.push({ kind: 'blocked', id: c.id, entity: 'content', title: c.title, blockers: reasons });
     }
   }
   for (const p of pubs) {
@@ -203,7 +216,8 @@ export function buildToday(d: TodayData): TodayModel {
         id: c.id,
         entity: 'content',
         title: c.title,
-        detail: `was scheduled ${new Date(t).toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' })} on ${PLATFORM_LABEL[p.platform]} — published?`,
+        at: p.scheduledAt,
+        platform: p.platform,
       });
     else if (t - now < 2 * DAY) {
       const missing = (c._missing ?? []).filter((m) => m !== 'publishDate');
@@ -213,28 +227,17 @@ export function buildToday(d: TodayData): TodayModel {
           id: c.id,
           entity: 'content',
           title: c.title,
-          detail: `publishes soon · missing ${missing.map((m) => MISSING_LABEL[m as keyof typeof MISSING_LABEL]).join(', ')}`,
+          missing,
+          at: p.scheduledAt,
         });
     }
   }
   for (const t of tasks) {
     if (t.status === 'done') continue;
     if (t.dueAt && Date.parse(t.dueAt) < sod)
-      attention.push({
-        kind: 'overdue',
-        id: t.id,
-        entity: 'task',
-        title: t.title,
-        detail: `due ${new Date(t.dueAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`,
-      });
+      attention.push({ kind: 'overdue', id: t.id, entity: 'task', title: t.title, at: t.dueAt });
     else if (t.kind === 'decision' && !t.isBlocker)
-      attention.push({
-        kind: 'decision',
-        id: t.id,
-        entity: 'task',
-        title: t.title,
-        detail: 'needs a decision',
-      });
+      attention.push({ kind: 'decision', id: t.id, entity: 'task', title: t.title });
   }
   const uniqAttention = attention.filter(
     (a, i) => attention.findIndex((b) => b.id === a.id && b.kind === a.kind) === i,
@@ -242,7 +245,7 @@ export function buildToday(d: TodayData): TodayModel {
 
   // Quick wins: one step from ready, or short tasks
   const quickWins = candidates
-    .filter((c) => !c.blocked && c.reasons.some((r) => r.startsWith('only ') || r === 'quick'))
+    .filter((c) => !c.blocked && c.reasons.some((r) => r.code === 'only_missing' || r.code === 'quick'))
     .slice(0, 3);
 
   // Results to log
@@ -282,15 +285,15 @@ export function buildToday(d: TodayData): TodayModel {
   const inbox = d.captures.filter((c) => !c.deletedAt && c.status === 'inbox');
   const oldest = inbox.reduce((m, c) => Math.min(m, Date.parse(c.createdAt)), now);
 
-  // Deterministic suggestions
+  // Deterministic suggestions (codes + params; rendered by i18n)
   const suggestions: Suggestion[] = [];
   const readyUnscheduled = content.filter((c) => c.status === 'ready' && !c._nextPublishAt);
   if (readyUnscheduled.length)
     suggestions.push({
       id: 'ready',
       kind: 'ready_unscheduled',
-      message: `${readyUnscheduled.length} ready item${readyUnscheduled.length > 1 ? 's are' : ' is'} not scheduled yet.`,
       target: { entity: 'content', id: readyUnscheduled[0]!.id },
+      params: { count: readyUnscheduled.length },
     });
   for (const p of live(d.projects)) {
     if (p.status !== 'active') continue;
@@ -304,8 +307,8 @@ export function buildToday(d: TodayData): TodayModel {
       suggestions.push({
         id: `proj-${p.id}`,
         kind: 'project_no_content',
-        message: `${p.name} has ${ideas} ideas but no active content.`,
         target: { entity: 'project', id: p.id },
+        params: { name: p.name, count: ideas },
       });
   }
   const outliers = findOutliers(pubs, d.snapshots, contentById);
@@ -314,40 +317,32 @@ export function buildToday(d: TodayData): TodayModel {
     suggestions.push({
       id: `out-${o.publicationId}`,
       kind: 'outlier',
-      message: `${c?.title ?? 'A post'} ${o.ratio >= 1 ? 'outperformed' : 'underperformed'} its platform median ${o.ratio >= 1 ? `${o.ratio.toFixed(1)}×` : `(${o.ratio.toFixed(2)}×)`} at ${o.checkpoint} (n=${o.n}). Write a learning?`,
       target: { entity: 'content', id: o.contentId },
+      params: {
+        title: c?.title ?? '',
+        ratio: o.ratio,
+        checkpoint: o.checkpoint,
+        n: o.n,
+        up: o.ratio >= 1 ? 1 : 0,
+      },
     });
   }
   const inboxOldDays = inbox.length ? Math.floor((now - oldest) / DAY) : 0;
   if (inboxOldDays >= 3)
-    suggestions.push({
-      id: 'inbox',
-      kind: 'inbox_waiting',
-      message: `Inbox has captures waiting ${inboxOldDays} days.`,
-    });
+    suggestions.push({ id: 'inbox', kind: 'inbox_waiting', params: { count: inboxOldDays } });
 
   const readyCount = content.filter((c) => c.status === 'ready').length;
-  const facts: string[] = [];
-  const pubToday = schedule.filter((s) => s.kind === 'publication' && !s.done).length;
-  if (pubToday) facts.push(`${pubToday} publication${pubToday > 1 ? 's' : ''} scheduled today.`);
-  const blockedN = uniqAttention.filter((a) => a.kind === 'blocked').length;
-  if (blockedN) facts.push(`${blockedN} content item${blockedN > 1 ? 's are' : ' is'} blocked.`);
-  const overdueN = uniqAttention.filter((a) => a.kind === 'overdue').length;
-  if (overdueN) facts.push(`${overdueN} task${overdueN > 1 ? 's are' : ' is'} overdue.`);
-  const lateN = uniqAttention.filter((a) => a.kind === 'late').length;
-  if (lateN)
-    facts.push(
-      `${lateN} scheduled publication${lateN > 1 ? 's are' : ' is'} past due and not marked published.`,
-    );
-  if (readyCount) facts.push(`${readyCount} item${readyCount > 1 ? 's are' : ' is'} marked Ready.`);
-  if (resultsDue.length)
-    facts.push(
-      `${resultsDue.length} publication${resultsDue.length > 1 ? 's need' : ' needs'} results logged.`,
-    );
-  if (gaps.length) facts.push(`${gaps.length} cadence gap${gaps.length > 1 ? 's' : ''} in the next 7 days.`);
-  if (inbox.length) facts.push(`${inbox.length} capture${inbox.length > 1 ? 's' : ''} waiting in Inbox.`);
-  const decisions = uniqAttention.filter((a) => a.kind === 'decision').length;
-  if (decisions) facts.push(`${decisions} decision${decisions > 1 ? 's' : ''} pending.`);
+  const facts: Fact[] = [];
+  const add = (key: FactKey, count: number) => count > 0 && facts.push({ key, count });
+  add('pub_today', schedule.filter((s) => s.kind === 'publication' && !s.done).length);
+  add('blocked', uniqAttention.filter((a) => a.kind === 'blocked').length);
+  add('overdue', uniqAttention.filter((a) => a.kind === 'overdue').length);
+  add('late', uniqAttention.filter((a) => a.kind === 'late').length);
+  add('ready', readyCount);
+  add('results', resultsDue.length);
+  add('gaps', gaps.length);
+  add('inbox', inbox.length);
+  add('decisions', uniqAttention.filter((a) => a.kind === 'decision').length);
 
   return {
     focus: { pinned, suggested },

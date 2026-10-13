@@ -70,7 +70,7 @@ test('Secretary with BYOK (mocked provider): grounded answer, facts vs recommend
   await expect(panel.getByText(/closest to done/)).toBeVisible();
   // Invented metric removed by the grounding validator
   await expect(panel.locator('.answer')).not.toContainText('98765');
-  await expect(panel.getByText(/statement\(s\) removed/)).toBeVisible();
+  await expect(panel.getByText(/statements? removed/)).toBeVisible();
   // Unknown record proposal is not applicable
   await expect(panel.getByText(/Can’t apply: Unknown content C99/)).toBeVisible();
 

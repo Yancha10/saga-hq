@@ -3,7 +3,6 @@ import { Sparkles, Star } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useApp, useLive, useSession } from '../../app/context';
 import {
-  CONTENT_STATUS_LABEL,
   CONTENT_STATUSES,
   type Content,
   type HQEvent,
@@ -16,6 +15,8 @@ import {
   type Task,
 } from '../../data/schema';
 import { create, update } from '../../data/store';
+import { fmt, t, useT } from '../../i18n';
+import { platformName, reasonText } from '../../i18n/render';
 import { scoreCandidates } from '../../rules/priority';
 import { DAY, fmtDay } from '../../rules/time';
 import { AutoText, Button, Empty, Pill, Section, Tabs } from '../../ui/kit';
@@ -24,6 +25,8 @@ import {
   ArchivedNotice,
   archiveTrashItems,
   ContentStatus,
+  contentTitle,
+  libraryTitle,
   missingText,
   QuickTask,
   RecordMenu,
@@ -33,6 +36,7 @@ import {
 type Tab = 'overview' | 'content' | 'ideas' | 'tasks' | 'library' | 'results';
 
 export function ProjectHome() {
+  useT();
   const { id } = useParams({ strict: false }) as { id: string };
   const s = useSession();
   const navigate = useNavigate();
@@ -58,7 +62,7 @@ export function ProjectHome() {
         project,
         content: live(content),
         ideas: live(ideas),
-        tasks: live([...tasks, ...contentTasks.filter((t) => !tasks.some((x) => x.id === t.id))]),
+        tasks: live([...tasks, ...contentTasks.filter((ct) => !tasks.some((x) => x.id === ct.id))]),
         library: live(library),
         events: live(events),
         learnings: live(learnings).filter((l) => l.scope?.projectId === id),
@@ -92,7 +96,7 @@ export function ProjectHome() {
   if (!p)
     return (
       <div className="page">
-        <Empty title="Project not found" />
+        <Empty title={t('projects.not_found')} />
       </div>
     );
   const up = (patch: Partial<Project>, key?: string) =>
@@ -101,13 +105,16 @@ export function ProjectHome() {
     (c) => !c.archivedAt && !['published', 'reviewed'].includes(c.status),
   );
   const blocked = d.content.filter((c) => c._blocked);
-  const openTasks = d.tasks.filter((t) => t.status !== 'done');
+  const openTasks = d.tasks.filter((x) => x.status !== 'done');
   const upcoming = [
     ...d.pubs
       .filter((x) => x.scheduledAt && x.status !== 'published' && Date.parse(x.scheduledAt) > now - DAY)
       .map((x) => ({
         at: x.scheduledAt!,
-        label: `Publish: ${d.content.find((c) => c.id === x.contentId)?.title ?? ''} (${x.platform})`,
+        label: t('projects.up_publish', {
+          title: contentTitle(d.content.find((c) => c.id === x.contentId) ?? {}),
+          platform: platformName(x.platform),
+        }),
         to: `/content/${x.contentId}`,
       })),
     ...d.events
@@ -118,8 +125,8 @@ export function ProjectHome() {
         to: '/calendar',
       })),
     ...openTasks
-      .filter((t) => t.dueAt && Date.parse(t.dueAt) > now - DAY)
-      .map((t) => ({ at: t.dueAt!, label: `Due: ${t.title}`, to: '/tasks' })),
+      .filter((x) => x.dueAt && Date.parse(x.dueAt) > now - DAY)
+      .map((x) => ({ at: x.dueAt!, label: t('projects.up_due', { title: x.title }), to: '/tasks' })),
   ]
     .filter((x) => Date.parse(x.at) < now + 14 * DAY)
     .sort((a, b) => a.at.localeCompare(b.at));
@@ -133,7 +140,7 @@ export function ProjectHome() {
         .sort((a, b) => b.observedAt.localeCompare(a.observedAt))[0];
       return {
         pub: x,
-        title: d.content.find((c) => c.id === x.contentId)?.title ?? '',
+        title: contentTitle(d.content.find((c) => c.id === x.contentId) ?? {}),
         views: sn?.metrics.views,
         cp: sn?.checkpoint,
       };
@@ -148,23 +155,27 @@ export function ProjectHome() {
       <PageHeader
         back
         title={p.name}
-        sub={[p.status, p.startDate && `from ${fmtDay(p.startDate)}`, p.endDate && `to ${fmtDay(p.endDate)}`]
+        sub={[
+          t(`project.status.${p.status}`),
+          p.startDate && t('projects.from', { date: fmtDay(p.startDate) }),
+          p.endDate && t('projects.to', { date: fmtDay(p.endDate) }),
+        ]
           .filter(Boolean)
           .join(' · ')}
         actions={
           <>
             <Button onClick={() => void up({ isFocus: !p.isFocus })} aria-pressed={p.isFocus}>
               <Star size={15} fill={p.isFocus ? 'currentColor' : 'none'} />{' '}
-              {p.isFocus ? 'Focus project' : 'Mark focus'}
+              {p.isFocus ? t('projects.focus_project') : t('projects.mark_focus')}
             </Button>
             <Button
               variant="ghost"
               onClick={() => toggleSecretary({ intent: 'producer', focus: { entity: 'project', id: p.id } })}
             >
-              <Sparkles size={15} /> What’s blocking?
+              <Sparkles size={15} /> {t('projects.whats_blocking')}
             </Button>
             <RecordMenu
-              label="Project actions"
+              label={t('projects.actions')}
               items={archiveTrashItems(s, 'projects', p, () => void navigate({ to: '/projects' }))}
             />
           </>
@@ -173,57 +184,57 @@ export function ProjectHome() {
       <ArchivedNotice rec={p} table="projects" />
       <div style={{ marginBottom: 16 }}>
         <Tabs
-          label="Project sections"
+          label={t('projects.sections')}
           value={tab}
           onChange={setTab}
           options={[
-            { value: 'overview', label: 'Overview' },
-            { value: 'content', label: `Content ${d.content.length || ''}` },
-            { value: 'ideas', label: `Ideas ${d.ideas.length || ''}` },
-            { value: 'tasks', label: `Tasks ${openTasks.length || ''}` },
-            { value: 'library', label: `Library ${d.library.length || ''}` },
-            { value: 'results', label: 'Results' },
+            { value: 'overview', label: t('projects.tab.overview') },
+            { value: 'content', label: `${t('nav.content')} ${d.content.length || ''}` },
+            { value: 'ideas', label: `${t('nav.ideas')} ${d.ideas.length || ''}` },
+            { value: 'tasks', label: `${t('nav.tasks')} ${openTasks.length || ''}` },
+            { value: 'library', label: `${t('nav.library')} ${d.library.length || ''}` },
+            { value: 'results', label: t('projects.tab.results') },
           ]}
         />
       </div>
       {tab === 'overview' && (
         <div className="grid2">
           <div>
-            <Section title="Goal">
+            <Section title={t('projects.goal')}>
               <AutoText
                 value={p.goal}
                 onSave={(v) => up({ goal: v || null }, 'goal')}
-                ariaLabel="Goal"
-                placeholder="What does success look like?"
+                ariaLabel={t('projects.goal')}
+                placeholder={t('projects.goal_q')}
               />
             </Section>
-            <Section title="Next action">
+            <Section title={t('projects.next_action')}>
               {next ? (
                 <Link
                   to={next.ref.entity === 'content' ? `/content/${next.ref.id}` : '/tasks'}
                   className="row list"
                 >
                   <div className="grow">
-                    <div className="title">{next.title}</div>
-                    <div className="sub">{next.reasons.join(' · ')}</div>
+                    <div className="title">{next.title || t('common.untitled')}</div>
+                    <div className="sub">{next.reasons.map(reasonText).join(' · ')}</div>
                   </div>
                 </Link>
               ) : (
-                <Empty compact>No dated work yet. Plan content or add tasks.</Empty>
+                <Empty compact>{t('projects.no_dated')}</Empty>
               )}
             </Section>
-            <Section title="Blockers" count={blocked.length}>
+            <Section title={t('projects.blockers')} count={blocked.length}>
               {blocked.length ? (
                 <div className="list">
                   {blocked.map((c) => (
                     <Link key={c.id} to="/content/$id" params={{ id: c.id }} className="row">
                       <span className="status-dot warn" aria-hidden />
                       <div className="grow">
-                        <div className="title">{c.title}</div>
+                        <div className="title">{contentTitle(c)}</div>
                         <div className="sub">
                           {d.tasks
-                            .filter((t) => t.contentId === c.id && t.isBlocker && t.status !== 'done')
-                            .map((t) => t.title)
+                            .filter((x) => x.contentId === c.id && x.isBlocker && x.status !== 'done')
+                            .map((x) => x.title)
                             .join(' · ')}
                         </div>
                       </div>
@@ -231,27 +242,27 @@ export function ProjectHome() {
                   ))}
                 </div>
               ) : (
-                <div className="meta">Nothing blocked.</div>
+                <div className="meta">{t('projects.nothing_blocked')}</div>
               )}
             </Section>
-            <Section title="Pipeline">
+            <Section title={t('projects.pipeline')}>
               <div className="chips">
                 {pipeline.map((x) => (
                   <span key={x.st} className="tag num">
-                    {CONTENT_STATUS_LABEL[x.st]} {x.n}
+                    {t(`content.status.${x.st}`)} {x.n}
                   </span>
                 ))}
               </div>
             </Section>
             <Section
-              title="Active content"
+              title={t('projects.active_content')}
               count={activeContent.length}
               action={
                 <Button
                   size="sm"
                   onClick={async () => {
                     const c = await create(s, 'content', {
-                      title: 'Untitled content',
+                      title: '',
                       status: 'planned',
                       formatTemplateId: 'reel',
                       platforms: p.platforms ?? [],
@@ -260,7 +271,7 @@ export function ProjectHome() {
                     void navigate({ to: '/content/$id', params: { id: c.id } });
                   }}
                 >
-                  + Content
+                  + {t('nav.content')}
                 </Button>
               }
             >
@@ -268,7 +279,7 @@ export function ProjectHome() {
             </Section>
           </div>
           <div>
-            <Section title="Upcoming 14 days" count={upcoming.length}>
+            <Section title={t('projects.upcoming')} count={upcoming.length}>
               {upcoming.length ? (
                 <div className="list">
                   {upcoming.slice(0, 8).map((u) => (
@@ -279,10 +290,10 @@ export function ProjectHome() {
                   ))}
                 </div>
               ) : (
-                <div className="meta">Nothing in the next two weeks.</div>
+                <div className="meta">{t('projects.upcoming_none')}</div>
               )}
             </Section>
-            <Section title="Top ideas">
+            <Section title={t('projects.top_ideas')}>
               {d.ideas.filter((i) => i.status === 'shortlisted').length ? (
                 <div className="list">
                   {d.ideas
@@ -290,17 +301,19 @@ export function ProjectHome() {
                     .slice(0, 5)
                     .map((i) => (
                       <Link key={i.id} to="/ideas/$id" params={{ id: i.id }} className="row">
-                        <div className="grow title">★ {i.title}</div>
+                        <div className="grow title">★ {i.title || t('ideas.untitled')}</div>
                       </Link>
                     ))}
                 </div>
               ) : (
                 <div className="meta">
-                  {d.ideas.length ? `${d.ideas.length} ideas, none shortlisted.` : 'No ideas linked yet.'}
+                  {d.ideas.length
+                    ? t('projects.ideas_none_short', { count: d.ideas.length })
+                    : t('projects.no_ideas_linked')}
                 </div>
               )}
             </Section>
-            <Section title="Latest results">
+            <Section title={t('projects.latest_results')}>
               {results.length ? (
                 <div className="list">
                   {results.map((r) => (
@@ -308,45 +321,45 @@ export function ProjectHome() {
                       <div className="grow">
                         <div className="title">{r.title}</div>
                         <div className="sub">
-                          {r.pub.platform} ·{' '}
+                          {platformName(r.pub.platform)} ·{' '}
                           {r.views !== undefined
-                            ? `${r.views.toLocaleString()} views (${r.cp ?? 'latest'})`
-                            : 'no results logged'}
+                            ? t('projects.views_cp', { views: r.views, cp: r.cp ?? t('projects.latest') })
+                            : t('projects.no_results_logged')}
                         </div>
                       </div>
                     </Link>
                   ))}
                 </div>
               ) : (
-                <div className="meta">No published content yet.</div>
+                <div className="meta">{t('projects.no_published')}</div>
               )}
             </Section>
-            <Section title="Learnings in scope">
+            <Section title={t('projects.learnings')}>
               {d.learnings.length ? (
                 d.learnings.map((l) => (
                   <div key={l.id} className="meta">
-                    <span className="tag">{l.kind}</span> {l.statement}
+                    <span className="tag">{t(`learning.kind.${l.kind}`)}</span> {l.statement}
                   </div>
                 ))
               ) : (
-                <div className="meta">None yet.</div>
+                <div className="meta">{t('common.none_yet')}</div>
               )}
             </Section>
-            <Section title="Recent research">
+            <Section title={t('projects.research')}>
               {d.library.slice(0, 5).map((r) => (
                 <div key={r.id}>
                   <Link to="/library/$id" params={{ id: r.id }} className="meta">
-                    {r.title || r.originalUrl}
+                    {libraryTitle(r)}
                   </Link>
                 </div>
               ))}
-              {!d.library.length && <div className="meta">None yet.</div>}
+              {!d.library.length && <div className="meta">{t('common.none_yet')}</div>}
             </Section>
-            <Section title="Settings">
+            <Section title={t('nav.settings')}>
               <div className="form-grid">
                 <div className="field">
                   <label className="lbl" htmlFor="pst">
-                    Status
+                    {t('common.status')}
                   </label>
                   <select
                     id="pst"
@@ -354,14 +367,14 @@ export function ProjectHome() {
                     value={p.status}
                     onChange={(e) => void up({ status: e.target.value as Project['status'] })}
                   >
-                    <option value="active">Active</option>
-                    <option value="paused">Paused</option>
-                    <option value="done">Done</option>
+                    <option value="active">{t('project.status.active')}</option>
+                    <option value="paused">{t('project.status.paused')}</option>
+                    <option value="done">{t('project.status.done')}</option>
                   </select>
                 </div>
                 <div className="field">
                   <label className="lbl" htmlFor="psd">
-                    Start
+                    {t('projects.start')}
                   </label>
                   <input
                     id="psd"
@@ -375,7 +388,7 @@ export function ProjectHome() {
                 </div>
                 <div className="field">
                   <label className="lbl" htmlFor="ped">
-                    End
+                    {t('projects.end')}
                   </label>
                   <input
                     id="ped"
@@ -389,20 +402,20 @@ export function ProjectHome() {
                 </div>
               </div>
               <div className="field" style={{ marginTop: 8 }}>
-                <span className="lbl">Name</span>
+                <span className="lbl">{t('common.name')}</span>
                 <AutoText
                   value={p.name}
                   onSave={(v) => v.trim() && up({ name: v.trim() }, 'name')}
-                  ariaLabel="Project name"
+                  ariaLabel={t('projects.name')}
                 />
               </div>
               <div className="field" style={{ marginTop: 8 }}>
-                <span className="lbl">Brief</span>
+                <span className="lbl">{t('field.brief')}</span>
                 <AutoText
                   multiline
                   value={p.brief}
                   onSave={(v) => up({ brief: v || null }, 'brief')}
-                  ariaLabel="Project brief"
+                  ariaLabel={t('projects.brief')}
                   rows={4}
                 />
               </div>
@@ -415,19 +428,19 @@ export function ProjectHome() {
         <div className="list">
           {d.ideas.map((i) => (
             <Link key={i.id} to="/ideas/$id" params={{ id: i.id }} className="row">
-              <div className="grow title">{i.title}</div>
-              <Pill>{i.status}</Pill>
+              <div className="grow title">{i.title || t('ideas.untitled')}</div>
+              <Pill>{t(`idea.status.${i.status}`)}</Pill>
             </Link>
           ))}
-          {!d.ideas.length && <div className="row static meta">No ideas in this project.</div>}
+          {!d.ideas.length && <div className="row static meta">{t('projects.no_ideas')}</div>}
         </div>
       )}
       {tab === 'tasks' && (
         <div className="list">
           {d.tasks
-            .filter((t) => t.status !== 'done')
-            .map((t) => (
-              <TaskRow key={t.id} t={t} />
+            .filter((x) => x.status !== 'done')
+            .map((x) => (
+              <TaskRow key={x.id} t={x} />
             ))}
           <QuickTask parent={{ projectId: p.id }} />
         </div>
@@ -437,14 +450,14 @@ export function ProjectHome() {
           {d.library.map((r) => (
             <Link key={r.id} to="/library/$id" params={{ id: r.id }} className="row">
               <div className="grow">
-                <div className="title">{r.title || r.originalUrl}</div>
+                <div className="title">{libraryTitle(r)}</div>
                 <div className="sub">
-                  {r.role} · {r.kind}
+                  {t(`library.role.${r.role}`)} · {t(`library.kind.${r.kind}`)}
                 </div>
               </div>
             </Link>
           ))}
-          {!d.library.length && <div className="row static meta">Nothing saved for this project.</div>}
+          {!d.library.length && <div className="row static meta">{t('projects.nothing_saved')}</div>}
         </div>
       )}
       {tab === 'results' && (
@@ -453,11 +466,11 @@ export function ProjectHome() {
             <Link key={r.pub.id} to="/content/$id" params={{ id: r.pub.contentId }} className="row">
               <div className="grow title">{r.title}</div>
               <span className="meta">
-                {r.pub.platform} · {r.views?.toLocaleString() ?? '—'}
+                {platformName(r.pub.platform)} · {r.views !== undefined ? fmt.num(r.views) : '—'}
               </span>
             </Link>
           ))}
-          {!results.length && <div className="row static meta">No results yet.</div>}
+          {!results.length && <div className="row static meta">{t('projects.no_results')}</div>}
         </div>
       )}
     </div>
@@ -465,15 +478,17 @@ export function ProjectHome() {
 }
 
 function ContentList({ items }: { items: Content[] }) {
-  if (!items.length) return <div className="meta">No content.</div>;
+  useT();
+  if (!items.length) return <div className="meta">{t('projects.no_content')}</div>;
   return (
     <div className="list">
       {items.map((c) => (
         <Link key={c.id} to="/content/$id" params={{ id: c.id }} className="row">
           <div className="grow">
-            <div className="title">{c.title}</div>
+            <div className="title">{contentTitle(c)}</div>
             <div className="sub">
-              {missingText(c) || (c._nextPublishAt ? `publishes ${fmtDay(c._nextPublishAt)}` : '')}
+              {missingText(c) ||
+                (c._nextPublishAt ? t('projects.publishes', { date: fmtDay(c._nextPublishAt) }) : '')}
             </div>
           </div>
           <ContentStatus c={c} />

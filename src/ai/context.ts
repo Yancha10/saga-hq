@@ -1,5 +1,4 @@
 import type { Session } from '../app/session';
-import { MISSING_LABEL } from '../data/derive';
 import type {
   Content,
   Idea,
@@ -10,6 +9,8 @@ import type {
   Snapshot,
   Task,
 } from '../data/schema';
+import { fmt, getLocale, t } from '../i18n';
+import { factText, gapText } from '../i18n/render';
 import { cadenceGaps } from '../rules/cadence';
 import { DAY } from '../rules/time';
 import { buildToday, type TodayModel } from '../rules/today';
@@ -17,15 +18,7 @@ import type { SearchClient } from '../search/client';
 
 export type Intent = 'brief' | 'ask' | 'producer' | 'creative' | 'planner' | 'analyst' | 'librarian';
 
-export const INTENT_LABEL: Record<Intent, string> = {
-  brief: 'Daily Brief',
-  ask: 'Ask workspace',
-  producer: 'Producer',
-  creative: 'Creative Director',
-  planner: 'Planner',
-  analyst: 'Analyst',
-  librarian: 'Librarian',
-};
+export const intentLabel = (i: Intent): string => t(`secretary.intent.${i}`);
 
 export interface PackEntity {
   handle: string;
@@ -39,7 +32,8 @@ export interface ContextPack {
   intent: Intent;
   generatedAt: string;
   today: string;
-  facts: string[];
+  locale: string; // UI language the Secretary answers in by default
+  facts: string[]; // rendered in the UI language (deterministic, no AI)
   entities: PackEntity[];
   notes: string[];
 }
@@ -91,7 +85,7 @@ function contentFields(c: Content, pb: PackBuilder, full = false) {
     format: c.formatTemplateId,
     platforms: c.platforms,
     project: pb.handleOf(c.projectId),
-    missing: (c._missing ?? []).map((m) => MISSING_LABEL[m as keyof typeof MISSING_LABEL]),
+    missing: c._missing ?? [],
     blocked: c._blocked ? true : undefined,
     nextPublishAt: c._nextPublishAt ?? undefined,
     priority: c.priority ?? undefined,
@@ -212,7 +206,7 @@ export async function resolveContext(
     if (focus.entity === 'content' && focus.id && contentById.get(focus.id)) {
       addContent(contentById.get(focus.id)!, true);
       addTasksFor(focus.id);
-      notes.push(`Focused on ${pb.handleOf(focus.id)}.`);
+      notes.push(t('secretary.note.focused', { handle: pb.handleOf(focus.id) ?? '' }));
     }
     const active = content
       .filter((c) => ['planned', 'producing', 'ready', 'scheduled'].includes(c.status))
@@ -278,8 +272,13 @@ export async function resolveContext(
       pb.add('idea', i.id, ideaFields(i, pb));
     const ws = d.workspace;
     if (ws?.cadence?.length)
-      notes.push(`Cadence targets: ${ws.cadence.map((c) => `${c.platform} ${c.perWeek}/week`).join(', ')}.`);
-    for (const g of cadenceGaps(ws, d.publications, now, 14)) notes.push(`Gap: ${g.message}`);
+      notes.push(
+        t('secretary.note.cadence', {
+          list: ws.cadence.map((c) => `${c.platform} ${c.perWeek}/w`).join(', '),
+        }),
+      );
+    for (const g of cadenceGaps(ws, d.publications, now, 14))
+      notes.push(t('secretary.note.gap', { gap: gapText(g) }));
   }
 
   if (intent === 'analyst') {
@@ -302,9 +301,14 @@ export async function resolveContext(
     }
     for (const o of today.outliers.slice(0, 5))
       notes.push(
-        `Rule-detected outlier: ${pb.handleOf(o.contentId) ?? 'a post'} at ${o.ratio.toFixed(2)}× its ${o.checkpoint} median (n=${o.n}).`,
+        t('secretary.note.outlier', {
+          handle: pb.handleOf(o.contentId) ?? '?',
+          ratio: fmt.ratio(o.ratio),
+          checkpoint: o.checkpoint,
+          n: o.n,
+        }),
       );
-    notes.push('Metrics are platform-specific; do not sum or compare across platforms as if equivalent.');
+    notes.push(t('secretary.note.platform_metrics'));
   }
 
   if ((intent === 'librarian' || intent === 'ask') && search && question.trim()) {
@@ -320,7 +324,7 @@ export async function resolveContext(
       else if (h.type === 'projects')
         pb.add('project', h.id, { name: (rec as Project).name, goal: cut((rec as Project).goal, 200) });
     }
-    if (!hits.length) notes.push('Keyword search found no matching records.');
+    if (!hits.length) notes.push(t('secretary.note.no_hits'));
   }
 
   if (intent !== 'librarian') {
@@ -331,13 +335,14 @@ export async function resolveContext(
   return {
     intent,
     generatedAt: new Date(now).toISOString(),
-    today: new Date(now).toLocaleDateString(undefined, {
+    today: new Intl.DateTimeFormat(getLocale(), {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
       day: 'numeric',
-    }),
-    facts: today.facts,
+    }).format(now),
+    locale: getLocale(),
+    facts: today.facts.map(factText),
     entities: pb.entities,
     notes,
   };
@@ -346,8 +351,6 @@ export async function resolveContext(
 export function summarizePack(p: ContextPack): string {
   const counts: Record<string, number> = {};
   for (const e of p.entities) counts[e.type] = (counts[e.type] ?? 0) + 1;
-  const parts = Object.entries(counts).map(
-    ([t, n]) => `${n} ${t}${n > 1 ? (t.endsWith('y') ? '' : 's') : ''}`,
-  );
-  return parts.length ? parts.join(', ') : 'workspace facts only';
+  const parts = Object.entries(counts).map(([type, n]) => t(`pack.${type}`, { count: n }));
+  return parts.length ? parts.join(', ') : t('pack.facts_only');
 }

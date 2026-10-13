@@ -5,24 +5,33 @@ import { useIsPhone, useLive, useSession } from '../../app/context';
 import { toast } from '../../app/status';
 import { setContentStatus } from '../../data/domain';
 import {
-  CONTENT_STATUS_LABEL,
   CONTENT_STATUSES,
   type Content,
   type ContentStatus as CS,
-  PLATFORM_LABEL,
   PLATFORMS,
   type Platform,
 } from '../../data/schema';
 import { create } from '../../data/store';
+import { t, useT } from '../../i18n';
+import { platformName } from '../../i18n/render';
 import { fmtDay } from '../../rules/time';
 import { Button, Chip, Empty, Progress, Tabs } from '../../ui/kit';
 import { PageHeader } from '../../ui/PageHeader';
-import { ContentStatus, missingText, PlatformTags, ProjectSelect, RecordMenu, useProjects } from '../common';
+import {
+  ContentStatus,
+  contentTitle,
+  missingText,
+  PlatformTags,
+  ProjectSelect,
+  RecordMenu,
+  useProjects,
+} from '../common';
 
 type View = 'board' | 'list' | 'platform';
 const COL_LIMIT = 50;
 
 export function ContentPage() {
+  useT();
   const s = useSession();
   const navigate = useNavigate();
   const phone = useIsPhone();
@@ -52,7 +61,7 @@ export function ContentPage() {
   );
   const newContent = async () => {
     const c = await create(s, 'content', {
-      title: 'Untitled content',
+      title: '',
       status: 'planned',
       formatTemplateId: 'reel',
       platforms: platform ? [platform] : [],
@@ -63,7 +72,7 @@ export function ContentPage() {
   const move = async (c: Content, st: CS) => {
     if (c.status === st) return;
     if (st === 'ready' && (c._missing ?? []).filter((m) => m !== 'publishDate').length)
-      toast(`Marked Ready with ${missingText(c)}`);
+      toast(t('content.marked_ready_with', { missing: missingText(c) }));
     await setContentStatus(s, c, st);
   };
 
@@ -80,19 +89,19 @@ export function ContentPage() {
     >
       <div className="hstack" style={{ alignItems: 'flex-start', flexWrap: 'nowrap' }}>
         <Link to="/content/$id" params={{ id: c.id }} className="title" style={{ flex: 1 }}>
-          {c.title || 'Untitled'}
+          {contentTitle(c)}
         </Link>
         <RecordMenu
-          label={`Move ${c.title}`}
+          label={t('content.move_item', { title: contentTitle(c) })}
           items={CONTENT_STATUSES.filter((x) => x !== c.status).map((x) => ({
             id: x,
-            label: `Move to ${CONTENT_STATUS_LABEL[x]}`,
+            label: t('content.move_to', { status: t(`content.status.${x}`) }),
             run: () => void move(c, x),
           }))}
         />
       </div>
       {c.status !== 'published' && c.status !== 'reviewed' && (
-        <Progress value={c._readyPct ?? 0} label={`${c.title} readiness`} />
+        <Progress value={c._readyPct ?? 0} label={t('content.readiness_of', { title: contentTitle(c) })} />
       )}
       <div className="metaRow">
         <ContentStatus c={c} />
@@ -121,74 +130,72 @@ export function ContentPage() {
   return (
     <div className="page" style={{ maxWidth: showBoard ? 'none' : undefined }}>
       <PageHeader
-        title="Content"
-        sub={`${items.length} items`}
+        title={t('nav.content')}
+        sub={t('common.n_items', { count: items.length })}
         actions={
           <Button variant="primary" onClick={() => void newContent()}>
-            <Plus size={15} /> New content
+            <Plus size={15} /> {t('content.new')}
           </Button>
         }
       />
       <div className="hstack" style={{ marginBottom: 12 }}>
         {!phone && (
           <Tabs
-            label="View"
+            label={t('common.view')}
             value={view}
             onChange={setView}
             options={[
-              { value: 'board', label: 'Board' },
-              { value: 'list', label: 'List' },
-              { value: 'platform', label: 'By platform' },
+              { value: 'board', label: t('content.view.board') },
+              { value: 'list', label: t('content.view.list') },
+              { value: 'platform', label: t('content.view.platform') },
             ]}
           />
         )}
         <input
           className="input"
           style={{ maxWidth: 200 }}
-          placeholder="Filter…"
+          placeholder={t('common.filter_ellipsis')}
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          aria-label="Filter content"
+          aria-label={t('content.filter_aria')}
         />
         <div style={{ width: 180 }}>
           <ProjectSelect value={project} onChange={setProject} />
         </div>
         <select
           className="select"
-          style={{ width: 150 }}
+          style={{ width: 'auto', maxWidth: '100%' }}
           value={platform}
           onChange={(e) => setPlatform(e.target.value as Platform)}
-          aria-label="Platform"
+          aria-label={t('common.platform')}
         >
-          <option value="">All platforms</option>
+          <option value="">{t('common.all_platforms')}</option>
           {PLATFORMS.map((p) => (
             <option key={p} value={p}>
-              {PLATFORM_LABEL[p]}
+              {platformName(p)}
             </option>
           ))}
         </select>
         <Chip on={onlyBlocked} onClick={() => setOnlyBlocked((v) => !v)}>
-          Blocked
+          {t('status.blocked')}
         </Chip>
         <Chip on={onlyMissing} onClick={() => setOnlyMissing((v) => !v)}>
-          Missing packaging
+          {t('content.missing_packaging')}
         </Chip>
         <Chip on={archived} onClick={() => setArchived((v) => !v)}>
-          Archived
+          {t('common.archived')}
         </Chip>
       </div>
       {items.length === 0 && (
         <Empty
-          title={all.length ? 'Nothing matches' : 'No content yet'}
+          title={all.length ? t('common.nothing_matches') : t('content.none')}
           action={
             <Button variant="primary" onClick={() => void newContent()}>
-              Plan content
+              {t('today.plan_content')}
             </Button>
           }
         >
-          {all.length
-            ? 'Clear the filters to see everything.'
-            : 'Each content item is one intended publication. Turn an idea into content, or start one here.'}
+          {all.length ? t('common.clear_filters') : t('content.empty_body')}
         </Empty>
       )}
       {items.length > 0 && showBoard && (
@@ -200,7 +207,7 @@ export function ContentPage() {
               <section
                 key={st}
                 className={`col ${overCol === st ? 'drop' : ''}`}
-                aria-label={CONTENT_STATUS_LABEL[st]}
+                aria-label={t(`content.status.${st}`)}
                 onDragOver={(e) => {
                   e.preventDefault();
                   setOverCol(st);
@@ -214,7 +221,7 @@ export function ContentPage() {
                 }}
               >
                 <div className="col-head">
-                  {CONTENT_STATUS_LABEL[st]} <span className="meta num">{col.length}</span>
+                  {t(`content.status.${st}`)} <span className="meta num">{col.length}</span>
                 </div>
                 <div className="col-body">
                   {col.slice(0, lim).map(card)}
@@ -225,7 +232,7 @@ export function ContentPage() {
                       style={{ border: 0, background: 'none', cursor: 'pointer' }}
                       onClick={() => setExpanded((x) => ({ ...x, [st]: true }))}
                     >
-                      +{col.length - lim} more
+                      {t('common.n_more', { count: col.length - lim })}
                     </button>
                   )}
                 </div>
@@ -241,15 +248,15 @@ export function ContentPage() {
             if (!col.length) return null;
             const lim = expanded[st] ? col.length : COL_LIMIT;
             return (
-              <section key={st} aria-label={CONTENT_STATUS_LABEL[st]}>
+              <section key={st} aria-label={t(`content.status.${st}`)}>
                 <h4 style={{ margin: '8px 0' }}>
-                  {CONTENT_STATUS_LABEL[st]} · {col.length}
+                  {t(`content.status.${st}`)} · {col.length}
                 </h4>
                 <div className="list">
                   {col.slice(0, lim).map((c) => (
                     <Link key={c.id} to="/content/$id" params={{ id: c.id }} className="row">
                       <div className="grow">
-                        <div className="title">{c.title || 'Untitled'}</div>
+                        <div className="title">{contentTitle(c)}</div>
                         <div className="sub">
                           {[
                             c.projectId && pName.get(c.projectId),
@@ -276,7 +283,7 @@ export function ContentPage() {
                       style={{ border: 0, background: 'none', textAlign: 'left', cursor: 'pointer' }}
                       onClick={() => setExpanded((x) => ({ ...x, [st]: true }))}
                     >
-                      +{col.length - lim} more
+                      {t('common.n_more', { count: col.length - lim })}
                     </button>
                   )}
                 </div>
@@ -288,8 +295,8 @@ export function ContentPage() {
       {items.length > 0 && view === 'platform' && !phone && (
         <div className="board">
           {PLATFORMS.filter((p) => items.some((c) => c.platforms.includes(p))).map((p) => (
-            <section key={p} className="col" aria-label={PLATFORM_LABEL[p]}>
-              <div className="col-head">{PLATFORM_LABEL[p]}</div>
+            <section key={p} className="col" aria-label={platformName(p)}>
+              <div className="col-head">{platformName(p)}</div>
               <div className="col-body">
                 {items
                   .filter((c) => c.platforms.includes(p))
@@ -299,8 +306,8 @@ export function ContentPage() {
             </section>
           ))}
           {items.some((c) => !c.platforms.length) && (
-            <section className="col" aria-label="No platform">
-              <div className="col-head">No platform</div>
+            <section className="col" aria-label={t('content.no_platform')}>
+              <div className="col-head">{t('content.no_platform')}</div>
               <div className="col-body">
                 {items
                   .filter((c) => !c.platforms.length)

@@ -5,6 +5,7 @@ import { toast } from '../../app/status';
 import { nowIso } from '../../core/util';
 import type { Learning, Platform } from '../../data/schema';
 import { mutate } from '../../data/store';
+import { t, useT } from '../../i18n';
 import { Button, Sheet } from '../../ui/kit';
 import { PlatformPicker } from '../common';
 
@@ -23,6 +24,7 @@ export function LearningEditor({
   evidence?: { type: 'content' | 'publication'; id: string; label: string }[];
   initial?: Partial<Learning>;
 }) {
+  useT();
   const s = useSession();
   const navigate = useNavigate();
   const [statement, setStatement] = useState(initial?.statement ?? '');
@@ -35,13 +37,13 @@ export function LearningEditor({
     <Sheet
       open={open}
       onClose={onClose}
-      title="Write a learning"
+      title={t('learning.write')}
       footer={
         <Button
           variant="primary"
           disabled={!statement.trim()}
           onClick={async () => {
-            const l = await mutate(s, { label: 'Save learning' }, async (m) => {
+            const l = await mutate(s, { label: 'h.saveLearning' }, async (m) => {
               const rec = await m.create('learnings', {
                 statement: statement.trim(),
                 kind,
@@ -61,9 +63,9 @@ export function LearningEditor({
                 });
               return rec;
             });
-            toast('Learning saved', {
+            toast(t('learning.saved'), {
               action: {
-                label: 'Open',
+                label: t('common.open'),
                 run: () => void navigate({ to: '/learnings/$id', params: { id: l.id } }),
               },
             });
@@ -71,13 +73,13 @@ export function LearningEditor({
             onClose();
           }}
         >
-          Save learning
+          {t('ai.action.saveLearning')}
         </Button>
       }
     >
       <div className="field">
         <label className="lbl" htmlFor="lstmt">
-          Statement
+          {t('field.statement')}
         </label>
         <textarea
           id="lstmt"
@@ -86,13 +88,13 @@ export function LearningEditor({
           autoFocus
           value={statement}
           onChange={(e) => setStatement(e.target.value)}
-          placeholder="e.g. Videos that open with dialogue held viewers longer on TikTok"
+          placeholder={t('learning.statement_placeholder')}
         />
       </div>
       <div className="form-grid">
         <div className="field">
           <label className="lbl" htmlFor="lkind">
-            Type
+            {t('task.kind_label')}
           </label>
           <select
             id="lkind"
@@ -100,14 +102,14 @@ export function LearningEditor({
             value={kind}
             onChange={(e) => setKind(e.target.value as Learning['kind'])}
           >
-            <option value="observation">Observation — what happened</option>
-            <option value="hypothesis">Hypothesis — a guess to test</option>
-            <option value="conclusion">Conclusion — repeatedly supported</option>
+            <option value="observation">{t('learning.kind_opt.observation')}</option>
+            <option value="hypothesis">{t('learning.kind_opt.hypothesis')}</option>
+            <option value="conclusion">{t('learning.kind_opt.conclusion')}</option>
           </select>
         </div>
         <div className="field">
           <label className="lbl" htmlFor="lconf">
-            Confidence
+            {t('learning.confidence')}
           </label>
           <select
             id="lconf"
@@ -115,25 +117,24 @@ export function LearningEditor({
             value={confidence}
             onChange={(e) => setConfidence(e.target.value as Learning['confidence'])}
           >
-            <option value="low">Low</option>
-            <option value="medium">Medium</option>
-            <option value="high">High</option>
+            <option value="low">{t('priority.low')}</option>
+            <option value="medium">{t('priority.med')}</option>
+            <option value="high">{t('priority.high')}</option>
           </select>
         </div>
       </div>
       {weak && (
         <div className="banner warning" style={{ borderRadius: 8 }}>
-          A conclusion usually needs at least 5 supporting pieces. You have {evidence.length}. Consider
-          “hypothesis”.
+          {t('learning.weak', { count: evidence.length })}
         </div>
       )}
       <div className="field">
-        <span className="lbl">Applies to platforms</span>
+        <span className="lbl">{t('learning.applies_to')}</span>
         <PlatformPicker value={platforms} onChange={setPlatforms} />
       </div>
       <div className="field">
         <label className="lbl" htmlFor="lnote">
-          Evidence notes
+          {t('learning.evidence_notes')}
         </label>
         <textarea
           id="lnote"
@@ -141,13 +142,15 @@ export function LearningEditor({
           rows={2}
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="Numbers, comparisons, sample size…"
+          placeholder={t('learning.note_placeholder')}
         />
       </div>
       {evidence.length > 0 && (
-        <div className="meta">Linked evidence: {evidence.map((e) => e.label).join(', ')}</div>
+        <div className="meta">
+          {t('learning.linked_list', { list: evidence.map((e) => e.label).join(', ') })}
+        </div>
       )}
-      <p className="meta">Note: results show correlation, not causation. Revalidate as new results arrive.</p>
+      <p className="meta">{t('learning.note')}</p>
     </Sheet>
   );
 }

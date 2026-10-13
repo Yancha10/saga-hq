@@ -22,6 +22,8 @@ import { undoLast } from '../data/store';
 import { CaptureSheet } from '../features/capture/CaptureSheet';
 import { CommandPalette } from '../features/search/CommandPalette';
 import { SecretaryPanel } from '../features/secretary/SecretaryPanel';
+import { t, useT } from '../i18n';
+import { historyLabel, syncCodeText } from '../i18n/render';
 import { syncStatus } from '../sync/runner';
 import { Button, IconButton } from '../ui/kit';
 import { useApp, useIsPhone, useLive, useOnline, useStore } from './context';
@@ -30,52 +32,53 @@ import { applyUpdate, updateReady } from './pwa';
 import { banners, dismissToast, toast, toasts } from './status';
 import { captureState, paletteState, secretaryState } from './ui';
 
+/** Route identifiers stay language-neutral; only labels are translated. */
 const NAV = [
-  { to: '/', label: 'Today', icon: Sun, key: 't' },
-  { to: '/inbox', label: 'Inbox', icon: Inbox, key: 'i' },
-  { to: '/ideas', label: 'Ideas', icon: Lightbulb, key: 'd' },
-  { to: '/projects', label: 'Projects', icon: FolderKanban, key: 'p' },
-  { to: '/content', label: 'Content', icon: Clapperboard, key: 'c' },
-  { to: '/calendar', label: 'Calendar', icon: CalendarDays, key: 'a' },
-  { to: '/library', label: 'Library', icon: BookOpen, key: 'l' },
-  { to: '/insights', label: 'Insights', icon: LineChart, key: 'n' },
+  { to: '/', key: 'today', icon: Sun, sc: 't' },
+  { to: '/inbox', key: 'inbox', icon: Inbox, sc: 'i' },
+  { to: '/ideas', key: 'ideas', icon: Lightbulb, sc: 'd' },
+  { to: '/projects', key: 'projects', icon: FolderKanban, sc: 'p' },
+  { to: '/content', key: 'content', icon: Clapperboard, sc: 'c' },
+  { to: '/calendar', key: 'calendar', icon: CalendarDays, sc: 'a' },
+  { to: '/library', key: 'library', icon: BookOpen, sc: 'l' },
+  { to: '/insights', key: 'insights', icon: LineChart, sc: 'n' },
 ] as const;
 
 function SyncDot() {
+  const { t, fmt } = useT();
   const st = useStore(syncStatus);
   const online = useOnline();
   const { account, startSync } = useApp();
   if (!account)
     return (
       <span className="meta" style={{ padding: '6px 12px' }}>
-        Local only · not synced
+        {t('sync.local_only')}
       </span>
     );
   const phase = !online ? 'offline' : st.phase;
-  const map: Record<string, [string, string]> = {
-    off: ['', 'Sync off'],
-    idle: [
-      'ok',
-      st.lastSyncAt
-        ? `Synced ${new Date(st.lastSyncAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`
-        : 'Synced',
-    ],
-    syncing: ['busy', 'Syncing…'],
-    offline: ['warn', 'Offline · changes saved locally'],
-    needs_auth: ['warn', 'Sync paused'],
-    blocked: ['err', 'Sync blocked'],
-    error: ['warn', 'Sync retrying'],
+  const cls: Record<string, string> = {
+    off: '',
+    idle: 'ok',
+    syncing: 'busy',
+    offline: 'warn',
+    needs_auth: 'warn',
+    blocked: 'err',
+    error: 'warn',
   };
-  const [cls, label] = map[phase] ?? ['', phase];
+  const label =
+    phase === 'idle' && st.lastSyncAt
+      ? t('sync.phase.idle_at', { time: fmt.time(st.lastSyncAt) })
+      : t(`sync.phase.${phase}`);
+  const detail = st.code && phase !== 'idle' ? syncCodeText(st.code) : label;
   return (
     <div className="hstack" style={{ padding: '6px 12px', gap: 8 }} aria-live="polite">
-      <span className={`status-dot ${cls}`} aria-hidden />
+      <span className={`status-dot ${cls[phase] ?? ''}`} aria-hidden />
       <span className="meta" style={{ flex: 1 }}>
-        {st.message && phase !== 'idle' ? st.message : label}
+        {detail}
       </span>
       {phase === 'needs_auth' && (
         <Button size="sm" onClick={() => void startSync()}>
-          Reconnect
+          {t('sync.reconnect')}
         </Button>
       )}
     </div>
@@ -83,6 +86,7 @@ function SyncDot() {
 }
 
 export function Shell({ children }: { children: ReactNode }) {
+  const { t } = useT();
   const { session, openCapture, openPalette, toggleSecretary } = useApp();
   const navigate = useNavigate();
   const path = useRouterState({ select: (s) => s.location.pathname });
@@ -121,8 +125,14 @@ export function Shell({ children }: { children: ReactNode }) {
       { combo: 'c', run: () => openCapture() },
       { combo: 't', run: () => openCapture({ mode: 'task' }) },
       { combo: '/', run: () => openPalette() },
-      { combo: 'mod+z', run: () => void undoLast(session).then((e) => e && toast(`Undone: ${e.label}`)) },
-      ...NAV.map((n) => ({ combo: `g ${n.key}`, run: () => void navigate({ to: n.to }) })),
+      {
+        combo: 'mod+z',
+        run: () =>
+          void undoLast(session).then(
+            (e) => e && toast(t('toast.undone', { label: historyLabel(e.label, e.labelParams) })),
+          ),
+      },
+      ...NAV.map((n) => ({ combo: `g ${n.sc}`, run: () => void navigate({ to: n.to }) })),
       { combo: 'g s', run: () => void navigate({ to: '/settings' }) },
       { combo: 'g k', run: () => void navigate({ to: '/tasks' }) },
     ],
@@ -140,9 +150,9 @@ export function Shell({ children }: { children: ReactNode }) {
   return (
     <div className={`app ${secretary.open ? 'with-panel' : ''}`}>
       <a href="#main" className="skip-link">
-        Skip to content
+        {t('a11y.skip')}
       </a>
-      <nav className="sidebar" aria-label="Primary">
+      <nav className="sidebar" aria-label={t('a11y.primary_nav')}>
         <div className="brand">
           <span className="brand-mark" aria-hidden>
             S
@@ -153,10 +163,10 @@ export function Shell({ children }: { children: ReactNode }) {
           variant="primary"
           onClick={() => openCapture()}
           style={{ margin: '0 4px 8px' }}
-          aria-label="Capture (C)"
+          aria-label={t('capture.button_aria')}
         >
           <Plus size={16} aria-hidden />
-          <span className="label">Capture</span>
+          <span className="label">{t('capture.button')}</span>
         </Button>
         {NAV.map((n) => (
           <Link
@@ -164,11 +174,11 @@ export function Shell({ children }: { children: ReactNode }) {
             to={n.to}
             className={`nav-item ${isActive(n.to) ? 'active' : ''}`}
             aria-current={isActive(n.to) ? 'page' : undefined}
-            title={n.label}
+            title={t(`nav.${n.key}`)}
           >
             <n.icon size={17} aria-hidden />
-            <span className="label">{n.label}</span>
-            <span className="rail-label">{n.label}</span>
+            <span className="label">{t(`nav.${n.key}`)}</span>
+            <span className="rail-label">{t(`nav.${n.key}`)}</span>
             {n.to === '/inbox' && inboxCount > 0 && <span className="count">{inboxCount}</span>}
           </Link>
         ))}
@@ -177,10 +187,14 @@ export function Shell({ children }: { children: ReactNode }) {
             <span className="label">{p.name}</span>
           </Link>
         ))}
-        <Link to="/tasks" className={`nav-item ${isActive('/tasks') ? 'active' : ''}`} title="All tasks">
+        <Link
+          to="/tasks"
+          className={`nav-item ${isActive('/tasks') ? 'active' : ''}`}
+          title={t('nav.tasks_all')}
+        >
           <ListChecks size={17} aria-hidden />
-          <span className="label">All tasks</span>
-          <span className="rail-label">Tasks</span>
+          <span className="label">{t('nav.tasks_all')}</span>
+          <span className="rail-label">{t('nav.tasks')}</span>
         </Link>
         <div className="nav-sep" />
         <button
@@ -188,11 +202,11 @@ export function Shell({ children }: { children: ReactNode }) {
           className="nav-item"
           onClick={openPalette}
           style={{ border: 0, background: 'none', cursor: 'pointer' }}
-          title="Search (⌘K)"
+          title={`${t('nav.search_commands')} (⌘K)`}
         >
           <Search size={17} aria-hidden />
-          <span className="label">Search & commands</span>
-          <span className="rail-label">Search</span>
+          <span className="label">{t('nav.search_commands')}</span>
+          <span className="rail-label">{t('nav.search')}</span>
           <span className="count">⌘K</span>
         </button>
         <button
@@ -200,22 +214,22 @@ export function Shell({ children }: { children: ReactNode }) {
           className={`nav-item ${secretary.open ? 'active' : ''}`}
           onClick={() => toggleSecretary()}
           style={{ border: 0, background: 'none', cursor: 'pointer' }}
-          title="Secretary (⌘J)"
+          title={`${t('nav.secretary')} (⌘J)`}
         >
           <Sparkles size={17} aria-hidden />
-          <span className="label">Secretary</span>
-          <span className="rail-label">Secretary</span>
+          <span className="label">{t('nav.secretary')}</span>
+          <span className="rail-label">{t('nav.secretary')}</span>
           <span className="count">⌘J</span>
         </button>
         <div className="sidebar-foot">
           <Link
             to="/settings"
             className={`nav-item ${isActive('/settings') ? 'active' : ''}`}
-            title="Settings"
+            title={t('nav.settings')}
           >
             <Settings size={17} aria-hidden />
-            <span className="label">Settings</span>
-            <span className="rail-label">Settings</span>
+            <span className="label">{t('nav.settings')}</span>
+            <span className="rail-label">{t('nav.settings')}</span>
           </Link>
           <div className="hide-rail">
             <SyncDot />
@@ -224,29 +238,25 @@ export function Shell({ children }: { children: ReactNode }) {
       </nav>
 
       <main className="main" id="main" tabIndex={-1}>
-        <div className="banners" role="region" aria-label="Status">
+        <div className="banners" role="region" aria-label={t('a11y.status_region')}>
           {update && (
             <div className="banner info">
-              <RefreshCw size={15} aria-hidden /> A new version of Saga HQ is ready.
+              <RefreshCw size={15} aria-hidden /> {t('pwa.update_ready')}
               <span className="spacer" />
               <Button
                 size="sm"
-                onClick={() =>
-                  void applyUpdate().then(
-                    (ok) => !ok && toast('Finish your current edit first — the update will wait.'),
-                  )
-                }
+                onClick={() => void applyUpdate().then((ok) => !ok && toast(t('pwa.update_wait')))}
               >
-                Reload to update
+                {t('pwa.reload_update')}
               </Button>
             </div>
           )}
           {bannerList.map((b) => (
             <div key={b.id} className={`banner ${b.kind}`} role={b.kind === 'error' ? 'alert' : 'status'}>
-              <span style={{ flex: 1 }}>{b.message}</span>
+              <span style={{ flex: 1 }}>{t(b.msgKey, b.params)}</span>
               {b.action && (
                 <Button size="sm" onClick={b.action.run}>
-                  {b.action.label}
+                  {t(b.action.labelKey)}
                 </Button>
               )}
             </div>
@@ -261,7 +271,7 @@ export function Shell({ children }: { children: ReactNode }) {
       </main>
 
       {secretary.open && (
-        <aside className="panel" aria-label="Secretary">
+        <aside className="panel" aria-label={t('nav.secretary')}>
           <SecretaryPanel
             focus={secretary.focus}
             initialIntent={secretary.intent}
@@ -271,23 +281,28 @@ export function Shell({ children }: { children: ReactNode }) {
         </aside>
       )}
 
-      <nav className="bottom-nav" aria-label="Primary">
+      <nav className="bottom-nav" aria-label={t('a11y.primary_nav')}>
         <Link to="/" aria-current={isActive('/') ? 'page' : undefined}>
           <Sun size={21} aria-hidden />
-          Today
+          {t('nav.today')}
         </Link>
         <Link to="/ideas" aria-current={isActive('/ideas') ? 'page' : undefined}>
           <Lightbulb size={21} aria-hidden />
-          Ideas
+          {t('nav.ideas')}
         </Link>
-        <button type="button" className="capture-btn" onClick={() => openCapture()} aria-label="Capture">
+        <button
+          type="button"
+          className="capture-btn"
+          onClick={() => openCapture()}
+          aria-label={t('capture.button')}
+        >
           <span className="plus">
             <Plus size={24} aria-hidden />
           </span>
         </button>
         <Link to="/content" aria-current={isActive('/content') ? 'page' : undefined}>
           <Clapperboard size={21} aria-hidden />
-          Content
+          {t('nav.content')}
         </Link>
         <Link
           to="/more"
@@ -298,7 +313,8 @@ export function Shell({ children }: { children: ReactNode }) {
           }
         >
           <MenuIcon size={21} aria-hidden />
-          More{inboxCount > 0 ? ` · ${inboxCount}` : ''}
+          {t('nav.more')}
+          {inboxCount > 0 ? ` · ${inboxCount}` : ''}
         </Link>
       </nav>
 
@@ -310,22 +326,22 @@ export function Shell({ children }: { children: ReactNode }) {
       <CommandPalette open={palette} onClose={() => paletteState.set(false)} />
 
       <div className="toasts" aria-live="polite">
-        {toastList.map((t) => (
-          <div key={t.id} className={`toast ${t.kind}`} role={t.kind === 'error' ? 'alert' : 'status'}>
-            <span className="grow">{t.message}</span>
-            {t.action && (
+        {toastList.map((x) => (
+          <div key={x.id} className={`toast ${x.kind}`} role={x.kind === 'error' ? 'alert' : 'status'}>
+            <span className="grow">{x.message}</span>
+            {x.action && (
               <Button
                 size="sm"
                 variant="ghost"
                 onClick={() => {
-                  t.action!.run();
-                  dismissToast(t.id);
+                  x.action!.run();
+                  dismissToast(x.id);
                 }}
               >
-                {t.action.label}
+                {x.action.label}
               </Button>
             )}
-            <IconButton label="Dismiss" size="sm" onClick={() => dismissToast(t.id)}>
+            <IconButton label={t('common.dismiss')} size="sm" onClick={() => dismissToast(x.id)}>
               <X size={14} />
             </IconButton>
           </div>
@@ -336,6 +352,7 @@ export function Shell({ children }: { children: ReactNode }) {
 }
 
 function SyncDotMobile() {
+  useT();
   const st = useStore(syncStatus);
   const online = useOnline();
   const { account, startSync } = useApp();
@@ -344,11 +361,11 @@ function SyncDotMobile() {
   return (
     <div className="banner warning">
       <span style={{ flex: 1 }}>
-        {!online ? 'Offline — everything is saved on this device.' : (st.message ?? 'Sync paused')}
+        {!online ? t('sync.offline_banner') : syncCodeText(st.code) || t('sync.phase.needs_auth')}
       </span>
       {online && st.phase === 'needs_auth' && (
         <Button size="sm" onClick={() => void startSync()}>
-          Reconnect
+          {t('sync.reconnect')}
         </Button>
       )}
     </div>

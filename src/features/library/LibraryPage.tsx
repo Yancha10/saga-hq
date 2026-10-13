@@ -6,14 +6,16 @@ import { toast } from '../../app/status';
 import { displayTitleForUrl, parseUrl, safeHttpUrl } from '../../core/url';
 import type { LibraryItem } from '../../data/schema';
 import { create } from '../../data/store';
+import { fmt, t, useT } from '../../i18n';
 import { Button, Chip, Empty, Sheet, Tabs } from '../../ui/kit';
 import { PageHeader } from '../../ui/PageHeader';
-import { MediaThumb, ProjectSelect } from '../common';
+import { libraryTitle, MediaThumb, ProjectSelect } from '../common';
 
 type Role = 'all' | 'inspiration' | 'reference' | 'asset';
 const PAGE = 120;
 
 export function LibraryPage() {
+  useT();
   const navigate = useNavigate();
   const [role, setRole] = useState<Role>('all');
   const [view, setView] = useState<'grid' | 'list'>('grid');
@@ -52,68 +54,67 @@ export function LibraryPage() {
   return (
     <div className="page">
       <PageHeader
-        title="Library"
-        sub="Research, references and assets — the original URL is always kept."
+        title={t('nav.library')}
+        sub={t('library.sub')}
         actions={
           <Button variant="primary" onClick={() => setAdd(true)}>
-            <Plus size={15} /> Add
+            <Plus size={15} /> {t('common.add')}
           </Button>
         }
       />
       <div className="hstack" style={{ marginBottom: 12 }}>
         <Tabs
-          label="Role"
+          label={t('library.role_label')}
           value={role}
           onChange={(v) => {
             setRole(v);
             setLimit(PAGE);
           }}
           options={[
-            { value: 'all', label: 'All' },
-            { value: 'inspiration', label: 'Research' },
-            { value: 'reference', label: 'References' },
-            { value: 'asset', label: 'Assets' },
+            { value: 'all', label: t('common.all') },
+            { value: 'inspiration', label: t('library.tab.inspiration') },
+            { value: 'reference', label: t('library.tab.reference') },
+            { value: 'asset', label: t('library.tab.asset') },
           ]}
         />
         <input
           className="input"
           style={{ maxWidth: 220 }}
-          placeholder="Filter…"
+          placeholder={t('common.filter_ellipsis')}
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          aria-label="Filter library"
+          aria-label={t('library.filter_aria')}
         />
         <div style={{ width: 180 }}>
           <ProjectSelect value={project} onChange={setProject} />
         </div>
         <Chip on={unused} onClick={() => setUnused((v) => !v)}>
-          Unused
+          {t('library.unused')}
         </Chip>
         <Chip on={archived} onClick={() => setArchived((v) => !v)}>
-          Archived
+          {t('common.archived')}
         </Chip>
         <span className="spacer" />
         <Tabs
-          label="Layout"
+          label={t('library.layout')}
           value={view}
           onChange={setView}
           options={[
-            { value: 'grid', label: 'Grid' },
-            { value: 'list', label: 'List' },
+            { value: 'grid', label: t('library.grid') },
+            { value: 'list', label: t('content.view.list') },
           ]}
         />
       </div>
       {list.length === 0 ? (
         <Empty
-          title={items.length ? 'Nothing matches' : 'Library is empty'}
+          title={items.length ? t('common.nothing_matches') : t('library.empty')}
           action={
             <Button variant="primary" onClick={() => setAdd(true)}>
-              Save a link or note
+              {t('library.save_link_note')}
             </Button>
           }
         >
-          Save trends, posts, visual styles, references and assets. Links from Inbox land here when you triage
-          them.
+          {t('library.empty_body')}
         </Empty>
       ) : view === 'grid' ? (
         <div className="lib-grid">
@@ -138,10 +139,10 @@ export function LibraryPage() {
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  {r.title || r.originalUrl || 'Untitled'}
+                  {libraryTitle(r)}
                 </div>
                 <div className="meta">
-                  {r.role === 'inspiration' ? 'research' : r.role} · {r.kind}
+                  {t(`library.role.${r.role}`)} · {t(`library.kind.${r.kind}`)}
                   {r.site ? ` · ${r.site}` : ''}
                 </div>
               </div>
@@ -154,9 +155,9 @@ export function LibraryPage() {
             <Link key={r.id} to="/library/$id" params={{ id: r.id }} className="row">
               <MediaThumb mediaId={r.mediaId} url={r.thumbUrl} alt="" />
               <div className="grow">
-                <div className="title">{r.title || r.originalUrl || 'Untitled'}</div>
+                <div className="title">{libraryTitle(r)}</div>
                 <div className="sub">
-                  {r.role === 'inspiration' ? 'research' : r.role} · {r.kind}
+                  {t(`library.role.${r.role}`)} · {t(`library.kind.${r.kind}`)}
                   {r.whyRelevant ? ` · ${r.whyRelevant}` : ''}
                 </div>
               </div>
@@ -166,7 +167,7 @@ export function LibraryPage() {
       )}
       {list.length > limit && (
         <Button variant="ghost" onClick={() => setLimit((l) => l + PAGE)} style={{ marginTop: 12 }}>
-          Show more ({list.length - limit})
+          {t('library.show_more', { n: list.length - limit })}
         </Button>
       )}
       <AddLibrary
@@ -190,6 +191,7 @@ function AddLibrary({
   onCreated: (id: string) => void;
   defaultProject: string | null;
 }) {
+  useT();
   const s = useSession();
   const [url, setUrl] = useState('');
   const [title, setTitle] = useState('');
@@ -200,23 +202,20 @@ function AddLibrary({
     const safe = url.trim()
       ? safeHttpUrl(/^https?:/i.test(url.trim()) ? url.trim() : `https://${url.trim()}`)
       : null;
-    if (url.trim() && !safe) return toast('That does not look like a web address.', { kind: 'error' });
+    if (url.trim() && !safe) return toast(t('library.bad_url'), { kind: 'error' });
     const p = safe ? parseUrl(safe) : null;
     if (p) {
       const dup = (await s.db.library.where('canonicalUrl').equals(p.canonical).toArray()).find(
         (x) => !x.deletedAt,
       );
-      if (
-        dup &&
-        !confirm(`You saved this link on ${new Date(dup.createdAt).toLocaleDateString()}. Save again?`)
-      ) {
+      if (dup && !confirm(t('library.dup_confirm', { date: fmt.date(dup.createdAt) }))) {
         onClose();
         onCreated(dup.id);
         return;
       }
     }
     const r = await create(s, 'library', {
-      title: title.trim() || (p ? displayTitleForUrl(p) : notes.trim().slice(0, 80) || 'Note'),
+      title: title.trim() || (p ? displayTitleForUrl(p) : notes.trim().slice(0, 80)),
       role,
       kind: p
         ? p.kind === 'video'
@@ -252,20 +251,20 @@ function AddLibrary({
     <Sheet
       open={open}
       onClose={onClose}
-      title="Add to Library"
+      title={t('library.add_title')}
       footer={
         <Button
           variant="primary"
           onClick={() => void save()}
           disabled={!url.trim() && !notes.trim() && !title.trim()}
         >
-          Save
+          {t('common.save')}
         </Button>
       }
     >
       <div className="field">
         <label className="lbl" htmlFor="lurl">
-          URL (optional)
+          {t('library.url_optional')}
         </label>
         <input
           id="lurl"
@@ -278,19 +277,19 @@ function AddLibrary({
       </div>
       <div className="field">
         <label className="lbl" htmlFor="ltitle">
-          Title
+          {t('common.title')}
         </label>
         <input
           id="ltitle"
           className="input"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Leave empty to use the link"
+          placeholder={t('library.title_placeholder')}
         />
       </div>
       <div className="field">
         <label className="lbl" htmlFor="lnotes">
-          Notes / why it matters
+          {t('library.notes_why')}
         </label>
         <textarea
           id="lnotes"
@@ -303,7 +302,7 @@ function AddLibrary({
       <div className="form-grid">
         <div className="field">
           <label className="lbl" htmlFor="lrole">
-            Role
+            {t('library.role_label')}
           </label>
           <select
             id="lrole"
@@ -311,20 +310,17 @@ function AddLibrary({
             value={role}
             onChange={(e) => setRole(e.target.value as LibraryItem['role'])}
           >
-            <option value="inspiration">Research / inspiration</option>
-            <option value="reference">Reference (guides creation)</option>
-            <option value="asset">Asset (used in production)</option>
+            <option value="inspiration">{t('library.role_opt.inspiration')}</option>
+            <option value="reference">{t('library.role_opt.reference')}</option>
+            <option value="asset">{t('library.role_opt.asset')}</option>
           </select>
         </div>
         <div className="field">
-          <span className="lbl">Project</span>
+          <span className="lbl">{t('common.project')}</span>
           <ProjectSelect value={projectId} onChange={setProjectId} />
         </div>
       </div>
-      <p className="meta">
-        Saga HQ does not fetch pages (no server). Titles for YouTube, TikTok, Instagram and X links are
-        inferred locally.
-      </p>
+      <p className="meta">{t('library.no_fetch')}</p>
     </Sheet>
   );
 }

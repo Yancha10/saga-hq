@@ -5,11 +5,11 @@ test('phone: bottom navigation, capture sheet as bottom sheet, content list (no 
   page,
 }) => {
   await startLocal(page);
-  const nav = page.getByRole('navigation', { name: 'Primary' }).last();
+  const nav = page.getByRole('navigation', { name: 'Main navigation' }).last();
   await expect(nav.getByRole('link', { name: 'Today' })).toBeVisible();
   await nav.getByRole('button', { name: 'Capture' }).click();
   await expect(page.getByRole('dialog', { name: 'Capture' })).toBeVisible();
-  await page.getByRole('textbox', { name: "What's on your mind?" }).fill('Thumb capture');
+  await page.getByRole('textbox', { name: 'What’s on your mind?' }).fill('Thumb capture');
   await page.getByRole('button', { name: 'Save' }).click();
   await nav.getByRole('link', { name: 'Content' }).click();
   await expect(page.getByRole('heading', { name: 'Content' }).first()).toBeVisible();

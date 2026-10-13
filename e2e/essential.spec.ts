@@ -12,7 +12,7 @@ test('essential: open, local workspace, capture persists across reload, navigati
   const isPhone = (page.viewportSize()?.width ?? 1000) < 640;
   if (isPhone) {
     await page.getByRole('button', { name: 'Capture', exact: true }).last().click();
-    await page.getByRole('textbox', { name: "What's on your mind?" }).fill('Phone capture idea');
+    await page.getByRole('textbox', { name: 'What’s on your mind?' }).fill('Phone capture idea');
     await page.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByText('Saved to Inbox')).toBeVisible();
   } else {

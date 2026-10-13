@@ -6,6 +6,7 @@ import { toast } from '../../app/status';
 import { createVariant, ideaToContent } from '../../data/domain';
 import type { Idea, Platform } from '../../data/schema';
 import { update } from '../../data/store';
+import { t, useT } from '../../i18n';
 import { AutoText, Button, Empty, Pill, Section, Sheet } from '../../ui/kit';
 import { PageHeader } from '../../ui/PageHeader';
 import {
@@ -18,18 +19,14 @@ import {
   RecordMenu,
   References,
   TagEditor,
+  templateName,
 } from '../common';
 import { IdeaLab } from './IdeaLab';
 
-const SCORE_DIMS = [
-  { k: 'hook', label: 'Hook' },
-  { k: 'originality', label: 'Originality' },
-  { k: 'effort', label: 'Ease (low effort)' },
-  { k: 'timeliness', label: 'Timeliness' },
-  { k: 'fit', label: 'Strategic fit' },
-] as const;
+const SCORE_DIMS = ['hook', 'originality', 'effort', 'timeliness', 'fit'] as const;
 
 export function IdeaDetail() {
+  useT();
   const { id } = useParams({ strict: false }) as { id: string };
   const s = useSession();
   const navigate = useNavigate();
@@ -68,7 +65,7 @@ export function IdeaDetail() {
   if (!idea)
     return (
       <div className="page">
-        <Empty title="Idea not found">It may have been deleted permanently.</Empty>
+        <Empty title={t('ideas.not_found')}>{t('common.maybe_deleted')}</Empty>
       </div>
     );
   const up = (patch: Partial<Idea>, key?: string) =>
@@ -78,17 +75,17 @@ export function IdeaDetail() {
     <div className="page narrow" style={{ maxWidth: 1180 }}>
       <PageHeader
         back
-        title="Idea"
+        title={t('ideas.idea')}
         sub={
           parent ? (
             <>
-              Variant of{' '}
+              {t('ideas.variant_of_prefix')}{' '}
               <Link to="/ideas/$id" params={{ id: parent.id }}>
                 {parent.title}
               </Link>
             </>
           ) : idea.origin?.source === 'capture' ? (
-            'From a capture'
+            t('ideas.from_capture')
           ) : undefined
         }
         actions={
@@ -97,17 +94,17 @@ export function IdeaDetail() {
               onClick={() => void up({ status: idea.status === 'shortlisted' ? 'new' : 'shortlisted' })}
             >
               <Star size={15} fill={idea.status === 'shortlisted' ? 'currentColor' : 'none'} />{' '}
-              {idea.status === 'shortlisted' ? 'Shortlisted' : 'Shortlist'}
+              {idea.status === 'shortlisted' ? t('idea.status.shortlisted') : t('ideas.shortlist')}
             </Button>
             <Button variant="primary" onClick={() => setMakeOpen(true)}>
-              <Clapperboard size={15} /> Make content
+              <Clapperboard size={15} /> {t('ideas.make_content')}
             </Button>
             <RecordMenu
-              label="Idea actions"
+              label={t('ideas.actions')}
               items={[
                 {
                   id: 'park',
-                  label: idea.status === 'parked' ? 'Unpark' : 'Park',
+                  label: idea.status === 'parked' ? t('ideas.unpark') : t('ideas.park'),
                   run: () => void up({ status: idea.status === 'parked' ? 'new' : 'parked' }),
                 },
                 ...archiveTrashItems(s, 'ideas', idea, () => void navigate({ to: '/ideas' })),
@@ -124,58 +121,58 @@ export function IdeaDetail() {
             value={idea.title}
             onSave={(v) => up({ title: v }, 'title')}
             className="title plain"
-            ariaLabel="Idea title"
-            placeholder="Idea title"
+            ariaLabel={t('ideas.title_label')}
+            placeholder={t('ideas.title_label')}
           />
           <div className="field">
-            <span className="lbl">Raw idea</span>
+            <span className="lbl">{t('ideas.raw')}</span>
             <AutoText
               multiline
               value={idea.raw}
               onSave={(v) => up({ raw: v || null }, 'raw')}
-              ariaLabel="Raw idea"
-              placeholder="The thought as it came…"
+              ariaLabel={t('ideas.raw')}
+              placeholder={t('ideas.raw_placeholder')}
             />
           </div>
           <div className="field">
-            <span className="lbl">Hook</span>
+            <span className="lbl">{t('field.hook')}</span>
             <AutoText
               value={idea.hook}
               onSave={(v) => up({ hook: v || null }, 'hook')}
-              ariaLabel="Hook"
-              placeholder="The first second / first line"
+              ariaLabel={t('field.hook')}
+              placeholder={t('ideas.hook_placeholder')}
             />
           </div>
           <div className="field">
-            <span className="lbl">Concept</span>
+            <span className="lbl">{t('field.concept')}</span>
             <AutoText
               multiline
               value={idea.concept}
               onSave={(v) => up({ concept: v || null }, 'concept')}
-              ariaLabel="Concept"
-              placeholder="What happens, the story, the twist…"
+              ariaLabel={t('field.concept')}
+              placeholder={t('ideas.concept_placeholder')}
               rows={4}
             />
           </div>
           <div className="field">
-            <span className="lbl">Why it may work</span>
+            <span className="lbl">{t('ideas.why')}</span>
             <AutoText
               multiline
               value={idea.whyItWorks}
               onSave={(v) => up({ whyItWorks: v || null }, 'why')}
-              ariaLabel="Why it may work"
+              ariaLabel={t('ideas.why')}
               rows={2}
             />
           </div>
-          <Section title="References">
+          <Section title={t('section.references')}>
             <References fromType="idea" fromId={idea.id} projectId={idea.projectId} />
           </Section>
           <Section
-            title="Variants"
+            title={t('ideas.variants')}
             count={variants.length}
             action={
               <Button size="sm" onClick={() => setVariantOpen(true)}>
-                <GitBranch size={14} /> New variant
+                <GitBranch size={14} /> {t('ideas.new_variant')}
               </Button>
             }
           >
@@ -184,26 +181,26 @@ export function IdeaDetail() {
                 {variants.map((v) => (
                   <Link key={v.id} to="/ideas/$id" params={{ id: v.id }} className="row">
                     <div className="grow">
-                      <div className="title">{v.title}</div>
+                      <div className="title">{v.title || t('ideas.untitled')}</div>
                       <div className="sub">
                         {v.variantLabel}
-                        {v.origin?.source === 'ai' ? ' · ✧ AI-suggested, user-kept' : ''}
+                        {v.origin?.source === 'ai' ? ` · ✧ ${t('ideas.ai_kept')}` : ''}
                       </div>
                     </div>
-                    <Pill>{v.status}</Pill>
+                    <Pill>{t(`idea.status.${v.status}`)}</Pill>
                   </Link>
                 ))}
               </div>
             ) : (
-              <div className="meta">Branch the idea without touching the original.</div>
+              <div className="meta">{t('ideas.variants_hint')}</div>
             )}
           </Section>
-          <Section title="Notes">
+          <Section title={t('common.notes')}>
             <AutoText
               multiline
               value={idea.notes}
               onSave={(v) => up({ notes: v || null }, 'notes')}
-              ariaLabel="Notes"
+              ariaLabel={t('common.notes')}
             />
           </Section>
         </div>
@@ -212,7 +209,7 @@ export function IdeaDetail() {
             <div className="form-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
               <div className="field">
                 <label className="lbl" htmlFor="istatus">
-                  Status
+                  {t('common.status')}
                 </label>
                 <select
                   id="istatus"
@@ -220,15 +217,16 @@ export function IdeaDetail() {
                   value={idea.status}
                   onChange={(e) => void up({ status: e.target.value as Idea['status'] })}
                 >
-                  <option value="new">New</option>
-                  <option value="shortlisted">Shortlisted</option>
-                  <option value="committed">In content</option>
-                  <option value="parked">Parked</option>
+                  {(['new', 'shortlisted', 'committed', 'parked'] as const).map((st) => (
+                    <option key={st} value={st}>
+                      {t(`idea.status.${st}`)}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="field">
                 <label className="lbl" htmlFor="iprio">
-                  Priority
+                  {t('common.priority')}
                 </label>
                 <select
                   id="iprio"
@@ -236,15 +234,15 @@ export function IdeaDetail() {
                   value={idea.priority ?? ''}
                   onChange={(e) => void up({ priority: (e.target.value || null) as Idea['priority'] })}
                 >
-                  <option value="">None</option>
-                  <option value="low">Low</option>
-                  <option value="med">Medium</option>
-                  <option value="high">High</option>
+                  <option value="">{t('priority.none')}</option>
+                  <option value="low">{t('priority.low')}</option>
+                  <option value="med">{t('priority.med')}</option>
+                  <option value="high">{t('priority.high')}</option>
                 </select>
               </div>
               <div className="field" style={{ gridColumn: '1 / -1' }}>
                 <label className="lbl" htmlFor="iproj">
-                  Project
+                  {t('common.project')}
                 </label>
                 <ProjectSelect
                   id="iproj"
@@ -253,48 +251,48 @@ export function IdeaDetail() {
                 />
               </div>
               <div className="field">
-                <span className="lbl">Format</span>
+                <span className="lbl">{t('common.format')}</span>
                 <AutoText
                   value={idea.format}
                   onSave={(v) => up({ format: v || null })}
-                  ariaLabel="Format"
-                  placeholder="15s reel, carousel…"
+                  ariaLabel={t('common.format')}
+                  placeholder={t('ideas.format_placeholder')}
                 />
               </div>
               <div className="field">
-                <span className="lbl">Tone</span>
+                <span className="lbl">{t('ideas.tone')}</span>
                 <AutoText
                   value={idea.tone}
                   onSave={(v) => up({ tone: v || null })}
-                  ariaLabel="Tone"
-                  placeholder="funny, dark…"
+                  ariaLabel={t('ideas.tone')}
+                  placeholder={t('ideas.tone_placeholder')}
                 />
               </div>
             </div>
             <div className="field">
-              <span className="lbl">Platforms</span>
+              <span className="lbl">{t('common.platforms')}</span>
               <PlatformPicker value={idea.platforms ?? []} onChange={(v) => void up({ platforms: v })} />
             </div>
             <div className="field">
-              <span className="lbl">Characters / people</span>
-              <TagEditor value={idea.cast} onChange={(v) => void up({ cast: v })} label="Person" />
+              <span className="lbl">{t('ideas.cast')}</span>
+              <TagEditor value={idea.cast} onChange={(v) => void up({ cast: v })} labelKey="common.person" />
             </div>
             <div className="field">
-              <span className="lbl">Tags</span>
+              <span className="lbl">{t('common.tags')}</span>
               <TagEditor value={idea.tags} onChange={(v) => void up({ tags: v })} />
             </div>
             {ws?.scoringEnabled && (
               <div className="field">
-                <span className="lbl">Scores (optional, your judgement)</span>
+                <span className="lbl">{t('ideas.scores')}</span>
                 {SCORE_DIMS.map((d) => {
-                  const sc = idea.scores?.[d.k];
+                  const sc = idea.scores?.[d];
                   return (
-                    <div key={d.k} className="hstack" style={{ justifyContent: 'space-between' }}>
+                    <div key={d} className="hstack" style={{ justifyContent: 'space-between' }}>
                       <span className="meta">
-                        {d.label}
-                        {sc?.by === 'ai' ? ' (AI, unconfirmed)' : ''}
+                        {t(`ideas.score.${d}`)}
+                        {sc?.by === 'ai' ? ` (${t('ideas.ai_unconfirmed')})` : ''}
                       </span>
-                      <span className="chips" role="group" aria-label={d.label}>
+                      <span className="chips" role="group" aria-label={t(`ideas.score.${d}`)}>
                         {([1, 2, 3] as const).map((n) => (
                           <button
                             key={n}
@@ -302,10 +300,10 @@ export function IdeaDetail() {
                             className="chip"
                             aria-pressed={sc?.value === n}
                             onClick={() =>
-                              void up({ scores: { ...(idea.scores ?? {}), [d.k]: { value: n, by: 'user' } } })
+                              void up({ scores: { ...(idea.scores ?? {}), [d]: { value: n, by: 'user' } } })
                             }
                           >
-                            {['low', 'med', 'high'][n - 1]}
+                            {t(`priority.${(['low', 'med', 'high'] as const)[n - 1]}`)}
                           </button>
                         ))}
                       </span>
@@ -317,10 +315,10 @@ export function IdeaDetail() {
           </div>
           {contents.length > 0 && (
             <div className="box">
-              <h4>Became content</h4>
+              <h4>{t('ideas.became_content')}</h4>
               {contents.map((c) => (
                 <Link key={c.id} to="/content/$id" params={{ id: c.id }} className="hstack">
-                  {c.title} <Pill>{c.status}</Pill>
+                  {c.title || t('common.untitled')} <Pill>{t(`content.status.${c.status}`)}</Pill>
                 </Link>
               ))}
             </div>
@@ -330,10 +328,10 @@ export function IdeaDetail() {
             variant="ghost"
             onClick={() => toggleSecretary({ intent: 'creative', focus: { entity: 'idea', id: idea.id } })}
           >
-            <Sparkles size={15} /> Discuss with Secretary
+            <Sparkles size={15} /> {t('ideas.discuss')}
           </Button>
           <details>
-            <summary className="meta">History</summary>
+            <summary className="meta">{t('common.history')}</summary>
             <HistoryList recordId={idea.id} />
           </details>
         </div>
@@ -348,35 +346,39 @@ export function IdeaDetail() {
       <Sheet
         open={variantOpen}
         onClose={() => setVariantOpen(false)}
-        title="New variant"
+        title={t('ideas.new_variant')}
         footer={
           <Button
             variant="primary"
             onClick={async () => {
-              const v = await createVariant(s, idea, variantLabel.trim() || `Version ${variants.length + 2}`);
+              const v = await createVariant(
+                s,
+                idea,
+                variantLabel.trim() || t('ideas.version_n', { n: variants.length + 2 }),
+              );
               setVariantOpen(false);
               setVariantLabel('');
               void navigate({ to: '/ideas/$id', params: { id: v.id } });
             }}
           >
-            Create variant
+            {t('h.variant')}
           </Button>
         }
       >
         <div className="field">
           <label className="lbl" htmlFor="vlabel">
-            Label
+            {t('common.label')}
           </label>
           <input
             id="vlabel"
             className="input"
             autoFocus
-            placeholder="e.g. Darker, 15s cut, different ending"
+            placeholder={t('ideas.variant_placeholder')}
             value={variantLabel}
             onChange={(e) => setVariantLabel(e.target.value)}
           />
         </div>
-        <p className="meta">The variant copies the hook and concept. The original idea is never changed.</p>
+        <p className="meta">{t('ideas.variant_note')}</p>
       </Sheet>
     </div>
   );
@@ -393,18 +395,19 @@ export function MakeContentSheet({
   idea: Idea;
   onDone: (contentId: string) => void;
 }) {
+  useT();
   const s = useSession();
   const ws = useLive((ss) => ss.db.workspace.get('workspace'), [], undefined);
   const [tpl, setTpl] = useState('reel');
   const [platforms, setPlatforms] = useState<Platform[] | null>(null);
   const [projectId, setProjectId] = useState<string | null | undefined>(undefined);
-  const template = ws?.formatTemplates.find((t) => t.id === tpl);
+  const template = ws?.formatTemplates.find((tp) => tp.id === tpl);
   const plats = platforms ?? (idea.platforms?.length ? idea.platforms : (template?.platforms ?? []));
   return (
     <Sheet
       open={open}
       onClose={onClose}
-      title="Turn idea into content"
+      title={t('h.ideaToContent')}
       footer={
         <Button
           variant="primary"
@@ -414,38 +417,36 @@ export function MakeContentSheet({
               platforms: plats,
               projectId: projectId === undefined ? idea.projectId : projectId,
             });
-            toast('Content created — the idea is kept and linked');
+            toast(t('ideas.content_created'));
             onClose();
             onDone(c.id);
           }}
         >
-          Create content
+          {t('ai.action.createContent')}
         </Button>
       }
     >
       <div className="field">
         <label className="lbl" htmlFor="mformat">
-          Format
+          {t('common.format')}
         </label>
         <select id="mformat" className="select" value={tpl} onChange={(e) => setTpl(e.target.value)}>
-          {(ws?.formatTemplates ?? []).map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.name}
+          {(ws?.formatTemplates ?? []).map((tp) => (
+            <option key={tp.id} value={tp.id}>
+              {templateName(tp)}
             </option>
           ))}
         </select>
       </div>
       <div className="field">
-        <span className="lbl">Platforms</span>
+        <span className="lbl">{t('common.platforms')}</span>
         <PlatformPicker value={plats} onChange={setPlatforms} />
       </div>
       <div className="field">
-        <span className="lbl">Project</span>
+        <span className="lbl">{t('common.project')}</span>
         <ProjectSelect value={projectId === undefined ? idea.projectId : projectId} onChange={setProjectId} />
       </div>
-      <p className="meta">
-        Hook, concept, cast and references are carried over. You can create several pieces from one idea.
-      </p>
+      <p className="meta">{t('ideas.make_note')}</p>
     </Sheet>
   );
 }

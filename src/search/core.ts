@@ -127,23 +127,67 @@ const TYPE_ALIASES: Record<string, SearchType> = {
   inbox: 'captures',
   capture: 'captures',
   event: 'events',
+  // Spanish aliases — accepted regardless of UI language (search is language-independent).
+  proyecto: 'projects',
+  proyectos: 'projects',
+  contenido: 'content',
+  tarea: 'tasks',
+  tareas: 'tasks',
+  investigacion: 'library',
+  investigación: 'library',
+  referencia: 'library',
+  biblioteca: 'library',
+  recurso: 'library',
+  aprendizaje: 'learnings',
+  aprendizajes: 'learnings',
+  bandeja: 'captures',
+  captura: 'captures',
+  evento: 'events',
+};
+const STATUS_ALIASES: Record<string, string> = {
+  planificado: 'planned',
+  produccion: 'producing',
+  producción: 'producing',
+  listo: 'ready',
+  programado: 'scheduled',
+  publicado: 'published',
+  revisado: 'reviewed',
+  pendiente: 'todo',
+  encurso: 'doing',
+  hecha: 'done',
+  hecho: 'done',
+  nueva: 'new',
+  preseleccionada: 'shortlisted',
+  aparcada: 'parked',
+};
+const KEY_ALIASES: Record<string, 'type' | 'status' | 'is' | 'project'> = {
+  type: 'type',
+  tipo: 'type',
+  status: 'status',
+  estado: 'status',
+  is: 'is',
+  es: 'is',
+  project: 'project',
+  proyecto: 'project',
 };
 
 export function parseQuery(q: string): ParsedQuery {
   const out: ParsedQuery = { text: '', includeArchived: false };
   const rest: string[] = [];
   for (const tok of q.trim().split(/\s+/)) {
-    const m = tok.match(/^(type|status|is|project):(.+)$/i);
-    if (!m) {
+    const m = tok.match(/^([a-z]+):(.+)$/i);
+    const k = m ? KEY_ALIASES[m[1]!.toLowerCase()] : undefined;
+    if (!m || !k) {
       rest.push(tok);
       continue;
     }
-    const [, k, v] = m;
-    if (k!.toLowerCase() === 'type' && TYPE_ALIASES[v!.toLowerCase()])
-      out.type = TYPE_ALIASES[v!.toLowerCase()];
-    else if (k!.toLowerCase() === 'status') out.status = v!.toLowerCase();
-    else if (k!.toLowerCase() === 'is' && v!.toLowerCase() === 'archived') out.includeArchived = true;
-    else if (k!.toLowerCase() === 'project') out.projectId = v;
+    const v = m[2]!;
+    const vl = v.toLowerCase();
+    if (k === 'type' && TYPE_ALIASES[vl]) out.type = TYPE_ALIASES[vl];
+    else if (k === 'status') out.status = STATUS_ALIASES[vl] ?? vl;
+    else if (k === 'is' && (vl === 'archived' || vl === 'archivado' || vl === 'archivada'))
+      out.includeArchived = true;
+    else if (k === 'project') out.projectId = v;
   }
   out.text = rest.join(' ');
   return out;

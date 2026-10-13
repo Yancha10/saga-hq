@@ -44,11 +44,13 @@ export function dismissToast(id: number): void {
 }
 
 /** Persistent (non-disappearing) problems: storage failures, sync blocked, degraded state. */
+/** Persistent problems carry an i18n key (stable code), never a pre-rendered English sentence. */
 export interface Banner {
   id: string;
   kind: 'warning' | 'error' | 'info';
-  message: string;
-  action?: { label: string; run: () => void };
+  msgKey: string;
+  params?: Record<string, string | number>;
+  action?: { labelKey: string; run: () => void };
 }
 export const banners = createStore<Banner[]>([]);
 export function setBanner(b: Banner): void {

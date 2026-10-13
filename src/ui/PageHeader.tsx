@@ -2,6 +2,7 @@ import { useRouter } from '@tanstack/react-router';
 import { ChevronLeft, Search, Sparkles } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useApp } from '../app/context';
+import { useT } from '../i18n';
 import { IconButton } from './kit';
 
 /** Desktop: inline page heading. Phone: sticky top bar with back, title, search and Secretary. */
@@ -18,19 +19,20 @@ export function PageHeader({
 }) {
   const { openPalette, toggleSecretary } = useApp();
   const router = useRouter();
+  const { t } = useT();
   return (
     <>
       <header className="topbar">
         {back && (
-          <IconButton label="Back" onClick={() => router.history.back()}>
+          <IconButton label={t('common.back')} onClick={() => router.history.back()}>
             <ChevronLeft size={20} />
           </IconButton>
         )}
         <h1>{title}</h1>
-        <IconButton label="Search" onClick={openPalette}>
+        <IconButton label={t('common.search')} onClick={openPalette}>
           <Search size={19} />
         </IconButton>
-        <IconButton label="Secretary" onClick={() => toggleSecretary()}>
+        <IconButton label={t('nav.secretary')} onClick={() => toggleSecretary()}>
           <Sparkles size={19} />
         </IconButton>
       </header>

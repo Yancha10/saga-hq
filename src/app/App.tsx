@@ -21,6 +21,9 @@ import { getMeta } from '../data/db';
 import { purgeExpired } from '../data/store';
 import { logger } from '../diagnostics/logger';
 import { downloadText } from '../features/common';
+import { LanguageSelect } from '../features/settings/LanguageSelect';
+import { t, useT } from '../i18n';
+import { errorText } from '../i18n/render';
 import { SearchClient } from '../search/client';
 import { DriveRest } from '../sync/driveRest';
 import { SyncRunner, syncStatus } from '../sync/runner';
@@ -99,7 +102,7 @@ export function App() {
         if (account)
           syncStatus.set({
             phase: 'needs_auth',
-            message: 'Sync paused — reconnect Google to resume.',
+            code: 'SYNC_NEEDS_AUTH',
             ...(await lastSync(session)),
           });
         if (!cancelled) setBoot({ kind: 'ready', session, search, account });
@@ -109,7 +112,7 @@ export function App() {
         else
           setBoot({
             kind: 'error',
-            message: (e as Error)?.message ?? 'Unknown error',
+            message: (e as Error)?.message ?? 'unknown',
             ...(ref ? { ref } : {}),
           });
       }
@@ -125,7 +128,7 @@ export function App() {
     try {
       if (!currentToken(account.accountId)) {
         if (env.e2eMocks && !env.googleClientId) {
-          toast('Drive sync is not available in the E2E mock build.');
+          toast(t('sync.mock_unavailable'));
           return;
         }
         await reconnect(account.accountId, account.email);
@@ -140,7 +143,7 @@ export function App() {
         r.start();
       } else r.kick();
     } catch (e) {
-      toast((e as Error).message, { kind: 'error' });
+      toast(errorText(e), { kind: 'error' });
     }
   }, [boot, runner]);
 
@@ -165,7 +168,7 @@ export function App() {
   if (boot.kind === 'loading')
     return (
       <div className="welcome">
-        <Spinner label="Opening workspace" />
+        <Spinner label={t('boot.opening')} />
       </div>
     );
   if (boot.kind === 'welcome') return <Welcome />;
@@ -184,6 +187,7 @@ async function lastSync(s: Session): Promise<{ lastSyncAt?: string }> {
 }
 
 export function Welcome() {
+  const { t, locale } = useT();
   const [accounts, setAccounts] = useState<AccountEntry[]>([]);
   const [locals, setLocals] = useState<LocalEntry[]>([]);
   const [busy, setBusy] = useState(false);
@@ -198,12 +202,10 @@ export function Welcome() {
           <span className="brand-mark" aria-hidden>
             S
           </span>
-          <h1 style={{ fontSize: 24 }}>Saga HQ</h1>
+          <h1 style={{ fontSize: 24, flex: 1 }}>Saga HQ</h1>
+          <LanguageSelect compact />
         </div>
-        <p className="muted">
-          Your creative operating system: ideas → production → publication → learning. Everything is stored on
-          this device first. Cloud sync uses your own Google Drive; nothing goes to a Saga server.
-        </p>
+        <p className="muted">{t('welcome.intro')}</p>
         {googleConfigured() && (
           <button
             type="button"
@@ -212,19 +214,16 @@ export function Welcome() {
             onClick={() => {
               setBusy(true);
               void signInAndOpen().catch((e) => {
-                toast((e as Error).message, { kind: 'error' });
-                alert((e as Error).message);
+                toast(errorText(e), { kind: 'error' });
                 setBusy(false);
               });
             }}
           >
             <Cloud size={22} aria-hidden />
             <span>
-              <strong>Continue with Google</strong>
+              <strong>{t('welcome.google')}</strong>
               <br />
-              <span className="meta">
-                Private workspace synced through your own Google Drive (only files Saga HQ creates).
-              </span>
+              <span className="meta">{t('welcome.google_sub')}</span>
             </span>
           </button>
         )}
@@ -240,16 +239,14 @@ export function Welcome() {
         >
           <HardDrive size={22} aria-hidden />
           <span>
-            <strong>Start locally, no account</strong>
+            <strong>{t('welcome.local')}</strong>
             <br />
-            <span className="meta">
-              Works fully offline on this device. Connect Google later if you want sync.
-            </span>
+            <span className="meta">{t('welcome.local_sub')}</span>
           </span>
         </button>
         {(accounts.length > 0 || locals.length > 0) && (
           <div className="stack">
-            <h4>Workspaces on this device</h4>
+            <h4>{t('welcome.on_device')}</h4>
             <div className="list">
               {accounts.map((a) => (
                 <button
@@ -259,7 +256,7 @@ export function Welcome() {
                   onClick={() => void switchWorkspace(accountRef(a.accountId))}
                 >
                   <div className="grow">
-                    <div className="title">{a.displayName}</div>
+                    <div className="title">{a.displayName || a.email}</div>
                     <div className="sub">{a.email}</div>
                   </div>
                 </button>
@@ -272,9 +269,10 @@ export function Welcome() {
                   onClick={() => void switchWorkspace(localRef(l.localId))}
                 >
                   <div className="grow">
-                    <div className="title">{l.name}</div>
+                    <div className="title">{l.name || t('workspace.local_default')}</div>
                     <div className="sub">
-                      Local only{l.attachedTo ? ' · copied into a Google workspace' : ''}
+                      {t('workspace.local_only')}
+                      {l.attachedTo ? ` · ${t('workspace.copied')}` : ''}
                     </div>
                   </div>
                 </button>
@@ -282,50 +280,43 @@ export function Welcome() {
             </div>
           </div>
         )}
-        {!googleConfigured() && (
-          <p className="meta">
-            Google sign-in is not configured for this build ({env.name}). Local workspaces work fully.
-          </p>
-        )}
+        {!googleConfigured() && <p className="meta">{t('welcome.no_google', { env: env.name })}</p>}
+        <span hidden>{locale}</span>
       </div>
     </div>
   );
 }
 
 function FutureScreen({ refName }: { refName: string }) {
+  const { t } = useT();
   return (
     <div className="recovery" role="alert">
       <ShieldAlert size={28} aria-hidden />
-      <h2>This workspace was saved by a newer version of Saga HQ</h2>
-      <p className="muted">
-        To protect your data, this older version will not open or modify it. Reload to get the latest version.
-        You can also export the raw data as a safety copy.
-      </p>
+      <h2>{t('boot.future_title')}</h2>
+      <p className="muted">{t('boot.future_body')}</p>
       <div className="hstack">
         <Button variant="primary" onClick={() => location.reload()}>
-          Reload
+          {t('common.reload')}
         </Button>
-        <Button onClick={() => void exportRaw(refName)}>Export raw data</Button>
+        <Button onClick={() => void exportRaw(refName)}>{t('boot.export_raw')}</Button>
       </div>
     </div>
   );
 }
 
 function ErrorScreen({ message, refName }: { message: string; refName?: string }) {
+  const { t } = useT();
   return (
     <div className="recovery" role="alert">
       <ShieldAlert size={28} aria-hidden />
-      <h2>Saga HQ could not open its local database</h2>
-      <p className="muted">
-        Nothing has been deleted. This usually happens in private browsing modes, when site storage is
-        blocked, or when the device is out of space.
-      </p>
+      <h2>{t('boot.error_title')}</h2>
+      <p className="muted">{t('boot.error_body')}</p>
       <pre className="json">{message}</pre>
       <div className="hstack">
         <Button variant="primary" onClick={() => location.reload()}>
-          Try again
+          {t('common.try_again')}
         </Button>
-        {refName && <Button onClick={() => void exportRaw(refName)}>Export raw data</Button>}
+        {refName && <Button onClick={() => void exportRaw(refName)}>{t('boot.export_raw')}</Button>}
         <Button
           onClick={() => {
             try {
@@ -336,7 +327,7 @@ function ErrorScreen({ message, refName }: { message: string; refName?: string }
             location.reload();
           }}
         >
-          Choose another workspace
+          {t('boot.choose_another')}
         </Button>
       </div>
     </div>

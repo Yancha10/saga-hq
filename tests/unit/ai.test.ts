@@ -15,6 +15,7 @@ const pack: ContextPack = {
   intent: 'producer',
   generatedAt: '',
   today: 'Tuesday',
+  locale: 'en',
   facts: ['3 items are marked Ready.'],
   notes: [],
   entities: [

@@ -36,3 +36,14 @@ npx playwright test                               # E2E: prod artifact at / and 
 - Deletions go to Trash for 30 days. Recovery points are kept before restores, imports, upgrades and large merges.
 
 See `docs/` for deployment, RISK-01, INTEROP-01 and the ADR record.
+
+## Languages (Español / English)
+
+Saga HQ is fully bilingual. The language is detected from the browser (`es*` gives Spanish,
+anything else gives English). It can be changed from the welcome screen, onboarding or
+Settings › Language, and the explicit choice is remembered on the device (`hq.locale`).
+Switching is instant and never touches workspace data, Drive files, backups or Studio handoffs.
+
+See [`docs/i18n-glossary.md`](docs/i18n-glossary.md) for the architecture, the rules for adding
+strings and the Spanish glossary. CI guards parity, missing keys, plurals and hard-coded strings
+(`tests/unit/i18n.test.ts`) and runs Spanish browser flows (`e2e/i18n*.spec.ts`).

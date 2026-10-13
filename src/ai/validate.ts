@@ -23,7 +23,10 @@ export function validateAnswer(text: string, pack: ContextPack): Validated {
     for (const sent of sentences) {
       const refs = [...sent.matchAll(/\[([A-Z]\d{1,3})\]/g)].map((m) => m[1]!);
       const badRef = refs.find((r) => !handles.has(r));
-      const isRecommendation = /recommend|suggest|could|consider|might|try|propose/i.test(sent);
+      const isRecommendation =
+        /recommend|suggest|could|consider|might|try|propose|recomiend|suger|podr[ií]a|considera|prueba|propon|quiz[aá]s/i.test(
+          sent,
+        );
       let badNum: string | undefined;
       for (const m of sent.matchAll(NUMBERISH)) {
         const tok = m[0].toLowerCase().replace(/\s/g, '');

@@ -5,8 +5,8 @@ import { applyAction, type ResolvedAction } from '../../ai/actions';
 import {
   type ContextPack,
   type Focus,
-  INTENT_LABEL,
   type Intent,
+  intentLabel,
   resolveContext,
   summarizePack,
 } from '../../ai/context';
@@ -15,33 +15,20 @@ import { ask, providerConfig, type SecretaryAnswer } from '../../ai/secretary';
 import { useApp, useLive, useSession } from '../../app/context';
 import { toast } from '../../app/status';
 import { undoLast } from '../../data/store';
+import { fmt, t, useT } from '../../i18n';
+import { errorText } from '../../i18n/render';
 import { Button, Chip, IconButton, Spinner } from '../../ui/kit';
 
-const QUICK: { intent: Intent; label: string; q: string }[] = [
-  { intent: 'brief', label: 'Brief me', q: 'What matters today?' },
-  {
-    intent: 'producer',
-    label: 'Finish fastest',
-    q: 'Which content can I finish fastest, and what exactly is missing?',
-  },
-  {
-    intent: 'producer',
-    label: 'What’s blocking?',
-    q: 'What is blocking production right now and how do I unblock it?',
-  },
-  {
-    intent: 'planner',
-    label: 'Plan my week',
-    q: 'Propose a realistic publication and production plan for the next 7 days.',
-  },
-  {
-    intent: 'analyst',
-    label: 'Explain results',
-    q: 'What do recent results suggest? Label observations and hypotheses.',
-  },
-  { intent: 'creative', label: 'New ideas', q: 'Suggest 5 new ideas grounded in my research and learnings.' },
-  { intent: 'librarian', label: 'Find…', q: '' },
+const QUICK: { k: string; intent: Intent; hasQ: boolean }[] = [
+  { k: 'brief', intent: 'brief', hasQ: true },
+  { k: 'fastest', intent: 'producer', hasQ: true },
+  { k: 'blocking', intent: 'producer', hasQ: true },
+  { k: 'week', intent: 'planner', hasQ: true },
+  { k: 'results', intent: 'analyst', hasQ: true },
+  { k: 'ideas', intent: 'creative', hasQ: true },
+  { k: 'find', intent: 'librarian', hasQ: false },
 ];
+const quickQ = (x: (typeof QUICK)[number]) => (x.hasQ ? t(`sec.quick.${x.k}.q`) : '');
 
 /** The Secretary: grounded in the workspace, facts separated from recommendations, actions as proposals. */
 export function SecretaryPanel({
@@ -55,6 +42,7 @@ export function SecretaryPanel({
   initialQuestion?: string;
   onClose: () => void;
 }) {
+  const { locale } = useT();
   const s = useSession();
   const { search } = useApp();
   const [hasAI, setHasAI] = useState<boolean | null>(null);
@@ -88,7 +76,7 @@ export function SecretaryPanel({
     return () => {
       alive = false;
     };
-  }, [intent, focus?.id, s]);
+  }, [intent, focus?.id, s, locale]);
 
   const run = async (question: string, it: Intent = intent) => {
     setBusy(true);
@@ -101,7 +89,7 @@ export function SecretaryPanel({
       const a = await ask(s, p, question);
       setAnswer(a);
     } catch (e) {
-      if ((e as Error).name !== 'SessionClosedError') toast((e as Error).message, { kind: 'error' });
+      if ((e as Error).name !== 'SessionClosedError') toast(errorText(e), { kind: 'error' });
     } finally {
       setBusy(false);
     }
@@ -109,18 +97,20 @@ export function SecretaryPanel({
   const copyPrompt = async () => {
     const p = pack ?? (await resolveContext(s, intent, q, f, search));
     await navigator.clipboard?.writeText(
-      buildManualPrompt(p, q || QUICK.find((x) => x.intent === intent)?.q || ''),
+      buildManualPrompt(p, q || quickQ(QUICK.find((x) => x.intent === intent) ?? QUICK[0]!)),
     );
-    toast('Prompt with your workspace context copied');
+    toast(t('sec.prompt_copied'));
   };
   const apply = async (ra: ResolvedAction) => {
     if (!answer) return;
     try {
       await applyAction(s, ra, answer.pack);
       setApplied((x) => ({ ...x, [ra.id]: 'applied' }));
-      toast(`Applied: ${ra.summary}`, { action: { label: 'Undo', run: () => void undoLast(s) } });
+      toast(t('sec.applied_toast', { summary: ra.summary }), {
+        action: { label: t('common.undo'), run: () => void undoLast(s) },
+      });
     } catch (e) {
-      toast((e as Error).message, { kind: 'error' });
+      toast(errorText(e), { kind: 'error' });
     }
   };
 
@@ -128,11 +118,11 @@ export function SecretaryPanel({
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div className="sec-panel-head">
         <Sparkles size={17} aria-hidden />
-        <strong style={{ flex: 1 }}>Secretary</strong>
-        <IconButton label="Recent questions" onClick={() => setShowHistory((v) => !v)}>
+        <strong style={{ flex: 1 }}>{t('nav.secretary')}</strong>
+        <IconButton label={t('sec.recent_questions')} onClick={() => setShowHistory((v) => !v)}>
           <History size={16} />
         </IconButton>
-        <IconButton label="Close Secretary" onClick={onClose}>
+        <IconButton label={t('sec.close')} onClick={onClose}>
           <X size={17} />
         </IconButton>
       </div>
@@ -140,52 +130,47 @@ export function SecretaryPanel({
         {showHistory && (
           <div className="box">
             <div className="hstack">
-              <h4 style={{ flex: 1 }}>Recent (this device only)</h4>
+              <h4 style={{ flex: 1 }}>{t('sec.recent')}</h4>
               <Button size="sm" variant="ghost" onClick={() => void s.db.secretary.clear()}>
-                Clear
+                {t('common.clear')}
               </Button>
             </div>
             {sessions.length ? (
               sessions.map((x) => (
                 <details key={x.id}>
                   <summary className="meta">
-                    {new Date(x.at).toLocaleString(undefined, {
-                      month: 'short',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}{' '}
-                    · {INTENT_LABEL[x.intent as Intent] ?? x.intent}: {x.question || '—'}
+                    {fmt.dateTime(x.at)} · {intentLabel(x.intent as Intent)}: {x.question || '—'}
                   </summary>
                   <div className="answer meta">{x.answer}</div>
                 </details>
               ))
             ) : (
-              <div className="meta">Nothing yet.</div>
+              <div className="meta">{t('common.nothing_yet')}</div>
             )}
           </div>
         )}
-        <div className="chips" role="group" aria-label="Secretary behaviours">
+        <div className="chips" role="group" aria-label={t('sec.behaviours')}>
           {QUICK.map((x) => (
             <Chip
-              key={x.label}
-              on={intent === x.intent && q === x.q}
+              key={x.k}
+              on={intent === x.intent && q === quickQ(x)}
               onClick={() => {
                 setIntent(x.intent);
-                if (x.q) {
-                  setQ(x.q);
-                  if (hasAI) void run(x.q, x.intent);
+                const xq = quickQ(x);
+                if (xq) {
+                  setQ(xq);
+                  if (hasAI) void run(xq, x.intent);
                 } else setQ('');
               }}
             >
-              {x.label}
+              {t(`sec.quick.${x.k}`)}
             </Chip>
           ))}
         </div>
-        {focus && <div className="meta">Focused on this {focus.entity}.</div>}
+        {focus && <div className="meta">{t(`sec.focused.${focus.entity}`)}</div>}
 
         <div className="box">
-          <div className="ai-label">Workspace facts</div>
+          <div className="ai-label">{t('today.facts')}</div>
           {pack?.facts.length ? (
             <ul className="facts">
               {pack.facts.map((x) => (
@@ -193,7 +178,7 @@ export function SecretaryPanel({
               ))}
             </ul>
           ) : (
-            <div className="meta">No open items.</div>
+            <div className="meta">{t('today.no_open')}</div>
           )}
           {pack?.notes.map((n) => (
             <div key={n} className="meta">
@@ -204,7 +189,7 @@ export function SecretaryPanel({
 
         {(intent === 'librarian' || intent === 'ask') && pack && pack.entities.length > 0 && (
           <div className="box">
-            <div className="ai-label">Matching records (keyword search)</div>
+            <div className="ai-label">{t('sec.matching')}</div>
             {pack.entities.slice(0, 15).map((e) => (
               <Link
                 key={e.id}
@@ -231,7 +216,7 @@ export function SecretaryPanel({
 
         {pack && (
           <div className="meta">
-            Using: {summarizePack(pack)} ·{' '}
+            {t('sec.using', { summary: summarizePack(pack) })} ·{' '}
             <button
               type="button"
               onClick={() => setShowJson((v) => !v)}
@@ -243,7 +228,7 @@ export function SecretaryPanel({
                 padding: 0,
               }}
             >
-              {showJson ? 'hide' : 'inspect'} context
+              {showJson ? t('sec.hide_context') : t('sec.inspect_context')}
             </button>
           </div>
         )}
@@ -251,20 +236,16 @@ export function SecretaryPanel({
 
         {busy && (
           <div className="hstack">
-            <Spinner label="Thinking" />{' '}
-            <span className="meta">Asking your AI provider with only the context above…</span>
+            <Spinner label={t('sec.thinking')} /> <span className="meta">{t('sec.asking')}</span>
           </div>
         )}
         {answer && (
           <div className="ai-box">
-            <div className="ai-label">✧ AI recommendation · {answer.model}</div>
-            <div className="answer">{answer.text || '(empty answer)'}</div>
+            <div className="ai-label">✧ {t('sec.ai_reco', { model: answer.model })}</div>
+            <div className="answer">{answer.text || t('sec.empty_answer')}</div>
             {answer.removed.length > 0 && (
               <details className="meta">
-                <summary>
-                  {answer.removed.length} statement(s) removed — they cited records or numbers not in your
-                  workspace
-                </summary>
+                <summary>{t('secretary.removed', { count: answer.removed.length })}</summary>
                 <ul>
                   {answer.removed.map((r) => (
                     <li key={r}>{r}</li>
@@ -277,18 +258,18 @@ export function SecretaryPanel({
                 <div className="hstack">
                   <strong style={{ flex: 1 }}>{ra.summary}</strong>
                   <span className={`pill ${ra.risk === 'high' ? 'warn' : ''}`}>
-                    {ra.risk === 'high' ? 'needs confirmation' : 'low risk'}
+                    {ra.risk === 'high' ? t('sec.needs_confirmation') : t('sec.low_risk')}
                   </span>
                 </div>
                 {ra.action.rationale && <div className="meta">{ra.action.rationale}</div>}
                 {ra.diff && <div className="diff">{ra.diff}</div>}
                 {ra.invalid ? (
                   <div className="meta" style={{ color: 'var(--danger)' }}>
-                    Can’t apply: {ra.invalid}
+                    {t('sec.cant_apply', { reason: ra.invalid })}
                   </div>
                 ) : applied[ra.id] ? (
                   <div className="meta">
-                    {applied[ra.id] === 'applied' ? 'Applied (undo from the toast or ⌘Z)' : 'Dismissed'}
+                    {applied[ra.id] === 'applied' ? t('sec.applied') : t('sec.dismissed')}
                   </div>
                 ) : (
                   <div className="hstack">
@@ -299,7 +280,7 @@ export function SecretaryPanel({
                           checked={!!confirmHigh[ra.id]}
                           onChange={(e) => setConfirmHigh((x) => ({ ...x, [ra.id]: e.target.checked }))}
                         />{' '}
-                        I reviewed this change
+                        {t('sec.reviewed')}
                       </label>
                     )}
                     <Button
@@ -308,14 +289,14 @@ export function SecretaryPanel({
                       disabled={ra.risk === 'high' && !confirmHigh[ra.id]}
                       onClick={() => void apply(ra)}
                     >
-                      Apply
+                      {t('sec.apply')}
                     </Button>
                     <Button
                       size="sm"
                       variant="ghost"
                       onClick={() => setApplied((x) => ({ ...x, [ra.id]: 'dismissed' }))}
                     >
-                      Dismiss
+                      {t('common.dismiss')}
                     </Button>
                   </div>
                 )}
@@ -326,14 +307,11 @@ export function SecretaryPanel({
 
         {hasAI === false && (
           <div className="box">
-            <div className="ai-label">No AI provider configured</div>
-            <p className="meta">
-              Everything in Saga HQ works without AI. To get written recommendations, add your own API key in
-              Settings › AI — or use your ChatGPT/Claude subscription manually:
-            </p>
+            <div className="ai-label">{t('sec.no_provider')}</div>
+            <p className="meta">{t('sec.no_provider_body')}</p>
             <div className="hstack">
               <Button size="sm" onClick={() => void copyPrompt()}>
-                <Copy size={14} /> Copy context + prompt
+                <Copy size={14} /> {t('sec.copy_context')}
               </Button>
               <a
                 className="btn ghost sm"
@@ -341,7 +319,7 @@ export function SecretaryPanel({
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Open ChatGPT <ExternalLink size={12} />
+                {t('sec.open_x', { name: 'ChatGPT' })} <ExternalLink size={12} />
               </a>
               <a
                 className="btn ghost sm"
@@ -349,11 +327,11 @@ export function SecretaryPanel({
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Open Claude <ExternalLink size={12} />
+                {t('sec.open_x', { name: 'Claude' })} <ExternalLink size={12} />
               </a>
             </div>
             <Link to="/settings" search={{ section: 'ai' }} className="meta">
-              Set up an API key →
+              {t('sec.setup_key')}
             </Link>
           </div>
         )}
@@ -373,19 +351,21 @@ export function SecretaryPanel({
             onChange={(e) => setQ(e.target.value)}
             placeholder={
               intent === 'librarian'
-                ? 'Find… e.g. old man watching TV in a bar'
-                : `Ask (${INTENT_LABEL[intent]})`
+                ? t('sec.find_placeholder')
+                : t('sec.ask_placeholder', { intent: intentLabel(intent) })
             }
-            aria-label="Ask the Secretary"
+            aria-label={t('sec.ask_aria')}
           />
-          <Button type="submit" variant="primary" disabled={busy} aria-label={hasAI ? 'Send' : 'Copy prompt'}>
+          <Button
+            type="submit"
+            variant="primary"
+            disabled={busy}
+            aria-label={hasAI ? t('common.send') : t('common.copy_prompt')}
+          >
             {hasAI ? <Send size={15} /> : <Copy size={15} />}
           </Button>
         </div>
-        <span className="meta">
-          Only the context shown above is sent, to your own provider. Actions are proposals — nothing changes
-          until you apply.
-        </span>
+        <span className="meta">{t('sec.footer')}</span>
       </form>
     </div>
   );

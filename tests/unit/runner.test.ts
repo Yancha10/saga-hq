@@ -34,7 +34,7 @@ describe('sync runner state machine', () => {
     await create(s, 'ideas', { title: 'y', status: 'new' });
     r.kick();
     await tick();
-    expect(banners.get().some((b) => /Drive is full/.test(b.message))).toBe(true);
+    expect(banners.get().some((b) => b.msgKey === 'sync.banner.DRIVE_FULL')).toBe(true);
     r.stop();
   });
 

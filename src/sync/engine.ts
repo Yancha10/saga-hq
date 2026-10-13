@@ -405,7 +405,7 @@ export class SyncEngine {
       (x) => tombstoneSchema.safeParse(x).success && (SYNC_TABLES as string[]).includes(x.entity),
     );
     if (valid.length + tombs.length > LARGE_MERGE)
-      await createRecoveryPoint(this.session, `Before merging ${valid.length + tombs.length} synced changes`);
+      await createRecoveryPoint(this.session, 'sync_merge', { count: valid.length + tombs.length });
     this.session.assertLive();
     const s = this.session;
     const contentIds = new Set<string>();

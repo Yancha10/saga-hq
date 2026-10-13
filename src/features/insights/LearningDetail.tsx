@@ -4,11 +4,20 @@ import { toast } from '../../app/status';
 import { nowIso } from '../../core/util';
 import type { Learning } from '../../data/schema';
 import { update } from '../../data/store';
+import { fmt, t, useT } from '../../i18n';
 import { AutoText, Button, Empty, Section } from '../../ui/kit';
 import { PageHeader } from '../../ui/PageHeader';
-import { ArchivedNotice, archiveTrashItems, HistoryList, PlatformPicker, RecordMenu } from '../common';
+import {
+  ArchivedNotice,
+  archiveTrashItems,
+  contentTitle,
+  HistoryList,
+  PlatformPicker,
+  RecordMenu,
+} from '../common';
 
 export function LearningDetail() {
+  useT();
   const { id } = useParams({ strict: false }) as { id: string };
   const s = useSession();
   const navigate = useNavigate();
@@ -25,7 +34,7 @@ export function LearningDetail() {
               ? (await ss.db.publications.get(k.toId))?.contentId
               : undefined;
         const c = cid ? await ss.db.content.get(cid) : undefined;
-        if (c) out.push({ linkId: k.id, contentId: c.id, title: c.title, type: k.type });
+        if (c) out.push({ linkId: k.id, contentId: c.id, title: contentTitle(c), type: k.type });
       }
       return out;
     },
@@ -47,7 +56,7 @@ export function LearningDetail() {
   if (!l)
     return (
       <div className="page">
-        <Empty title="Learning not found" />
+        <Empty title={t('learning.not_found')} />
       </div>
     );
   const up = (patch: Partial<Learning>, key?: string) =>
@@ -56,15 +65,15 @@ export function LearningDetail() {
     <div className="page narrow">
       <PageHeader
         back
-        title="Learning"
-        sub={l.origin?.source === 'ai' ? '✧ Suggested by the Secretary, saved by you' : undefined}
+        title={t('learning.title')}
+        sub={l.origin?.source === 'ai' ? `✧ ${t('learning.ai_saved')}` : undefined}
         actions={
           <RecordMenu
-            label="Actions"
+            label={t('common.actions')}
             items={[
               {
                 id: 'retire',
-                label: l.status === 'active' ? 'Retire (no longer true)' : 'Reactivate',
+                label: l.status === 'active' ? t('learning.retire') : t('learning.reactivate'),
                 run: () => void up({ status: l.status === 'active' ? 'retired' : 'active' }),
               },
               ...archiveTrashItems(s, 'learnings', l, () => void navigate({ to: '/insights' })),
@@ -78,14 +87,14 @@ export function LearningDetail() {
           multiline
           value={l.statement}
           onSave={(v) => v.trim() && up({ statement: v.trim() }, 'stmt')}
-          ariaLabel="Statement"
+          ariaLabel={t('field.statement')}
           className="title"
           rows={2}
         />
         <div className="form-grid">
           <div className="field">
             <label className="lbl" htmlFor="lk">
-              Type
+              {t('task.kind_label')}
             </label>
             <select
               id="lk"
@@ -93,14 +102,14 @@ export function LearningDetail() {
               value={l.kind}
               onChange={(e) => void up({ kind: e.target.value as Learning['kind'] })}
             >
-              <option value="observation">Observation</option>
-              <option value="hypothesis">Hypothesis</option>
-              <option value="conclusion">Conclusion</option>
+              <option value="observation">{t('learning.kind.observation')}</option>
+              <option value="hypothesis">{t('learning.kind.hypothesis')}</option>
+              <option value="conclusion">{t('learning.kind.conclusion')}</option>
             </select>
           </div>
           <div className="field">
             <label className="lbl" htmlFor="lc">
-              Confidence
+              {t('learning.confidence')}
             </label>
             <select
               id="lc"
@@ -108,35 +117,35 @@ export function LearningDetail() {
               value={l.confidence}
               onChange={(e) => void up({ confidence: e.target.value as Learning['confidence'] })}
             >
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
+              <option value="low">{t('priority.low')}</option>
+              <option value="medium">{t('priority.med')}</option>
+              <option value="high">{t('priority.high')}</option>
             </select>
           </div>
         </div>
         {l.kind === 'conclusion' && evidence.length < 5 && (
           <div className="banner warning" style={{ borderRadius: 8 }}>
-            Only {evidence.length} linked piece(s) of evidence. Results show correlation, not causation.
+            {t('learning.few_evidence', { count: evidence.length })}
           </div>
         )}
         <div className="field">
-          <span className="lbl">Scope: platforms</span>
+          <span className="lbl">{t('learning.scope_platforms')}</span>
           <PlatformPicker
             value={l.scope?.platforms ?? []}
             onChange={(v) => void up({ scope: { ...(l.scope ?? {}), platforms: v } })}
           />
         </div>
         <div className="field">
-          <span className="lbl">Evidence notes</span>
+          <span className="lbl">{t('learning.evidence_notes')}</span>
           <AutoText
             multiline
             value={l.evidenceNote}
             onSave={(v) => up({ evidenceNote: v || null }, 'ev')}
-            ariaLabel="Evidence notes"
+            ariaLabel={t('learning.evidence_notes')}
             rows={3}
           />
         </div>
-        <Section title="Linked evidence" count={evidence.length}>
+        <Section title={t('learning.linked_evidence')} count={evidence.length}>
           {evidence.length ? (
             <div className="list">
               {evidence.map((e) => (
@@ -146,29 +155,29 @@ export function LearningDetail() {
               ))}
             </div>
           ) : (
-            <div className="meta">
-              Link evidence by writing learnings from a content item’s Results section.
-            </div>
+            <div className="meta">{t('learning.link_hint')}</div>
           )}
         </Section>
         <div className="box">
           <div>
-            Last validated: {l.lastValidatedAt ? new Date(l.lastValidatedAt).toLocaleDateString() : 'never'}
-            {newData ? ` · ${newData} new publication(s) in scope since then` : ''}
+            {t('learning.last_validated', {
+              date: l.lastValidatedAt ? fmt.date(l.lastValidatedAt) : t('common.never'),
+            })}
+            {newData ? ` · ${t('learning.new_data', { count: newData })}` : ''}
           </div>
           <div>
             <Button
               size="sm"
               onClick={() =>
-                void up({ lastValidatedAt: nowIso() }).then(() => toast('Marked as revalidated'))
+                void up({ lastValidatedAt: nowIso() }).then(() => toast(t('learning.revalidated')))
               }
             >
-              Still holds — revalidate
+              {t('learning.revalidate')}
             </Button>
           </div>
         </div>
         <details>
-          <summary className="meta">History</summary>
+          <summary className="meta">{t('common.history')}</summary>
           <HistoryList recordId={l.id} />
         </details>
       </div>

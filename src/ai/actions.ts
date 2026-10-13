@@ -4,6 +4,7 @@ import { ulid } from '../core/ulid';
 import { nowIso } from '../core/util';
 import { CONTENT_STATUSES } from '../data/schema';
 import { mutate } from '../data/store';
+import { fmt, t as tr } from '../i18n';
 import type { ContextPack } from './context';
 
 /**
@@ -106,22 +107,29 @@ export function parseActions(json: string | null, pack: ContextPack): ResolvedAc
     const ra: ResolvedAction = { id: ulid(), action: a, risk: 'low', summary: '' };
     switch (a.type) {
       case 'createTask':
-        ra.summary = `Create task “${a.title}”${a.content ? ` on ${a.content}` : ''}${a.dueAt ? ` due ${new Date(a.dueAt).toLocaleString()}` : ''}`;
-        if (a.content && !r(a.content, 'content')) ra.invalid = `Unknown content ${a.content}`;
-        if (a.project && !r(a.project, 'project')) ra.invalid = `Unknown project ${a.project}`;
+        ra.summary = [
+          tr('ai.sum.createTask', { title: a.title }),
+          a.content,
+          a.dueAt ? tr('ai.sum.due', { when: fmt.dateTime(a.dueAt) }) : '',
+        ]
+          .filter(Boolean)
+          .join(' · ');
+        if (a.content && !r(a.content, 'content')) ra.invalid = tr('ai.invalid.content', { h: a.content });
+        if (a.project && !r(a.project, 'project')) ra.invalid = tr('ai.invalid.project', { h: a.project });
         break;
       case 'createIdea':
-        ra.summary = `Create idea “${a.title}”`;
-        if (a.project && !r(a.project, 'project')) ra.invalid = `Unknown project ${a.project}`;
+        ra.summary = tr('ai.sum.createIdea', { title: a.title });
+        if (a.project && !r(a.project, 'project')) ra.invalid = tr('ai.invalid.project', { h: a.project });
         break;
       case 'createContent':
-        ra.summary = `Create content “${a.title}”${a.idea ? ` from ${a.idea}` : ''}`;
-        if (a.idea && !r(a.idea, 'idea')) ra.invalid = `Unknown idea ${a.idea}`;
+        ra.summary = tr('ai.sum.createContent', { title: a.title });
+        if (a.idea && !r(a.idea, 'idea')) ra.invalid = tr('ai.invalid.idea', { h: a.idea });
         break;
       case 'changeStatus': {
         ra.risk = 'high';
         const t = r(a.target);
-        if (!t || !['content', 'task', 'idea'].includes(t.type)) ra.invalid = `Unknown target ${a.target}`;
+        if (!t || !['content', 'task', 'idea'].includes(t.type))
+          ra.invalid = tr('ai.invalid.target', { h: a.target });
         else {
           const allowed =
             t.type === 'content'
@@ -129,29 +137,38 @@ export function parseActions(json: string | null, pack: ContextPack): ResolvedAc
               : t.type === 'task'
                 ? ['todo', 'doing', 'done']
                 : ['new', 'shortlisted', 'parked'];
-          if (!allowed.includes(a.status)) ra.invalid = `Invalid status ${a.status}`;
-          ra.summary = `Change ${a.target} status`;
-          ra.diff = `${String(t.fields.title ?? t.handle)}: ${String(t.fields.status ?? '?')} → ${a.status}`;
+          if (!allowed.includes(a.status)) ra.invalid = tr('ai.invalid.status', { s: a.status });
+          ra.summary = tr('ai.sum.changeStatus', { h: a.target });
+          ra.diff = `${String(t.fields.title ?? t.handle)}: ${String(t.fields.status ?? '?')} → ${a.status}`; // status codes are language-neutral
         }
         break;
       }
       case 'scheduleEvent':
         ra.risk = 'high';
-        ra.summary = `Add calendar block “${a.title}”`;
-        ra.diff = `New ${a.kind ?? 'production_block'} at ${new Date(a.startAt).toLocaleString()}`;
-        if (a.content && !r(a.content, 'content')) ra.invalid = `Unknown content ${a.content}`;
+        ra.summary = tr('ai.sum.scheduleEvent', { title: a.title });
+        ra.diff = tr('ai.diff.event', {
+          kind: tr(`event.kind.${a.kind ?? 'production_block'}`),
+          when: fmt.dateTime(a.startAt),
+        });
+        if (a.content && !r(a.content, 'content')) ra.invalid = tr('ai.invalid.content', { h: a.content });
         break;
       case 'linkReference': {
         const f = r(a.from);
         const t = r(a.to, 'library');
-        if (!f || !t) ra.invalid = 'Unknown records to link';
-        ra.summary = `Link ${a.to} as a reference of ${a.from}`;
+        if (!f || !t) ra.invalid = tr('ai.invalid.link');
+        ra.summary = tr('ai.sum.linkReference', { to: a.to, from: a.from });
         break;
       }
       case 'saveLearning':
         ra.risk = 'high';
-        ra.summary = `Save ${a.kind}: “${a.statement}”`;
-        ra.diff = `New learning (${a.kind}, low confidence)${a.evidence?.length ? ` with evidence ${a.evidence.join(', ')}` : ''}`;
+        ra.summary = tr('ai.sum.saveLearning', {
+          kind: tr(`learning.kind.${a.kind}`),
+          statement: a.statement,
+        });
+        ra.diff = tr('ai.diff.learning', {
+          kind: tr(`learning.kind.${a.kind}`),
+          evidence: a.evidence?.join(', ') ?? '—',
+        });
         break;
     }
     out.push(ra);
@@ -167,7 +184,7 @@ export async function applyAction(s: Session, ra: ResolvedAction, pack: ContextP
   const id = (h?: string) => (h ? (r(h)?.id ?? null) : null);
   await mutate(
     s,
-    { label: `Secretary: ${ra.summary}`, actor: 'ai' },
+    { label: 'h.ai', labelParams: { type: ra.action.type }, actor: 'ai' },
     async (m) => {
       switch (a.type) {
         case 'createTask':

@@ -97,22 +97,4 @@ export function deriveContent(i: DeriveInput): Derived {
   };
 }
 
-export const MISSING_LABEL: Record<ReadinessKey, string> = {
-  hook: 'hook',
-  script: 'script',
-  references: 'references',
-  finalExport: 'final export',
-  cover: 'cover',
-  coverText: 'cover title',
-  caption: 'caption',
-  hashtags: 'hashtags',
-  publishDate: 'publish date',
-};
-export const SECTION_LABEL: Record<SheetSection, string> = {
-  concept: 'Concept',
-  references: 'References',
-  generate: 'Generate',
-  edit: 'Edit',
-  package: 'Package',
-  publish: 'Publish',
-};
+// Labels for readiness keys and sections live in src/i18n (domain stays language-neutral).

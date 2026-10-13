@@ -5,6 +5,7 @@ import { useSession } from '../../app/context';
 import { toast } from '../../app/status';
 import type { CapturePreset } from '../../app/ui';
 import { capture } from '../../data/domain';
+import { fmt, t, useT } from '../../i18n';
 import { addMedia, MediaTooLargeError } from '../../media/store';
 import { Button, Chip, Sheet } from '../../ui/kit';
 import { ProjectSelect } from '../common';
@@ -21,6 +22,7 @@ export function CaptureSheet({
   preset?: CapturePreset;
   onClose: () => void;
 }) {
+  useT();
   const s = useSession();
   const navigate = useNavigate();
   const [mode, setMode] = useState<Mode>('text');
@@ -50,13 +52,13 @@ export function CaptureSheet({
 
   useEffect(() => {
     if (!recording) return;
-    const t = setInterval(() => setSeconds((x) => x + 1), 1000);
-    return () => clearInterval(t);
+    const iv = setInterval(() => setSeconds((x) => x + 1), 1000);
+    return () => clearInterval(iv);
   }, [recording]);
 
   const startRecording = async () => {
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
-      toast('Voice recording is not supported in this browser. Type instead, or attach an audio file.', {
+      toast(t('capture.voice_unsupported'), {
         kind: 'error',
       });
       return;
@@ -67,7 +69,7 @@ export function CaptureSheet({
       chunks.current = [];
       rec.ondataavailable = (e) => e.data.size && chunks.current.push(e.data);
       rec.onstop = () => {
-        for (const t of stream.getTracks()) t.stop();
+        for (const tr of stream.getTracks()) tr.stop();
         if (chunks.current.length) {
           const blob = new Blob(chunks.current, { type: rec.mimeType || 'audio/webm' });
           setFiles((f) => [
@@ -85,7 +87,7 @@ export function CaptureSheet({
       setSeconds(0);
       setRecording(true);
     } catch {
-      toast('Microphone permission was denied. You can still type the idea.', { kind: 'error' });
+      toast(t('capture.mic_denied'), { kind: 'error' });
     }
   };
   const stopRecording = (discard = false) => {
@@ -111,7 +113,7 @@ export function CaptureSheet({
         try {
           mediaIds.push((await addMedia(s, f, f.name)).id);
         } catch (e) {
-          if (e instanceof MediaTooLargeError) toast(e.message, { kind: 'error' });
+          if (e instanceof MediaTooLargeError) toast(t('error.media_too_large'), { kind: 'error' });
           else throw e;
         }
       }
@@ -131,9 +133,12 @@ export function CaptureSheet({
           ? 'file'
           : m;
       const c = await capture(s, { text, mode: kind as never, mediaIds, projectId });
-      toast('Saved to Inbox', {
+      toast(t('capture.saved'), {
         kind: 'success',
-        action: { label: 'Open Inbox', run: () => void navigate({ to: '/inbox', search: { focus: c.id } }) },
+        action: {
+          label: t('capture.open_inbox'),
+          run: () => void navigate({ to: '/inbox', search: { focus: c.id } }),
+        },
       });
       onClose();
     } catch {
@@ -144,31 +149,31 @@ export function CaptureSheet({
   };
 
   const modes: { m: Mode; label: string; icon: typeof Type }[] = [
-    { m: 'text', label: 'Text', icon: Type },
-    { m: 'task', label: 'Task', icon: CheckSquare },
-    { m: 'link', label: 'Link', icon: Link2 },
-    { m: 'photo', label: 'Photo', icon: Camera },
-    { m: 'voice', label: 'Voice', icon: Mic },
-    { m: 'file', label: 'File', icon: FileUp },
+    { m: 'text', label: t('capture.mode.text'), icon: Type },
+    { m: 'task', label: t('capture.mode.task'), icon: CheckSquare },
+    { m: 'link', label: t('capture.mode.link'), icon: Link2 },
+    { m: 'photo', label: t('capture.mode.photo'), icon: Camera },
+    { m: 'voice', label: t('capture.mode.voice'), icon: Mic },
+    { m: 'file', label: t('capture.mode.file'), icon: FileUp },
   ];
 
   return (
     <Sheet
       open={open}
       onClose={onClose}
-      title="Capture"
+      title={t('capture.title')}
       footer={
         <>
           <span className="meta hide-mobile" style={{ marginRight: 'auto' }}>
-            ⌘↵ to save · saved to Inbox, sort it later
+            {t('capture.hint')}
           </span>
           <Button variant="primary" onClick={() => void save()} disabled={saving}>
-            {saving ? 'Saving…' : 'Save'}
+            {saving ? t('common.saving') : t('common.save')}
           </Button>
         </>
       }
     >
-      <div className="chips" role="group" aria-label="Capture type">
+      <div className="chips" role="group" aria-label={t('capture.type')}>
         {modes.map(({ m, label, icon: Icon }) => (
           <Chip
             key={m}
@@ -181,7 +186,7 @@ export function CaptureSheet({
               if (m === 'link')
                 void navigator.clipboard
                   ?.readText?.()
-                  .then((t) => /^https?:\/\//.test(t.trim()) && !text && setText(t.trim()))
+                  .then((clip) => /^https?:\/\//.test(clip.trim()) && !text && setText(clip.trim()))
                   .catch(() => {});
             }}
           >
@@ -193,13 +198,13 @@ export function CaptureSheet({
         ref={textRef}
         className="textarea"
         rows={4}
-        aria-label="What's on your mind?"
+        aria-label={t('capture.placeholder.text')}
         placeholder={
           mode === 'task'
-            ? 'What needs doing?'
+            ? t('capture.placeholder.task')
             : mode === 'link'
-              ? 'Paste a link (and why it matters)…'
-              : 'What’s on your mind?'
+              ? t('capture.placeholder.link')
+              : t('capture.placeholder.text')
         }
         value={text}
         onChange={(e) => setText(e.target.value)}
@@ -219,9 +224,9 @@ export function CaptureSheet({
       />
       {recording && (
         <div className="hstack" role="status">
-          <span className="status-dot err" aria-hidden /> Recording {seconds}s
+          <span className="status-dot err" aria-hidden /> {t('capture.recording', { seconds })}
           <Button size="sm" onClick={() => stopRecording()}>
-            <Square size={12} /> Stop
+            <Square size={12} /> {t('capture.stop')}
           </Button>
         </div>
       )}
@@ -229,10 +234,10 @@ export function CaptureSheet({
         <div className="chips">
           {files.map((f, i) => (
             <span key={`${f.name}:${f.size}:${f.lastModified}`} className="tag">
-              {f.name.slice(0, 32)} · {(f.size / 1024 / 1024).toFixed(1)} MB
+              {f.name.slice(0, 32)} · {fmt.bytes(f.size)}
               <button
                 type="button"
-                aria-label={`Remove ${f.name}`}
+                aria-label={t('common.remove_item', { item: f.name })}
                 onClick={() => setFiles((x) => x.filter((_, j) => j !== i))}
                 style={{ border: 0, background: 'none', color: 'inherit', cursor: 'pointer' }}
               >
@@ -259,7 +264,7 @@ export function CaptureSheet({
       />
       {showProject ? (
         <div className="field">
-          <span className="lbl">Project (optional)</span>
+          <span className="lbl">{t('capture.project_optional')}</span>
           <ProjectSelect value={projectId} onChange={setProjectId} />
         </div>
       ) : (
@@ -269,7 +274,7 @@ export function CaptureSheet({
           style={{ alignSelf: 'flex-start' }}
           onClick={() => setShowProject(true)}
         >
-          + Project (optional)
+          + {t('capture.project_optional')}
         </button>
       )}
     </Sheet>

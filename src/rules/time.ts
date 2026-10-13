@@ -1,3 +1,4 @@
+import { fmt } from '../i18n';
 export const HOUR = 3600_000;
 export const DAY = 86400_000;
 
@@ -27,22 +28,18 @@ export function startOfWeek(t: number | Date): Date {
   d.setDate(d.getDate() - dow);
   return d;
 }
+/** Display helpers delegate to the i18n formatters (locale-aware Intl). */
 export function fmtTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  return fmt.time(iso);
 }
 export function fmtDay(
   iso: string | Date,
   opts: Intl.DateTimeFormatOptions = { weekday: 'short', day: 'numeric', month: 'short' },
 ): string {
-  return new Date(iso).toLocaleDateString(undefined, opts);
+  return fmt.date(iso, opts);
 }
 export function relDays(iso: string, now = Date.now()): string {
-  const d = Math.round((startOfDay(new Date(iso)).getTime() - startOfDay(now).getTime()) / DAY);
-  if (d === 0) return 'today';
-  if (d === 1) return 'tomorrow';
-  if (d === -1) return 'yesterday';
-  if (d < 0) return `${-d}d ago`;
-  return `in ${d}d`;
+  return fmt.relDay(iso, now);
 }
 /** Value for <input type="datetime-local"> in local time. */
 export function toLocalInput(iso: string | null | undefined): string {

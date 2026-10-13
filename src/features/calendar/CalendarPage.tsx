@@ -4,16 +4,10 @@ import { useMemo, useState } from 'react';
 import { useIsPhone, useLive, useSession } from '../../app/context';
 import { toast } from '../../app/status';
 import { ideaToContent, schedulePublication } from '../../data/domain';
-import {
-  type Content,
-  type HQEvent,
-  type Idea,
-  PLATFORM_LABEL,
-  type Publication,
-  type Task,
-  type Workspace,
-} from '../../data/schema';
+import type { Content, HQEvent, Idea, Publication, Task, Workspace } from '../../data/schema';
 import { create, mutate } from '../../data/store';
+import { fmt, t, useT } from '../../i18n';
+import { gapText, platformName } from '../../i18n/render';
 import { cadenceGaps } from '../../rules/cadence';
 import {
   addDays,
@@ -27,7 +21,7 @@ import {
 } from '../../rules/time';
 import { Button, IconButton, Sheet, Tabs } from '../../ui/kit';
 import { PageHeader } from '../../ui/PageHeader';
-import { ProjectSelect } from '../common';
+import { contentTitle, ProjectSelect } from '../common';
 
 type View = 'agenda' | 'week' | 'month';
 interface Item {
@@ -45,6 +39,7 @@ interface Item {
 }
 
 export function CalendarPage() {
+  useT();
   const s = useSession();
   const navigate = useNavigate();
   const phone = useIsPhone();
@@ -89,7 +84,7 @@ export function CalendarPage() {
       return {
         pubs,
         events: events.filter((e) => !e.deletedAt),
-        tasks: tasks.filter((t) => !t.deletedAt),
+        tasks: tasks.filter((x) => !x.deletedAt),
         ws,
         contents,
         ready: ready.filter((c) => !c.deletedAt && !c.archivedAt && !c._nextPublishAt),
@@ -116,8 +111,8 @@ export function CalendarPage() {
         kind: 'pub' as const,
         at: Date.parse((p.publishedAt ?? p.scheduledAt)!),
         allDay: false,
-        title: cmap.get(p.contentId)!.title,
-        sub: `Publish · ${PLATFORM_LABEL[p.platform]}`,
+        title: contentTitle(cmap.get(p.contentId)!),
+        sub: `${t('today.publish')} · ${platformName(p.platform)}`,
         cls: `pub ${p.status === 'published' ? 'done' : ''}`,
         to: `/content/${p.contentId}`,
         pub: p,
@@ -129,21 +124,21 @@ export function CalendarPage() {
       at: Date.parse(e.startAt),
       allDay: e.allDay,
       title: e.title,
-      sub: e.kind.replace('_', ' '),
+      sub: t(`event.kind.${e.kind}`),
       cls: e.kind === 'milestone' ? 'milestone' : e.kind === 'deadline' ? 'deadline' : 'block',
       to: e.contentId ? `/content/${e.contentId}` : e.projectId ? `/projects/${e.projectId}` : '/calendar',
       event: e,
     })),
     ...data.tasks
-      .filter((t) => t.status !== 'done')
-      .map((t) => ({
-        key: `t${t.id}`,
+      .filter((x) => x.status !== 'done')
+      .map((x) => ({
+        key: `t${x.id}`,
         kind: 'task' as const,
-        at: Date.parse(t.dueAt!),
+        at: Date.parse(x.dueAt!),
         allDay: true,
-        title: t.title,
-        sub: t.hardDeadline ? 'deadline' : 'task due',
-        cls: t.hardDeadline ? 'deadline task' : 'task',
+        title: x.title,
+        sub: x.hardDeadline ? t('today.deadline') : t('calendar.task_due'),
+        cls: x.hardDeadline ? 'deadline task' : 'task',
         to: '/tasks',
       })),
   ].sort((a, b) => Number(b.allDay) - Number(a.allDay) || a.at - b.at);
@@ -159,13 +154,13 @@ export function CalendarPage() {
     const d = new Date(day);
     d.setHours(old.getHours(), old.getMinutes(), 0, 0);
     if (item.pub && item.pub.status !== 'published') {
-      await mutate(s, { label: 'Reschedule publication' }, (m) =>
+      await mutate(s, { label: 'h.reschedule' }, (m) =>
         m.update('publications', item.pub!.id, { scheduledAt: d.toISOString() }),
       );
-      toast(`Moved to ${d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' })}`);
+      toast(t('calendar.moved_to', { date: fmt.date(d, { weekday: 'short', day: 'numeric' }) }));
     } else if (item.event) {
       const dur = item.event.endAt ? Date.parse(item.event.endAt) - Date.parse(item.event.startAt) : 0;
-      await mutate(s, { label: 'Move event' }, (m) =>
+      await mutate(s, { label: 'h.moveEvent' }, (m) =>
         m.update('events', item.event!.id, {
           startAt: d.toISOString(),
           endAt: dur ? new Date(d.getTime() + dur).toISOString() : null,
@@ -185,12 +180,10 @@ export function CalendarPage() {
       const at = new Date(day);
       at.setHours(18, 0, 0, 0);
       await schedulePublication(s, c, c.platforms[0] ?? 'instagram', at.toISOString());
-      toast(
-        `Scheduled “${c.title}” ${at.toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' })}`,
-      );
+      toast(t('calendar.scheduled', { title: contentTitle(c), when: fmt.dayTime(at) }));
     } else if (kind === 'idea') {
       const i = data.shortlisted.find((x) => x.id === id);
-      if (!i || !confirm(`Create planned content from “${i.title}” for this day?`)) return;
+      if (!i || !confirm(t('calendar.confirm_idea', { title: i.title }))) return;
       const c = await ideaToContent(s, i, {
         formatTemplateId: 'reel',
         platforms: i.platforms?.length ? i.platforms : (data.ws?.platforms.slice(0, 1) ?? []),
@@ -200,7 +193,7 @@ export function CalendarPage() {
         at.setHours(18, 0, 0, 0);
         await schedulePublication(s, { ...c }, c.platforms[0], at.toISOString());
       }
-      toast('Content planned from idea');
+      toast(t('calendar.planned_from_idea'));
     }
   };
 
@@ -213,7 +206,7 @@ export function CalendarPage() {
       onDragStart={(e) => e.dataTransfer.setData('text/plain', `item:${it.key}`)}
     >
       {!it.allDay && <span className="num">{fmtTime(new Date(it.at).toISOString())} </span>}
-      {it.title}
+      {it.title || t('common.untitled')}
       {it.sub && (
         <div className="meta" style={{ fontSize: 10.5 }}>
           {it.sub}
@@ -224,15 +217,15 @@ export function CalendarPage() {
   const dayCells = (n: number) => Array.from({ length: n }, (_, i) => addDays(range.start, i).getTime());
   const title =
     view === 'month'
-      ? new Date(anchor).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
-      : `${new Date(range.start).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} – ${new Date(range.end - 1).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`;
+      ? fmt.date(anchor, { month: 'long', year: 'numeric' })
+      : `${fmt.date(range.start, { day: 'numeric', month: 'short' })} – ${fmt.date(range.end - 1, { day: 'numeric', month: 'short' })}`;
   const step = view === 'month' ? 30 * DAY : view === 'week' ? 7 * DAY : 21 * DAY;
 
   return (
     <div className="page" style={{ maxWidth: 1500 }}>
       <PageHeader
-        title="Calendar"
-        sub="Publications, production blocks, deadlines and milestones"
+        title={t('nav.calendar')}
+        sub={t('calendar.sub')}
         actions={
           <Button
             variant="primary"
@@ -240,44 +233,44 @@ export function CalendarPage() {
               setNewEvent({ startAt: new Date(Math.max(Date.now(), range.start)).toISOString() })
             }
           >
-            <Plus size={15} /> Add block
+            <Plus size={15} /> {t('calendar.add_block')}
           </Button>
         }
       />
       <div className="hstack" style={{ marginBottom: 12 }}>
         <Tabs
-          label="Calendar view"
+          label={t('calendar.view_label')}
           value={view}
           onChange={setView}
           options={[
-            { value: 'agenda', label: 'Agenda' },
-            { value: 'week', label: 'Week' },
-            { value: 'month', label: 'Month' },
+            { value: 'agenda', label: t('calendar.agenda') },
+            { value: 'week', label: t('calendar.week') },
+            { value: 'month', label: t('calendar.month') },
           ]}
         />
-        <IconButton label="Previous" onClick={() => setAnchor((a) => a - step)}>
+        <IconButton label={t('common.previous')} onClick={() => setAnchor((a) => a - step)}>
           <ChevronLeft size={18} />
         </IconButton>
         <Button size="sm" onClick={() => setAnchor(Date.now())}>
-          Today
+          {t('nav.today')}
         </Button>
-        <IconButton label="Next" onClick={() => setAnchor((a) => a + step)}>
+        <IconButton label={t('common.next')} onClick={() => setAnchor((a) => a + step)}>
           <ChevronRight size={18} />
         </IconButton>
         <strong>{title}</strong>
         <span className="spacer" />
         <span className="hstack meta" aria-hidden>
           <span className="ev pub" style={{ width: 'auto' }}>
-            publish
+            {t('calendar.legend.publish')}
           </span>
           <span className="ev block" style={{ width: 'auto' }}>
-            production
+            {t('calendar.legend.production')}
           </span>
           <span className="ev deadline" style={{ width: 'auto' }}>
-            deadline
+            {t('calendar.legend.deadline')}
           </span>
           <span className="ev milestone" style={{ width: 'auto' }}>
-            milestone
+            {t('calendar.legend.milestone')}
           </span>
         </span>
       </div>
@@ -289,20 +282,16 @@ export function CalendarPage() {
             const g = gaps.filter((x) => x.day && sameDay(x.day, d));
             if (!its.length && !g.length && !sameDay(d, Date.now())) return null;
             return (
-              <section key={d} aria-label={new Date(d).toDateString()}>
+              <section key={d} aria-label={fmt.weekdayLong(d)}>
                 <h4 style={{ margin: '6px 0' }}>
-                  {sameDay(d, Date.now()) ? 'Today · ' : ''}
-                  {new Date(d).toLocaleDateString(undefined, {
-                    weekday: 'long',
-                    day: 'numeric',
-                    month: 'short',
-                  })}
+                  {sameDay(d, Date.now()) ? `${t('nav.today')} · ` : ''}
+                  {fmt.date(d, { weekday: 'long', day: 'numeric', month: 'short' })}
                 </h4>
                 <div className="list">
                   {its.map((it) => (
                     <Link key={it.key} to={it.to} className="row">
                       <span className="sched-time">
-                        {it.allDay ? 'all day' : fmtTime(new Date(it.at).toISOString())}
+                        {it.allDay ? t('common.all_day') : fmtTime(new Date(it.at).toISOString())}
                       </span>
                       <span
                         className={`ev ${it.cls}`}
@@ -310,18 +299,20 @@ export function CalendarPage() {
                         aria-hidden
                       />
                       <div className="grow">
-                        <div className="title">{it.title}</div>
+                        <div className="title">{it.title || t('common.untitled')}</div>
                         <div className="sub">{it.sub}</div>
                       </div>
                     </Link>
                   ))}
                   {g.map((x) => (
-                    <div key={x.message} className="row static">
-                      <span className="gap-slot">gap</span>
-                      <span className="meta">{x.message}</span>
+                    <div key={`${x.platform}:${x.day ?? x.weekStart}`} className="row static">
+                      <span className="gap-slot">{t('today.gap')}</span>
+                      <span className="meta">{gapText(x)}</span>
                     </div>
                   ))}
-                  {!its.length && !g.length && <div className="row static meta">Nothing planned.</div>}
+                  {!its.length && !g.length && (
+                    <div className="row static meta">{t('calendar.nothing_planned')}</div>
+                  )}
                 </div>
               </section>
             );
@@ -336,9 +327,9 @@ export function CalendarPage() {
         >
           <div className="week">
             {dayCells(7).map((d) => (
-              <section key={d} className="day" aria-label={new Date(d).toDateString()}>
+              <section key={d} className="day" aria-label={fmt.weekdayLong(d)}>
                 <div className={`day-head ${sameDay(d, Date.now()) ? 'today' : ''}`}>
-                  <span>{new Date(d).toLocaleDateString(undefined, { weekday: 'short' })}</span>
+                  <span>{fmt.date(d, { weekday: 'short' })}</span>
                   <span className="d num">{new Date(d).getDate()}</span>
                 </div>
                 <div
@@ -358,8 +349,8 @@ export function CalendarPage() {
                   {gaps
                     .filter((x) => x.day && sameDay(x.day, d))
                     .map((x) => (
-                      <div key={x.message} className="gap-slot">
-                        {x.message}
+                      <div key={`${x.platform}:${x.day ?? x.weekStart}`} className="gap-slot">
+                        {gapText(x)}
                       </div>
                     ))}
                 </div>
@@ -367,10 +358,14 @@ export function CalendarPage() {
             ))}
           </div>
           {!phone && (
-            <aside className="stack" aria-label="Planning tray">
+            <aside className="stack" aria-label={t('calendar.tray')}>
               <div className="box">
-                <h4>Ready to schedule · {data.ready.filter((c) => c.status === 'ready').length}</h4>
-                <span className="meta">Drag onto a day (18:00, editable)</span>
+                <h4>
+                  {t('calendar.ready_to_schedule', {
+                    n: data.ready.filter((c) => c.status === 'ready').length,
+                  })}
+                </h4>
+                <span className="meta">{t('calendar.drag_hint')}</span>
                 {data.ready
                   .filter((c) => c.status === 'ready')
                   .map((c) => (
@@ -380,12 +375,12 @@ export function CalendarPage() {
                       draggable
                       onDragStart={(e) => e.dataTransfer.setData('text/plain', `content:${c.id}`)}
                     >
-                      <span className="title">{c.title}</span>
+                      <span className="title">{contentTitle(c)}</span>
                     </div>
                   ))}
               </div>
               <div className="box">
-                <h4>Shortlisted ideas · {data.shortlisted.length}</h4>
+                <h4>{t('calendar.shortlisted', { n: data.shortlisted.length })}</h4>
                 {data.shortlisted.slice(0, 12).map((i) => (
                   <div
                     key={i.id}
@@ -393,15 +388,15 @@ export function CalendarPage() {
                     draggable
                     onDragStart={(e) => e.dataTransfer.setData('text/plain', `idea:${i.id}`)}
                   >
-                    <span className="title">★ {i.title}</span>
+                    <span className="title">★ {i.title || t('ideas.untitled')}</span>
                   </div>
                 ))}
               </div>
               {gaps
                 .filter((g) => !g.day)
                 .map((g) => (
-                  <div key={g.message} className="gap-slot">
-                    {g.message}
+                  <div key={`${g.platform}:${g.weekStart}`} className="gap-slot">
+                    {gapText(g)}
                   </div>
                 ))}
             </aside>
@@ -437,7 +432,7 @@ export function CalendarPage() {
         open={!!newEvent}
         startAt={newEvent?.startAt}
         onClose={() => setNewEvent(null)}
-        onCreated={() => toast('Added to calendar')}
+        onCreated={() => toast(t('calendar.added'))}
         navigateToContent={(id) => void navigate({ to: '/content/$id', params: { id } })}
       />
     </div>
@@ -456,6 +451,7 @@ function EventSheet({
   onCreated: () => void;
   navigateToContent: (id: string) => void;
 }) {
+  useT();
   const s = useSession();
   const [title, setTitle] = useState('');
   const [kind, setKind] = useState<HQEvent['kind']>('production_block');
@@ -468,7 +464,7 @@ function EventSheet({
     <Sheet
       open={open}
       onClose={onClose}
-      title="Add to calendar"
+      title={t('calendar.add_title')}
       footer={
         <Button
           variant="primary"
@@ -492,13 +488,13 @@ function EventSheet({
             onCreated();
           }}
         >
-          Add
+          {t('common.add')}
         </Button>
       }
     >
       <div className="field">
         <label className="lbl" htmlFor="etitle">
-          Title
+          {t('common.title')}
         </label>
         <input
           id="etitle"
@@ -506,13 +502,13 @@ function EventSheet({
           autoFocus
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="e.g. Generate scene 2"
+          placeholder={t('calendar.title_placeholder')}
         />
       </div>
       <div className="form-grid">
         <div className="field">
           <label className="lbl" htmlFor="ekind">
-            Type
+            {t('task.kind_label')}
           </label>
           <select
             id="ekind"
@@ -520,15 +516,15 @@ function EventSheet({
             value={kind}
             onChange={(e) => setKind(e.target.value as HQEvent['kind'])}
           >
-            <option value="production_block">Production block</option>
-            <option value="deadline">Hard deadline</option>
-            <option value="milestone">Milestone</option>
-            <option value="external">Other / external</option>
+            <option value="production_block">{t('event.kind.production_block')}</option>
+            <option value="deadline">{t('task.hard_deadline')}</option>
+            <option value="milestone">{t('event.kind.milestone')}</option>
+            <option value="external">{t('calendar.external')}</option>
           </select>
         </div>
         <div className="field">
           <label className="lbl" htmlFor="estart">
-            Start
+            {t('projects.start')}
           </label>
           <input
             id="estart"
@@ -541,7 +537,7 @@ function EventSheet({
         {!allDay && kind !== 'milestone' && (
           <div className="field">
             <label className="lbl" htmlFor="ehours">
-              Duration (h)
+              {t('calendar.duration_h')}
             </label>
             <input
               id="ehours"
@@ -556,10 +552,11 @@ function EventSheet({
         )}
       </div>
       <label className="check">
-        <input type="checkbox" checked={allDay} onChange={(e) => setAllDay(e.target.checked)} /> All day
+        <input type="checkbox" checked={allDay} onChange={(e) => setAllDay(e.target.checked)} />{' '}
+        {t('calendar.all_day')}
       </label>
       <div className="field">
-        <span className="lbl">Project</span>
+        <span className="lbl">{t('common.project')}</span>
         <ProjectSelect value={projectId} onChange={setProjectId} />
       </div>
     </Sheet>

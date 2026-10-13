@@ -29,47 +29,53 @@ import { env, googleConfigured } from '../../config/env';
 import { buildBackup, exportCsv, previewBackup, type RestorePreview, restoreBackup } from '../../data/backup';
 import { getMeta, setMeta } from '../../data/db';
 import { listRecoveryPoints, restoreRecoveryPoint } from '../../data/recovery';
-import { type EntityTable, PLATFORM_LABEL, type Platform, SYNC_TABLES } from '../../data/schema';
+import { type EntityTable, type Platform, SYNC_TABLES } from '../../data/schema';
 import { purgeNow, restore, update } from '../../data/store';
 import { buildDiagnostics } from '../../diagnostics/report';
+import { fmt, t, useT } from '../../i18n';
+import { errorText, missingName, platformName, syncCodeText } from '../../i18n/render';
 import { localMediaBytes } from '../../media/store';
 import { syncStatus } from '../../sync/runner';
 import { Button, Confirm, Section, Sheet } from '../../ui/kit';
 import { PageHeader } from '../../ui/PageHeader';
-import { downloadText, PlatformPicker } from '../common';
+import { downloadText, PlatformPicker, templateName } from '../common';
+import { LanguageSelect } from './LanguageSelect';
 
 const SECTIONS = [
-  ['workspace', 'Workspace'],
-  ['account', 'Account & sync'],
-  ['storage', 'Storage'],
-  ['backup', 'Backup & restore'],
-  ['recovery', 'Recovery points'],
-  ['ai', 'AI (optional)'],
-  ['integrations', 'Saga Studio'],
-  ['trash', 'Trash'],
-  ['diagnostics', 'Diagnostics'],
-  ['shortcuts', 'Keyboard'],
-  ['about', 'About & privacy'],
+  'workspace',
+  'language',
+  'account',
+  'storage',
+  'backup',
+  'recovery',
+  'ai',
+  'integrations',
+  'trash',
+  'diagnostics',
+  'shortcuts',
+  'about',
 ] as const;
-type Sec = (typeof SECTIONS)[number][0];
+type Sec = (typeof SECTIONS)[number];
 
-const mb = (n: number | undefined) =>
-  n === undefined
-    ? '—'
-    : n > 1024 ** 3
-      ? `${(n / 1024 ** 3).toFixed(2)} GB`
-      : `${(n / 1024 ** 2).toFixed(1)} MB`;
+const mb = (n: number | undefined) => fmt.bytes(n);
+/** “12 ideas, 3 tasks” — table names rendered as localized plural nouns. */
+const countsText = (counts: Record<string, number>): string =>
+  Object.entries(counts)
+    .filter(([k, n]) => n && k !== 'tombstones' && k !== 'workspace')
+    .map(([k, n]) => t(`count.${k}`, { count: n }))
+    .join(', ');
 
 export function SettingsPage() {
+  useT();
   const search = useSearch({ strict: false }) as { section?: Sec };
   const navigate = useNavigate();
   const sec: Sec = search.section ?? 'workspace';
   return (
     <div className="page">
-      <PageHeader title="Settings" />
+      <PageHeader title={t('nav.settings')} />
       <div className="grid2" style={{ gridTemplateColumns: 'minmax(160px, 220px) minmax(0, 1fr)' }}>
-        <nav className="list" aria-label="Settings sections" style={{ alignSelf: 'start' }}>
-          {SECTIONS.map(([k, label]) => (
+        <nav className="list" aria-label={t('settings.sections')} style={{ alignSelf: 'start' }}>
+          {SECTIONS.map((k) => (
             <button
               key={k}
               type="button"
@@ -78,12 +84,13 @@ export function SettingsPage() {
               style={{ background: sec === k ? 'var(--surface-3)' : undefined }}
               onClick={() => void navigate({ to: '/settings', search: { section: k } })}
             >
-              {label}
+              {t(`settings.sec.${k}`)}
             </button>
           ))}
         </nav>
         <div className="stack" style={{ minWidth: 0 }}>
           {sec === 'workspace' && <WorkspaceSec />}
+          {sec === 'language' && <LanguageSec />}
           {sec === 'account' && <AccountSec />}
           {sec === 'storage' && <StorageSec />}
           {sec === 'backup' && <BackupSec />}
@@ -100,29 +107,39 @@ export function SettingsPage() {
   );
 }
 
+function LanguageSec() {
+  useT();
+  return (
+    <Section title={t('settings.language')}>
+      <LanguageSelect />
+      <p className="meta">{t('settings.language_note')}</p>
+    </Section>
+  );
+}
+
 function WorkspaceSec() {
+  useT();
   const s = useSession();
   const ws = useLive((ss) => ss.db.workspace.get('workspace'), [], undefined);
   if (!ws) return null;
   const cad = Object.fromEntries(ws.cadence.map((c) => [c.platform, c.perWeek]));
   return (
     <>
-      <Section title="Workspace">
+      <Section title={t('settings.sec.workspace')}>
         <div className="field">
           <label className="lbl" htmlFor="wsname">
-            Name
+            {t('common.name')}
           </label>
           <input
             id="wsname"
             className="input"
             defaultValue={ws.name}
-            onBlur={(e) =>
-              void update(s, 'workspace', 'workspace', { name: e.target.value || 'My workspace' })
-            }
+            placeholder={t('settings.ws_name_placeholder')}
+            onBlur={(e) => void update(s, 'workspace', 'workspace', { name: e.target.value })}
           />
         </div>
       </Section>
-      <Section title="Platforms & cadence">
+      <Section title={t('settings.platforms_cadence')}>
         <PlatformPicker
           value={ws.platforms}
           onChange={(v) => void update(s, 'workspace', 'workspace', { platforms: v })}
@@ -130,7 +147,7 @@ function WorkspaceSec() {
         <div className="hstack" style={{ marginTop: 10 }}>
           {ws.platforms.map((p: Platform) => (
             <label key={p} className="hstack meta">
-              {PLATFORM_LABEL[p]} per week
+              {t('onboarding.per_week', { platform: platformName(p) })}
               <input
                 type="number"
                 min={0}
@@ -149,30 +166,30 @@ function WorkspaceSec() {
             </label>
           ))}
         </div>
-        <p className="meta">
-          Cadence is only used to show planning gaps. Saga HQ never schedules content automatically.
-        </p>
+        <p className="meta">{t('settings.cadence_note')}</p>
       </Section>
-      <Section title="Format templates">
+      <Section title={t('settings.templates')}>
         <div className="list">
-          {ws.formatTemplates.map((t) => (
-            <div key={t.id} className="row static">
+          {ws.formatTemplates.map((tp) => (
+            <div key={tp.id} className="row static">
               <div className="grow">
-                <div className="title">{t.name}</div>
-                <div className="sub">Required to be Ready: {t.required.join(', ')}</div>
+                <div className="title">{templateName(tp)}</div>
+                <div className="sub">
+                  {t('settings.required_ready', { list: tp.required.map(missingName).join(', ') })}
+                </div>
               </div>
             </div>
           ))}
         </div>
       </Section>
-      <Section title="Idea scoring">
+      <Section title={t('settings.scoring')}>
         <label className="check">
           <input
             type="checkbox"
             checked={!!ws.scoringEnabled}
             onChange={(e) => void update(s, 'workspace', 'workspace', { scoringEnabled: e.target.checked })}
           />{' '}
-          Show optional low/med/high scores on ideas (your judgement, never a combined number)
+          {t('settings.scoring_label')}
         </label>
       </Section>
     </>
@@ -180,6 +197,7 @@ function WorkspaceSec() {
 }
 
 function AccountSec() {
+  useT();
   const s = useSession();
   const { account, startSync, runner } = useApp();
   const st = useStore(syncStatus);
@@ -204,31 +222,29 @@ function AccountSec() {
       });
       setAttach({ accountId: id.accountId, email: id.email, displayName: id.displayName, lastUsedAt: '' });
     } catch (e) {
-      toast((e as Error).message, { kind: 'error' });
+      toast(errorText(e), { kind: 'error' });
     }
   };
   return (
     <>
-      <Section title="This workspace">
+      <Section title={t('settings.this_workspace')}>
         {account ? (
           <div className="box">
             <div>
-              <strong>{account.displayName}</strong> <span className="meta">{account.email}</span>
+              <strong>{account.displayName || account.email}</strong>{' '}
+              <span className="meta">{account.email}</span>
             </div>
-            <div className="meta">
-              Private workspace on this device, synced through this account’s own Google Drive (folder “Saga
-              HQ”, files created by Saga HQ only).
-            </div>
+            <div className="meta">{t('settings.account_desc')}</div>
             <div className="hstack">
               <span className="meta">
-                Sync: {st.phase}
-                {st.message ? ` — ${st.message}` : ''}
-                {st.lastSyncAt ? ` · last ${new Date(st.lastSyncAt).toLocaleString()}` : ''}
+                {t('settings.sync_state', { phase: t(`sync.phase.${st.phase}`) })}
+                {st.code ? ` — ${syncCodeText(st.code)}` : ''}
+                {st.lastSyncAt ? ` · ${t('settings.last_sync', { date: fmt.dateTime(st.lastSyncAt) })}` : ''}
               </span>
             </div>
             <div className="hstack">
               <Button variant="primary" onClick={() => void startSync()}>
-                {st.phase === 'needs_auth' ? 'Reconnect Google & sync' : 'Sync now'}
+                {st.phase === 'needs_auth' ? t('settings.reconnect_sync') : t('settings.sync_now')}
               </Button>
               {runner && (
                 <Button
@@ -236,63 +252,63 @@ function AccountSec() {
                     void runner.engine
                       .footprint()
                       .then(setFoot)
-                      .catch((e) => toast((e as Error).message, { kind: 'error' }))
+                      .catch((e) => toast(errorText(e), { kind: 'error' }))
                   }
                 >
-                  Drive footprint
+                  {t('settings.drive_footprint')}
                 </Button>
               )}
               <Button variant="danger" onClick={() => setSignOut(true)}>
-                Sign out…
+                {t('settings.sign_out_ellipsis')}
               </Button>
             </div>
             {foot && (
               <div className="meta">
-                In your Drive: data {mb(foot.data)} · media {mb(foot.media)} · backups {mb(foot.backups)}
+                {t('settings.footprint', {
+                  data: mb(foot.data),
+                  media: mb(foot.media),
+                  backups: mb(foot.backups),
+                })}
               </div>
             )}
             {st.quota && (
               <div className="meta">
-                Drive storage: {mb(st.quota.usage)} used{st.quota.limit ? ` of ${mb(st.quota.limit)}` : ''}
+                {st.quota.limit
+                  ? t('settings.drive_used_of', { used: mb(st.quota.usage), limit: mb(st.quota.limit) })
+                  : t('settings.drive_used', { used: mb(st.quota.usage) })}
               </div>
             )}
-            <p className="meta">
-              Browsers can’t keep Google sign-in alive in the background without a server, so you may need to
-              tap Reconnect after reopening the app. Your local data is never blocked by this.
-            </p>
+            <p className="meta">{t('settings.reconnect_note')}</p>
           </div>
         ) : (
           <div className="box">
             <div>
-              <strong>Local workspace</strong> — stored only on this device, not synced.
+              <strong>{t('workspace.local_default')}</strong> — {t('settings.local_desc')}
             </div>
             {googleConfigured() ? (
               <Button variant="primary" onClick={() => void connectLocal()}>
-                Connect Google…
+                {t('settings.connect_google')}
               </Button>
             ) : (
-              <span className="meta">Google sign-in is not configured for this build.</span>
+              <span className="meta">{t('auth.error.AUTH_NOT_CONFIGURED')}</span>
             )}
-            <p className="meta">
-              Connecting never moves data silently — you’ll be asked whether to copy this workspace into the
-              account.
-            </p>
+            <p className="meta">{t('settings.connect_note')}</p>
           </div>
         )}
       </Section>
-      <Section title="Workspaces on this device">
+      <Section title={t('settings.workspaces_device')}>
         <div className="list">
           {accounts.map((a) => (
             <div key={a.accountId} className="row static">
               <div className="grow">
-                <div className="title">{a.displayName}</div>
+                <div className="title">{a.displayName || a.email}</div>
                 <div className="sub">{a.email}</div>
               </div>
               {s.ref.kind === 'account' && s.ref.accountId === a.accountId ? (
-                <span className="pill accent">current</span>
+                <span className="pill accent">{t('settings.current')}</span>
               ) : (
                 <Button size="sm" onClick={() => void switchWorkspace(accountRef(a.accountId), s, runner)}>
-                  Switch
+                  {t('settings.switch')}
                 </Button>
               )}
             </div>
@@ -300,14 +316,17 @@ function AccountSec() {
           {locals.map((l) => (
             <div key={l.localId} className="row static">
               <div className="grow">
-                <div className="title">{l.name}</div>
-                <div className="sub">Local only{l.attachedTo ? ' · copied into an account' : ''}</div>
+                <div className="title">{l.name || t('workspace.local_default')}</div>
+                <div className="sub">
+                  {t('workspace.local_only')}
+                  {l.attachedTo ? ` · ${t('workspace.copied')}` : ''}
+                </div>
               </div>
               {s.ref.kind === 'local' && s.ref.localId === l.localId ? (
-                <span className="pill accent">current</span>
+                <span className="pill accent">{t('settings.current')}</span>
               ) : (
                 <Button size="sm" onClick={() => void switchWorkspace(localRef(l.localId), s, runner)}>
-                  Switch
+                  {t('settings.switch')}
                 </Button>
               )}
             </div>
@@ -315,12 +334,8 @@ function AccountSec() {
         </div>
         <div className="hstack" style={{ marginTop: 8 }}>
           {googleConfigured() && (
-            <Button
-              onClick={() =>
-                void signInAndOpen().catch((e) => toast((e as Error).message, { kind: 'error' }))
-              }
-            >
-              Add Google account
+            <Button onClick={() => void signInAndOpen().catch((e) => toast(errorText(e), { kind: 'error' }))}>
+              {t('settings.add_google')}
             </Button>
           )}
           <Button
@@ -329,15 +344,15 @@ function AccountSec() {
               await switchWorkspace(localRef(l.localId), s, runner);
             }}
           >
-            New local workspace
+            {t('settings.new_local')}
           </Button>
         </div>
-        <p className="meta">Switching reloads the app so nothing from one workspace can leak into another.</p>
+        <p className="meta">{t('settings.switch_note')}</p>
       </Section>
       <Sheet
         open={signOut}
         onClose={() => setSignOut(false)}
-        title="Sign out"
+        title={t('settings.sign_out')}
         footer={
           <>
             <Button
@@ -345,10 +360,10 @@ function AccountSec() {
                 signOutGoogle();
                 await runner?.flush();
                 setSignOut(false);
-                toast('Signed out of Google. Local data kept on this device.');
+                toast(t('settings.signed_out'));
               }}
             >
-              Sign out, keep data on this device
+              {t('settings.sign_out_keep')}
             </Button>
             <Button
               variant="danger"
@@ -362,24 +377,21 @@ function AccountSec() {
                 location.reload();
               }}
             >
-              Sign out and remove this workspace from this device
+              {t('settings.sign_out_remove')}
             </Button>
           </>
         }
       >
-        <p className="muted">
-          Removing deletes this workspace’s local database, media cache and saved API keys from this browser.
-          Data already synced to your Google Drive stays in your Drive.
-        </p>
+        <p className="muted">{t('settings.remove_note')}</p>
       </Sheet>
       <Sheet
         open={!!attach}
         onClose={() => setAttach(null)}
-        title={`Connect ${attach?.email ?? ''}`}
+        title={t('settings.connect_email', { email: attach?.email ?? '' })}
         footer={
           <>
             <Button onClick={() => attach && void switchWorkspace(accountRef(attach.accountId), s, runner)}>
-              Just switch to the account
+              {t('settings.just_switch')}
             </Button>
             <Button
               variant="primary"
@@ -387,26 +399,24 @@ function AccountSec() {
                 if (!attach) return;
                 const counts = await copyWorkspaceInto(s, accountRef(attach.accountId));
                 toast(
-                  `Copied ${Object.values(counts).reduce((a, b) => a + b, 0)} records. The local copy is kept.`,
+                  t('settings.copied_records', { count: Object.values(counts).reduce((a, b) => a + b, 0) }),
                 );
                 await switchWorkspace(accountRef(attach.accountId), s, runner);
               }}
             >
-              Copy this workspace into the account
+              {t('settings.copy_into')}
             </Button>
           </>
         }
       >
-        <p className="muted">
-          Copy brings everything from this local workspace into the account’s workspace (merged with anything
-          already there). The local workspace is kept until you remove it.
-        </p>
+        <p className="muted">{t('settings.copy_note')}</p>
       </Sheet>
     </>
   );
 }
 
 function StorageSec() {
+  useT();
   const s = useSession();
   const [est, setEst] = useState<{ usage?: number; quota?: number; persisted?: boolean } | null>(null);
   const [media, setMedia] = useState<{ total: number; pinned: number; cache: number } | null>(null);
@@ -427,35 +437,33 @@ function StorageSec() {
   }, []);
   return (
     <>
-      <Section title="This device">
+      <Section title={t('welcome.on_device')}>
         <div className="box">
           <div>
-            Used by this site: {mb(est?.usage)}
-            {est?.quota ? ` of ~${mb(est.quota)} available` : ''}
+            {est?.quota
+              ? t('settings.site_used_of', { used: mb(est?.usage), quota: mb(est.quota) })
+              : t('settings.site_used', { used: mb(est?.usage) })}
           </div>
-          <div>
-            Persistent storage:{' '}
-            {est?.persisted ? 'granted — the browser won’t evict data under pressure' : 'not granted'}
-          </div>
+          <div>{est?.persisted ? t('settings.persist_granted') : t('settings.persist_not')}</div>
           {!est?.persisted && (
             <Button size="sm" onClick={() => void requestPersistence().then(() => refresh())}>
-              Ask the browser to keep data
+              {t('settings.ask_persist')}
             </Button>
           )}
-          <div className="meta">
-            iPhone/iPad: install Saga HQ to the Home Screen and connect Google Drive — Safari may clear data
-            of sites you haven’t opened for a while.
-          </div>
+          <div className="meta">{t('settings.ios_note')}</div>
         </div>
       </Section>
-      <Section title="Media">
+      <Section title={t('settings.media')}>
         <div className="box">
           <div>
-            Local media: {mb(media?.total)} · not yet in Drive (never evicted): {mb(media?.pinned)} · cache:{' '}
-            {mb(media?.cache)}
+            {t('settings.media_usage', {
+              total: mb(media?.total),
+              pinned: mb(media?.pinned),
+              cache: mb(media?.cache),
+            })}
           </div>
           <label className="hstack">
-            Cache limit (MB)
+            {t('settings.cache_limit')}
             <input
               type="number"
               className="input"
@@ -466,10 +474,7 @@ function StorageSec() {
               onBlur={() => void setMeta(s.db, 'mediaCacheLimit', Math.max(100, limit) * 1024 ** 2)}
             />
           </label>
-          <div className="meta">
-            Only full-size copies already safely stored in your Drive are evicted. Videos over 100 MB should
-            be linked, not stored.
-          </div>
+          <div className="meta">{t('settings.evict_note')}</div>
         </div>
       </Section>
     </>
@@ -477,6 +482,7 @@ function StorageSec() {
 }
 
 function BackupSec() {
+  useT();
   const s = useSession();
   const [withMedia, setWithMedia] = useState(false);
   const [pv, setPv] = useState<RestorePreview | null>(null);
@@ -484,15 +490,12 @@ function BackupSec() {
   const [confirm, setConfirm] = useState(false);
   return (
     <>
-      <Section title="Export">
+      <Section title={t('settings.export')}>
         <div className="box">
-          <p className="muted">
-            A complete, portable copy of this workspace as JSON. It never contains Google tokens, account
-            identifiers, API keys or diagnostics.
-          </p>
+          <p className="muted">{t('settings.export_desc')}</p>
           <label className="check">
             <input type="checkbox" checked={withMedia} onChange={(e) => setWithMedia(e.target.checked)} />{' '}
-            Include local media (can be large)
+            {t('settings.include_media')}
           </label>
           <div className="hstack">
             <Button
@@ -503,38 +506,38 @@ function BackupSec() {
                   `saga-hq-backup-${new Date().toISOString().slice(0, 10)}.json`,
                   JSON.stringify(b),
                 );
-                toast('Backup downloaded');
+                toast(t('settings.backup_downloaded'));
               }}
             >
-              Download backup
+              {t('settings.download_backup')}
             </Button>
             <Button
               onClick={async () =>
                 downloadText('saga-hq-content.csv', await exportCsv(s, 'content'), 'text/csv')
               }
             >
-              Content CSV
+              {t('settings.csv_content')}
             </Button>
             <Button
               onClick={async () => downloadText('saga-hq-tasks.csv', await exportCsv(s, 'tasks'), 'text/csv')}
             >
-              Tasks CSV
+              {t('settings.csv_tasks')}
             </Button>
             <Button
               onClick={async () =>
                 downloadText('saga-hq-analytics.csv', await exportCsv(s, 'analytics'), 'text/csv')
               }
             >
-              Analytics CSV
+              {t('settings.csv_analytics')}
             </Button>
           </div>
-          <p className="meta">With Google connected, a weekly backup is also kept in your Drive (last 8).</p>
+          <p className="meta">{t('settings.weekly_backup')}</p>
         </div>
       </Section>
-      <Section title="Restore">
+      <Section title={t('settings.restore')}>
         <div className="box">
           <label className="btn" style={{ alignSelf: 'flex-start' }}>
-            Choose backup file…
+            {t('settings.choose_backup')}
             <input
               type="file"
               accept=".json,application/json"
@@ -548,18 +551,18 @@ function BackupSec() {
           </label>
           {pv && !pv.ok && (
             <div className="banner error" style={{ borderRadius: 8 }}>
-              {pv.error} Nothing was changed.
+              {t(`backup.error.${pv.error}`)} {t('settings.nothing_changed')}
             </div>
           )}
           {pv?.ok && (
             <>
               <div>
-                Backup “{pv.workspaceName}” from {new Date(pv.createdAt!).toLocaleString()}:{' '}
-                {Object.entries(pv.counts)
-                  .filter(([, n]) => n)
-                  .map(([k, n]) => `${n} ${k}`)
-                  .join(', ')}
-                {pv.invalid ? ` · ${pv.invalid} invalid records will be skipped` : ''}
+                {t('settings.backup_from', {
+                  name: pv.workspaceName || t('settings.ws_name_placeholder'),
+                  date: fmt.dateTime(pv.createdAt!),
+                })}{' '}
+                {countsText(pv.counts)}
+                {pv.invalid ? ` · ${t('settings.invalid_skipped', { count: pv.invalid })}` : ''}
               </div>
               <div className="hstack">
                 <label className="check">
@@ -569,7 +572,7 @@ function BackupSec() {
                     checked={mode === 'replace'}
                     onChange={() => setMode('replace')}
                   />{' '}
-                  Replace this workspace
+                  {t('settings.replace_ws')}
                 </label>
                 <label className="check">
                   <input
@@ -578,11 +581,11 @@ function BackupSec() {
                     checked={mode === 'merge'}
                     onChange={() => setMode('merge')}
                   />{' '}
-                  Add missing records only
+                  {t('settings.add_missing')}
                 </label>
               </div>
               <Button variant="primary" onClick={() => setConfirm(true)}>
-                Restore…
+                {t('settings.restore_ellipsis')}
               </Button>
             </>
           )}
@@ -591,19 +594,14 @@ function BackupSec() {
       <Confirm
         open={confirm}
         onClose={() => setConfirm(false)}
-        title="Restore backup?"
-        body="A recovery point of the current state is created first, so you can undo this from Settings › Recovery points."
-        confirmLabel="Restore"
+        title={t('settings.restore_q')}
+        body={t('settings.restore_body')}
+        confirmLabel={t('common.restore')}
         danger={mode === 'replace'}
         onConfirm={async () => {
           if (!pv?.file) return;
           const after = await restoreBackup(s, pv.file, mode);
-          toast(
-            `Restored: ${Object.entries(after)
-              .filter(([k, n]) => n && k !== 'tombstones')
-              .map(([k, n]) => `${n} ${k}`)
-              .join(', ')}`,
-          );
+          toast(t('settings.restored', { list: countsText(after) }));
           setPv(null);
         }}
       />
@@ -612,42 +610,39 @@ function BackupSec() {
 }
 
 function RecoverySec() {
+  useT();
   const s = useSession();
   const points = useLive((ss) => listRecoveryPoints(ss), [], []);
   const [target, setTarget] = useState<string | null>(null);
   return (
-    <Section title="Recovery points (this device, last 7)">
-      <p className="meta">Created automatically before restores, imports, upgrades and large sync merges.</p>
+    <Section title={t('settings.recovery_title')}>
+      <p className="meta">{t('settings.recovery_desc')}</p>
       <div className="list">
         {points.map((p) => (
           <div key={p.id} className="row static">
             <div className="grow">
-              <div className="title">{p.reason}</div>
+              <div className="title">{t(`recovery.reason.${p.reason}`, p.reasonParams)}</div>
               <div className="sub">
-                {new Date(p.at).toLocaleString()} ·{' '}
-                {Object.entries(p.counts)
-                  .filter(([k, n]) => n && k !== 'tombstones' && k !== 'workspace')
-                  .map(([k, n]) => `${n} ${k}`)
-                  .join(', ') || 'empty'}
+                {fmt.dateTime(p.at)} · {countsText(p.counts) || t('settings.empty')}
               </div>
             </div>
             <Button size="sm" onClick={() => setTarget(p.id)}>
-              Restore
+              {t('common.restore')}
             </Button>
           </div>
         ))}
-        {!points.length && <div className="row static meta">None yet.</div>}
+        {!points.length && <div className="row static meta">{t('common.none_yet')}</div>}
       </div>
       <Confirm
         open={!!target}
         onClose={() => setTarget(null)}
-        title="Restore this recovery point?"
-        body="The current state is saved as a new recovery point first."
-        confirmLabel="Restore"
+        title={t('settings.restore_point_q')}
+        body={t('settings.restore_point_body')}
+        confirmLabel={t('common.restore')}
         onConfirm={async () => {
           if (target) {
             await restoreRecoveryPoint(s, target);
-            toast('Recovery point restored');
+            toast(t('settings.point_restored'));
             location.reload();
           }
         }}
@@ -657,6 +652,7 @@ function RecoverySec() {
 }
 
 function AISec() {
+  useT();
   const s = useSession();
   const [st, setSt] = useState<AISettings>({ provider: null, models: {} });
   const [hints, setHints] = useState<Partial<Record<ProviderId, { hint: string; updatedAt: string }>>>({});
@@ -675,16 +671,13 @@ function AISec() {
   const info = PROVIDER_INFO[prov];
   return (
     <>
-      <Section title="AI provider (optional, bring your own key)">
+      <Section title={t('settings.ai_title')}>
         <div className="box">
-          <p className="muted">
-            Saga HQ works fully without AI. The Secretary and Idea Lab can use your own API key; you pay your
-            provider directly. A ChatGPT or Claude subscription is not API access.
-          </p>
+          <p className="muted">{t('settings.ai_desc')}</p>
           <div className="form-grid">
             <div className="field">
               <label className="lbl" htmlFor="aiprov">
-                Provider
+                {t('settings.provider')}
               </label>
               <select
                 id="aiprov"
@@ -698,12 +691,12 @@ function AISec() {
             </div>
             <div className="field">
               <label className="lbl" htmlFor="aimodel">
-                Model id
+                {t('settings.model_id')}
               </label>
               <input
                 id="aimodel"
                 className="input"
-                placeholder={info.defaultModel || 'required'}
+                placeholder={info.defaultModel || t('settings.required')}
                 defaultValue={st.models[prov] ?? ''}
                 key={prov + (st.models[prov] ?? '')}
                 onBlur={(e) => {
@@ -714,11 +707,11 @@ function AISec() {
               />
             </div>
           </div>
-          <p className="meta">{info.keyHelp}</p>
+          <p className="meta">{t(`ai.keyhelp.${prov}`)}</p>
           {hints[prov] ? (
             <div className="hstack">
               <span>
-                Key saved: <code>{hints[prov]!.hint}</code>
+                {t('settings.key_saved')} <code>{hints[prov]!.hint}</code>
               </span>
               <Button
                 size="sm"
@@ -731,16 +724,16 @@ function AISec() {
                       apiKey: key!,
                       model: st.models[prov] || info.defaultModel,
                     });
-                    toast(`Key works (${m})`, { kind: 'success' });
+                    toast(t('settings.key_works', { model: m }), { kind: 'success' });
                   } catch (e) {
-                    toast((e as Error).message, { kind: 'error' });
+                    toast(errorText(e), { kind: 'error' });
                   } finally {
                     setTesting(false);
                   }
                 }}
                 disabled={testing}
               >
-                {testing ? 'Testing…' : 'Test key'}
+                {testing ? t('settings.testing') : t('settings.test_key')}
               </Button>
               <Button
                 size="sm"
@@ -749,10 +742,10 @@ function AISec() {
                   await removeSecret(s, prov);
                   if (st.provider === prov) await setAISettings(s, { ...st, provider: null });
                   await reload();
-                  toast('Key removed');
+                  toast(t('settings.key_removed'));
                 }}
               >
-                Remove key
+                {t('settings.remove_key')}
               </Button>
             </div>
           ) : (
@@ -765,7 +758,7 @@ function AISec() {
                 setDraft('');
                 await setAISettings(s, { ...st, provider: prov });
                 await reload();
-                toast('Key saved on this device');
+                toast(t('settings.key_saved_device'));
               }}
             >
               <input
@@ -774,13 +767,13 @@ function AISec() {
                 type="password"
                 autoComplete="off"
                 spellCheck={false}
-                placeholder="Paste API key"
+                placeholder={t('settings.paste_key')}
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
-                aria-label="API key"
+                aria-label={t('settings.api_key')}
               />
               <Button type="submit" variant="primary">
-                Save key
+                {t('settings.save_key')}
               </Button>
             </form>
           )}
@@ -796,7 +789,7 @@ function AISec() {
                 await setAISettings(s, next);
               }}
             />{' '}
-            Use {info.label} for the Secretary
+            {t('settings.use_provider', { name: info.label })}
           </label>
           <Button
             size="sm"
@@ -805,28 +798,23 @@ function AISec() {
               await removeAllSecrets(s);
               await setAISettings(s, { provider: null, models: st.models });
               await reload();
-              toast('All saved keys removed from this workspace');
+              toast(t('settings.all_keys_removed'));
             }}
           >
-            Remove all secrets
+            {t('settings.remove_all')}
           </Button>
         </div>
       </Section>
-      <Section title="How your key is stored — and its limits">
+      <Section title={t('settings.key_storage')}>
         <ul className="meta" style={{ margin: 0, paddingLeft: 18 }}>
-          <li>Encrypted with a non-extractable key in this browser, scoped to this workspace only.</li>
-          <li>Never synced to Drive, never in backups, exports, recovery points, logs or diagnostics.</li>
+          <li>{t('settings.key_li1')}</li>
+          <li>{t('settings.key_li2')}</li>
+          <li>{t('settings.key_li3')}</li>
           <li>
-            Requests go directly from your browser to your provider, with only the context the Secretary shows
-            you.
-          </li>
-          <li>
-            <strong>Browser storage is not server-grade secret storage.</strong> Anything running on this page
-            could use the key. Use a dedicated, spend-limited key or project (set a monthly budget at{' '}
+            <strong>{t('settings.key_li4_strong')}</strong> {t('settings.key_li4')}{' '}
             <a href={info.consoleUrl} target="_blank" rel="noopener noreferrer">
-              your provider’s console
+              {t('settings.provider_console')}
             </a>
-            ) and remove it on shared devices.
           </li>
         </ul>
       </Section>
@@ -835,14 +823,15 @@ function AISec() {
 }
 
 function IntegrationsSec() {
+  useT();
   const s = useSession();
   const url = useLive((ss) => getMeta<string>(ss.db, 'studioUrl'), [], undefined);
   return (
-    <Section title="Saga Studio">
+    <Section title={t('settings.sec.integrations')}>
       <div className="box">
         <div className="field">
           <label className="lbl" htmlFor="studio">
-            Saga Studio URL (for “Open in Saga Studio” links)
+            {t('settings.studio_url')}
           </label>
           <input
             id="studio"
@@ -853,13 +842,9 @@ function IntegrationsSec() {
             onBlur={(e) => void setMeta(s.db, 'studioUrl', e.target.value.trim())}
           />
         </div>
-        <p className="meta">
-          Handoffs use a versioned saga.handoff v1 package in the link’s #fragment (never sent to a server) or
-          a JSON file. Saga HQ and Studio keep separate data; Drive-based exchange waits on the INTEROP-01
-          test.
-        </p>
+        <p className="meta">{t('settings.studio_note')}</p>
         <a className="btn" href="#/studio/import" style={{ alignSelf: 'flex-start' }}>
-          Import Studio results…
+          {t('settings.import_studio')}
         </a>
       </div>
     </Section>
@@ -867,18 +852,19 @@ function IntegrationsSec() {
 }
 
 function TrashSec() {
+  useT();
   const s = useSession();
   const items = useLive(
     async (ss) => {
       const out: { table: EntityTable; id: string; title: string; deletedAt: string }[] = [];
-      for (const t of SYNC_TABLES) {
-        if (t === 'workspace' || t === 'links' || t === 'media') continue;
-        await ss.db.table(t).each((r: Record<string, unknown>) => {
+      for (const tbl of SYNC_TABLES) {
+        if (tbl === 'workspace' || tbl === 'links' || tbl === 'media') continue;
+        await ss.db.table(tbl).each((r: Record<string, unknown>) => {
           if (r.deletedAt && !r.trashGroup)
             out.push({
-              table: t,
+              table: tbl,
               id: r.id as string,
-              title: String(r.title ?? r.name ?? r.statement ?? r.text ?? r.platform ?? r.id),
+              title: String(r.title || r.name || r.statement || r.text || ''),
               deletedAt: r.deletedAt as string,
             });
         });
@@ -890,33 +876,39 @@ function TrashSec() {
   );
   const [del, setDel] = useState<{ table: EntityTable; id: string } | null>(null);
   return (
-    <Section title="Trash (kept 30 days)">
+    <Section title={t('settings.trash_title')}>
       <div className="list">
         {items.slice(0, 300).map((i) => (
           <div key={i.id} className="row static">
             <div className="grow">
-              <div className="title">{i.title.slice(0, 120)}</div>
+              <div className="title">{i.title.slice(0, 120) || t('common.untitled')}</div>
               <div className="sub">
-                {i.table} · deleted {new Date(i.deletedAt).toLocaleDateString()} · permanent in{' '}
-                {Math.max(0, 30 - Math.floor((Date.now() - Date.parse(i.deletedAt)) / 86400000))} days
+                {t(`entity.${i.table}`)} ·{' '}
+                {t('settings.trash_line', {
+                  date: fmt.date(i.deletedAt),
+                  count: Math.max(0, 30 - Math.floor((Date.now() - Date.parse(i.deletedAt)) / 86400000)),
+                })}
               </div>
             </div>
-            <Button size="sm" onClick={() => void restore(s, i.table, i.id).then(() => toast('Restored'))}>
-              Restore
+            <Button
+              size="sm"
+              onClick={() => void restore(s, i.table, i.id).then(() => toast(t('settings.restored_item')))}
+            >
+              {t('common.restore')}
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setDel(i)}>
-              Delete now
+              {t('settings.delete_now')}
             </Button>
           </div>
         ))}
-        {!items.length && <div className="row static meta">Trash is empty.</div>}
+        {!items.length && <div className="row static meta">{t('settings.trash_empty')}</div>}
       </div>
       <Confirm
         open={!!del}
         onClose={() => setDel(null)}
-        title="Delete permanently?"
-        body="This cannot be undone."
-        confirmLabel="Delete"
+        title={t('settings.delete_q')}
+        body={t('settings.cannot_undo')}
+        confirmLabel={t('common.delete')}
         danger
         onConfirm={() => del && void purgeNow(s, del.table, del.id)}
       />
@@ -925,26 +917,23 @@ function TrashSec() {
 }
 
 function DiagnosticsSec() {
+  useT();
   const s = useSession();
   const st = useStore(syncStatus);
   return (
-    <Section title="Diagnostics (local only)">
+    <Section title={t('settings.diag_title')}>
       <div className="box">
-        <p className="muted">
-          Saga HQ sends no telemetry. If you need help, copy a technical report: it contains versions, counts,
-          storage and sync state, and redacted error lines — no content, prompts, emails, account ids, tokens
-          or keys.
-        </p>
+        <p className="muted">{t('settings.diag_desc')}</p>
         <Button
           onClick={async () => {
             const r = await buildDiagnostics(s, {
               sync: { phase: st.phase, lastSyncAt: st.lastSyncAt, pendingUploads: st.pendingUploads },
             });
             await navigator.clipboard?.writeText(JSON.stringify(r, null, 2));
-            toast('Diagnostic report copied');
+            toast(t('settings.diag_copied'));
           }}
         >
-          Copy diagnostic report
+          {t('settings.diag_copy')}
         </Button>
       </div>
     </Section>
@@ -952,22 +941,20 @@ function DiagnosticsSec() {
 }
 
 function ShortcutsSec() {
+  useT();
   const rows: [string, string][] = [
-    ['⌘/Ctrl K', 'Search & commands'],
-    ['⌘/Ctrl J', 'Secretary'],
-    ['C', 'Capture'],
-    ['T', 'Capture a task'],
-    ['/', 'Search'],
-    ['⌘/Ctrl Z', 'Undo last change (outside text fields)'],
-    [
-      'G then T / I / D / P / C / A / L / N / K / S',
-      'Go to Today, Inbox, Ideas, Projects, Content, Calendar, Library, Insights, Tasks, Settings',
-    ],
-    ['Inbox: J / K, ↵, I T R F C N, E', 'Move, accept suggestion, convert, discard'],
-    ['⌘/Ctrl ↵', 'Save capture'],
+    ['⌘/Ctrl K', t('nav.search_commands')],
+    ['⌘/Ctrl J', t('nav.secretary')],
+    ['C', t('capture.title')],
+    ['T', t('settings.sc.task')],
+    ['/', t('nav.search')],
+    ['⌘/Ctrl Z', t('settings.sc.undo')],
+    [`G → T / I / D / P / C / A / L / N / K / S`, t('settings.sc.goto')],
+    [`${t('nav.inbox')}: J / K, ↵, I T R F C N, E`, t('settings.sc.inbox')],
+    ['⌘/Ctrl ↵', t('settings.sc.save_capture')],
   ];
   return (
-    <Section title="Keyboard shortcuts">
+    <Section title={t('settings.shortcuts')}>
       <div className="list">
         {rows.map(([k, v]) => (
           <div key={k} className="row static">
@@ -978,26 +965,22 @@ function ShortcutsSec() {
           </div>
         ))}
       </div>
-      <p className="meta">Single-key shortcuts never fire while typing in a field.</p>
+      <p className="meta">{t('settings.sc.note')}</p>
     </Section>
   );
 }
 
 function AboutSec() {
+  useT();
   return (
-    <Section title="About & privacy">
+    <Section title={t('settings.sec.about')}>
       <div className="box">
-        <div>
-          Saga HQ {env.version} · build “{env.name}”
-        </div>
+        <div>{t('settings.version', { version: env.version, build: env.name })}</div>
         <ul className="meta" style={{ margin: 0, paddingLeft: 18 }}>
-          <li>
-            Your data lives in this browser (IndexedDB). With Google connected, a copy syncs to your own
-            Google Drive.
-          </li>
-          <li>No Saga server stores your content. No analytics, ads or trackers. No telemetry.</li>
-          <li>AI is optional and uses your own key, sending only the context you see.</li>
-          <li>Static app: works offline after the first load.</li>
+          <li>{t('settings.about1')}</li>
+          <li>{t('settings.about2')}</li>
+          <li>{t('settings.about3')}</li>
+          <li>{t('settings.about4')}</li>
         </ul>
       </div>
     </Section>

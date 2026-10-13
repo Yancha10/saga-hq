@@ -19,7 +19,7 @@ export async function copyWorkspaceInto(
   const data = await serializeWorkspace(source.db);
   const dest = await Session.open(target);
   try {
-    await createRecoveryPoint(dest, 'Before importing a local workspace');
+    await createRecoveryPoint(dest, 'import_local');
     const rev = dest.hlc.now();
     const counts: Record<string, number> = {};
     const destWs = await dest.db.workspace.get('workspace');

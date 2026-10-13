@@ -45,6 +45,23 @@ export interface Identity {
   avatarHint?: string;
 }
 
+/** Stable error codes rendered by i18n (`auth.error.<code>`). */
+export class AuthError extends Error {
+  constructor(
+    readonly code:
+      | 'AUTH_LOAD_FAILED'
+      | 'AUTH_NOT_CONFIGURED'
+      | 'AUTH_CANCELLED'
+      | 'AUTH_IDENTITY_FAILED'
+      | 'AUTH_ACCOUNT_MISMATCH'
+      | 'AUTH_MOCK_UNAVAILABLE',
+    detail?: string,
+  ) {
+    super(detail ? `${code}: ${detail}` : code);
+    this.name = 'AuthError';
+  }
+}
+
 let gisPromise: Promise<void> | null = null;
 let token: { value: string; expiresAt: number; accountId?: string } | null = null;
 
@@ -58,7 +75,7 @@ export function loadGis(): Promise<void> {
     s.onload = () => resolve();
     s.onerror = () => {
       gisPromise = null;
-      reject(new Error('Could not load Google sign-in (offline?)'));
+      reject(new AuthError('AUTH_LOAD_FAILED'));
     };
     document.head.appendChild(s);
   });
@@ -69,7 +86,7 @@ async function requestToken(
   scopes: readonly string[],
   hint?: string,
 ): Promise<{ value: string; expiresIn: number }> {
-  if (!env.googleClientId) throw new Error('Google is not configured for this build.');
+  if (!env.googleClientId) throw new AuthError('AUTH_NOT_CONFIGURED');
   await loadGis();
   return new Promise((resolve, reject) => {
     const client = window.google!.accounts.oauth2.initTokenClient({
@@ -78,13 +95,13 @@ async function requestToken(
       include_granted_scopes: false,
       callback: (r) => {
         if (r.error || !r.access_token)
-          reject(new Error(r.error_description || r.error || 'Sign-in was cancelled'));
+          reject(new AuthError('AUTH_CANCELLED', r.error_description || r.error));
         else {
           registerSensitive(r.access_token);
           resolve({ value: r.access_token, expiresIn: r.expires_in ?? 3600 });
         }
       },
-      error_callback: (e) => reject(new Error(e.message || e.type || 'Sign-in failed')),
+      error_callback: (e) => reject(new AuthError('AUTH_CANCELLED', e.message || e.type)),
     });
     client.requestAccessToken(hint ? { prompt: '', hint } : { prompt: 'select_account' });
   });
@@ -95,9 +112,9 @@ export async function identify(accessToken: string): Promise<Identity> {
   const res = await fetch('https://openidconnect.googleapis.com/v1/userinfo', {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
-  if (!res.ok) throw new Error(`Could not verify Google identity (${res.status})`);
+  if (!res.ok) throw new AuthError('AUTH_IDENTITY_FAILED', String(res.status));
   const info = (await res.json()) as { sub?: string; email?: string; name?: string; picture?: string };
-  if (!info.sub) throw new Error('Google identity missing subject');
+  if (!info.sub) throw new AuthError('AUTH_IDENTITY_FAILED', 'no subject');
   const accountId = await deriveAccountId(info.sub);
   const accountHint = await deriveAccountHint(info.sub);
   info.sub = undefined; // raw subject is not retained anywhere
@@ -105,7 +122,7 @@ export async function identify(accessToken: string): Promise<Identity> {
     accountId,
     accountHint,
     email: info.email ?? '',
-    displayName: info.name ?? info.email ?? 'Google account',
+    displayName: info.name ?? info.email ?? '',
     ...(info.picture ? { avatarHint: info.picture } : {}),
   };
 }
@@ -123,7 +140,7 @@ export async function reconnect(expectedAccountId: string, emailHint?: string): 
   const id = await identify(t.value);
   if (id.accountId !== expectedAccountId) {
     window.google?.accounts.oauth2.revoke(t.value);
-    throw new Error('You signed in with a different Google account than this workspace belongs to.');
+    throw new AuthError('AUTH_ACCOUNT_MISMATCH');
   }
   token = { value: t.value, expiresAt: Date.now() + t.expiresIn * 1000, accountId: id.accountId };
 }
@@ -152,7 +169,7 @@ export function signOutGoogle(): void {
 
 /** E2E-only: a mock identity that exercises the same derivation path. Tree-shaken from prod builds. */
 export async function mockSignIn(sub: string, email: string): Promise<Identity> {
-  if (!env.e2eMocks) throw new Error('Mock sign-in unavailable');
+  if (!env.e2eMocks) throw new AuthError('AUTH_MOCK_UNAVAILABLE');
   const accountId = await deriveAccountId(sub);
   const accountHint = await deriveAccountHint(sub);
   token = { value: 'mock-token', expiresAt: Date.now() + 3600_000, accountId };

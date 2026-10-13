@@ -194,10 +194,9 @@ export interface ReturnPreview {
 
 export async function previewReturn(s: Session, raw: unknown, accountHint?: string): Promise<ReturnPreview> {
   const p = returnSchema.safeParse(raw);
-  if (!p.success) return { ok: false, error: 'This is not a valid saga.return v1 payload.' };
+  if (!p.success) return { ok: false, error: 'RETURN_INVALID' };
   const content = await s.db.content.get(p.data.target.contentId);
-  if (!content || content.deletedAt)
-    return { ok: false, error: 'The content this result belongs to is not in this workspace.' };
+  if (!content || content.deletedAt) return { ok: false, error: 'RETURN_CONTENT_MISSING' };
   const mismatch = !!(p.data.source?.accountHint && accountHint && p.data.source.accountHint !== accountHint);
   return { ok: true, data: p.data, content, accountMismatch: mismatch };
 }
@@ -209,7 +208,7 @@ export async function applyReturn(s: Session, ret: StudioReturn): Promise<number
   let attached = 0;
   await mutate(
     s,
-    { label: 'Import Saga Studio results' },
+    { label: 'h.studioImport' },
     async (m) => {
       const models = new Set(content.attributes?.aiModels ?? []);
       let selectedUrl: string | null = null;
@@ -220,7 +219,7 @@ export async function applyReturn(s: Session, ret: StudioReturn): Promise<number
           if (!url && !o.driveFileId) continue;
           if (o.selected && url) selectedUrl = url;
           const lib = await m.create('library', {
-            title: `${content.title} — ${g.model ?? 'generation'}${o.selected ? ' (selected)' : ''}`,
+            title: `${content.title} — ${g.model ?? g.provider ?? 'Saga Studio'}${o.selected ? ' ✓' : ''}`,
             role: 'asset',
             kind: o.kind === 'image' ? 'image' : o.kind === 'audio' ? 'audio' : 'clip',
             originalUrl: url,

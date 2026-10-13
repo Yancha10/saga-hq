@@ -18,29 +18,29 @@ import { useApp, useLive, useSession } from '../app/context';
 import { toast } from '../app/status';
 import { displayTitleForUrl, parseUrl, safeHttpUrl } from '../core/url';
 import { nowIso, truncate } from '../core/util';
-import { MISSING_LABEL, SECTION_LABEL } from '../data/derive';
+import { DEFAULT_TEMPLATES } from '../data/defaults';
 import { linkRecords, toggleTask, unlink } from '../data/domain';
 import {
-  CONTENT_STATUS_LABEL,
   type Content,
   type EntityTable,
   type LibraryItem,
-  PLATFORM_LABEL,
   PLATFORMS,
   type Platform,
   type Project,
   type Task,
 } from '../data/schema';
 import { archive, create, restore, trash, update } from '../data/store';
+import { t, useT } from '../i18n';
+import { historyLabel, missingList, platformName } from '../i18n/render';
 import { mediaUrl } from '../media/store';
-import { fmtDay, relDays } from '../rules/time';
 import { AutoText, Button, Chip, IconButton, Pill, Sheet } from '../ui/kit';
 
 export function ContentStatus({ c }: { c: Content }) {
+  const { t } = useT();
   if (c._blocked)
     return (
       <Pill tone="warn" dot>
-        Blocked
+        {t('status.blocked')}
       </Pill>
     );
   const late =
@@ -48,32 +48,39 @@ export function ContentStatus({ c }: { c: Content }) {
   if (late)
     return (
       <Pill tone="danger" dot>
-        Late
+        {t('status.late')}
       </Pill>
     );
   const tone = c.status === 'ready' ? 'ok' : c.status === 'scheduled' ? 'accent' : undefined;
   return (
     <Pill tone={tone} dot={!!tone}>
-      {CONTENT_STATUS_LABEL[c.status]}
-      {c.status === 'producing' && c._stage
-        ? ` · ${SECTION_LABEL[c._stage as keyof typeof SECTION_LABEL]}`
-        : ''}
+      {t(`content.status.${c.status}`)}
+      {c.status === 'producing' && c._stage ? ` · ${t(`section.${c._stage}`)}` : ''}
     </Pill>
   );
 }
 
 export function missingText(c: Content): string {
   const m = (c._missing ?? []).filter((k) => k !== 'publishDate');
-  return m.length ? `missing ${m.map((k) => MISSING_LABEL[k as keyof typeof MISSING_LABEL]).join(', ')}` : '';
+  return m.length ? t('content.missing', { items: missingList(m) }) : '';
+}
+
+/** Display title for records whose title may be empty (never stores a UI-language default). */
+export const contentTitle = (c: { title?: string | null }) => c.title?.trim() || t('common.untitled');
+export function libraryTitle(r: Pick<LibraryItem, 'title' | 'originalUrl' | 'kind'>): string {
+  if (r.title?.trim()) return r.title;
+  const p = r.originalUrl ? parseUrl(r.originalUrl) : null;
+  return p ? displayTitleForUrl(p) : t(`library.kind.${r.kind}`);
 }
 
 export function PlatformTags({ platforms }: { platforms: Platform[] | undefined }) {
+  useT();
   if (!platforms?.length) return null;
   return (
     <>
       {platforms.map((p) => (
         <span key={p} className="tag">
-          {PLATFORM_LABEL[p]}
+          {platformName(p)}
         </span>
       ))}
     </>
@@ -87,15 +94,16 @@ export function PlatformPicker({
   value: Platform[];
   onChange: (v: Platform[]) => void;
 }) {
+  const { t } = useT();
   return (
-    <div className="chips" role="group" aria-label="Platforms">
+    <div className="chips" role="group" aria-label={t('common.platforms')}>
       {PLATFORMS.map((p) => (
         <Chip
           key={p}
           on={value.includes(p)}
           onClick={() => onChange(value.includes(p) ? value.filter((x) => x !== p) : [...value, p])}
         >
-          {PLATFORM_LABEL[p]}
+          {platformName(p)}
         </Chip>
       ))}
     </div>
@@ -124,6 +132,7 @@ export function ProjectSelect({
   id?: string;
   includeNone?: boolean;
 }) {
+  const { t } = useT();
   const projects = useProjects();
   return (
     <select
@@ -131,9 +140,9 @@ export function ProjectSelect({
       className="select"
       value={value ?? ''}
       onChange={(e) => onChange(e.target.value || null)}
-      aria-label={id ? undefined : 'Project'}
+      aria-label={id ? undefined : t('common.project')}
     >
-      {includeNone && <option value="">No project</option>}
+      {includeNone && <option value="">{t('common.no_project')}</option>}
       {projects
         .filter((p) => !p.archivedAt || p.id === value)
         .map((p) => (
@@ -145,19 +154,39 @@ export function ProjectSelect({
   );
 }
 
-export function ProjectName({ id }: { id: string | null | undefined }) {
-  const p = useLive((s) => (id ? s.db.projects.get(id) : undefined), [id], undefined);
-  if (!id || !p || p.deletedAt) return null;
-  return <span className="tag">{p.name}</span>;
+export function PrioritySelect({
+  id,
+  value,
+  onChange,
+}: {
+  id?: string;
+  value: string | null | undefined;
+  onChange: (v: 'low' | 'med' | 'high' | null) => void;
+}) {
+  const { t } = useT();
+  return (
+    <select
+      id={id}
+      className="select"
+      value={value ?? ''}
+      onChange={(e) => onChange((e.target.value || null) as 'low' | 'med' | 'high' | null)}
+    >
+      <option value="">{t('priority.none')}</option>
+      <option value="low">{t('priority.low')}</option>
+      <option value="med">{t('priority.med')}</option>
+      <option value="high">{t('priority.high')}</option>
+    </select>
+  );
 }
 
-export function TaskRow({ t, showParent = true }: { t: Task; showParent?: boolean }) {
+export function TaskRow({ t: task, showParent = true }: { t: Task; showParent?: boolean }) {
+  const { t, fmt } = useT();
   const s = useSession();
-  const done = t.status === 'done';
-  const overdue = !done && t.dueAt && Date.parse(t.dueAt) < new Date().setHours(0, 0, 0, 0);
+  const done = task.status === 'done';
+  const overdue = !done && task.dueAt && Date.parse(task.dueAt) < new Date().setHours(0, 0, 0, 0);
   const parent = useLive(
-    async (ss) => (showParent && t.contentId ? ss.db.content.get(t.contentId) : undefined),
-    [t.contentId, showParent],
+    async (ss) => (showParent && task.contentId ? ss.db.content.get(task.contentId) : undefined),
+    [task.contentId, showParent],
     undefined,
   );
   return (
@@ -166,8 +195,8 @@ export function TaskRow({ t, showParent = true }: { t: Task; showParent?: boolea
         <input
           type="checkbox"
           checked={done}
-          onChange={(e) => void toggleTask(s, t.id, e.target.checked)}
-          aria-label={`Mark “${t.title}” ${done ? 'not done' : 'done'}`}
+          onChange={(e) => void toggleTask(s, task.id, e.target.checked)}
+          aria-label={t(done ? 'task.mark_undone' : 'task.mark_done', { title: task.title })}
         />
       </label>
       <div className="grow">
@@ -178,79 +207,93 @@ export function TaskRow({ t, showParent = true }: { t: Task; showParent?: boolea
             color: done ? 'var(--text-3)' : undefined,
           }}
         >
-          {t.title}
+          {task.title}
         </div>
         <div className="sub hstack" style={{ gap: 6 }}>
-          {t.isBlocker && !done && <Pill tone="warn">blocker</Pill>}
-          {t.kind === 'decision' && <Pill tone="accent">decision</Pill>}
-          {t.status === 'doing' && <Pill>doing</Pill>}
-          {t.dueAt && (
-            <span style={{ color: overdue ? 'var(--danger)' : undefined }}>due {relDays(t.dueAt)}</span>
+          {task.isBlocker && !done && <Pill tone="warn">{t('task.blocker')}</Pill>}
+          {task.kind === 'decision' && <Pill tone="accent">{t('task.kind.decision')}</Pill>}
+          {task.status === 'doing' && <Pill>{t('task.status.doing')}</Pill>}
+          {task.dueAt && (
+            <span style={{ color: overdue ? 'var(--danger)' : undefined }}>
+              {t('task.due', { when: fmt.relDay(task.dueAt) })}
+            </span>
           )}
           {parent && (
             <Link to="/content/$id" params={{ id: parent.id }} className="tag">
-              {truncate(parent.title, 40)}
+              {truncate(contentTitle(parent), 40)}
             </Link>
           )}
         </div>
       </div>
-      {!done && t.status !== 'doing' && (
-        <Button size="sm" variant="ghost" onClick={() => void update(s, 'tasks', t.id, { status: 'doing' })}>
-          Start
+      {!done && task.status !== 'doing' && (
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => void update(s, 'tasks', task.id, { status: 'doing' })}
+        >
+          {t('task.start')}
         </Button>
       )}
-      <TaskMenu t={t} />
+      <TaskMenu task={task} />
     </div>
   );
 }
 
-function TaskMenu({ t }: { t: Task }) {
+function TaskMenu({ task }: { task: Task }) {
+  const { t } = useT();
   const s = useSession();
   const [edit, setEdit] = useState(false);
   return (
     <>
       <RecordMenu
-        label={`Actions for ${t.title}`}
+        label={t('task.actions', { title: task.title })}
         items={[
-          { id: 'edit', label: 'Edit…', run: () => setEdit(true) },
+          { id: 'edit', label: t('common.edit_ellipsis'), run: () => setEdit(true) },
           {
             id: 'blocker',
-            label: t.isBlocker ? 'Not a blocker' : 'Mark as blocker',
-            run: () => void update(s, 'tasks', t.id, { isBlocker: !t.isBlocker }),
+            label: task.isBlocker ? t('task.not_blocker') : t('task.make_blocker'),
+            run: () => void update(s, 'tasks', task.id, { isBlocker: !task.isBlocker }),
           },
           {
             id: 'trash',
-            label: 'Move to Trash',
+            label: t('common.move_to_trash'),
+            danger: true,
             run: () =>
-              void trash(s, 'tasks', t.id).then(() =>
-                toast('Task moved to Trash', {
-                  action: { label: 'Undo', run: () => void restore(s, 'tasks', t.id) },
+              void trash(s, 'tasks', task.id).then(() =>
+                toast(t('task.trashed'), {
+                  action: { label: t('common.undo'), run: () => void restore(s, 'tasks', task.id) },
                 }),
               ),
           },
         ]}
       />
-      <TaskEditor open={edit} onClose={() => setEdit(false)} task={t} />
+      <TaskEditor open={edit} onClose={() => setEdit(false)} task={task} />
     </>
   );
 }
 
 export function TaskEditor({ open, onClose, task }: { open: boolean; onClose: () => void; task: Task }) {
+  const { t } = useT();
   const s = useSession();
   return (
-    <Sheet open={open} onClose={onClose} title="Edit task" footer={<Button onClick={onClose}>Done</Button>}>
+    <Sheet
+      open={open}
+      onClose={onClose}
+      title={t('task.edit_title')}
+      footer={<Button onClick={onClose}>{t('common.done')}</Button>}
+    >
       <AutoText
         value={task.title}
         onSave={(v) =>
           v.trim() && update(s, 'tasks', task.id, { title: v.trim() }, { coalesceKey: `t:${task.id}:title` })
         }
-        ariaLabel="Title"
+        ariaLabel={t('common.title')}
         className="title"
       />
       <div className="form-grid">
         <div className="field">
           <label className="lbl" htmlFor="tdue">
-            Due
+            {t('task.due_label')}
           </label>
           <input
             id="tdue"
@@ -266,25 +309,17 @@ export function TaskEditor({ open, onClose, task }: { open: boolean; onClose: ()
         </div>
         <div className="field">
           <label className="lbl" htmlFor="tprio">
-            Priority
+            {t('common.priority')}
           </label>
-          <select
+          <PrioritySelect
             id="tprio"
-            className="select"
-            value={task.priority ?? ''}
-            onChange={(e) =>
-              void update(s, 'tasks', task.id, { priority: (e.target.value || null) as Task['priority'] })
-            }
-          >
-            <option value="">None</option>
-            <option value="low">Low</option>
-            <option value="med">Medium</option>
-            <option value="high">High</option>
-          </select>
+            value={task.priority}
+            onChange={(v) => void update(s, 'tasks', task.id, { priority: v })}
+          />
         </div>
         <div className="field">
           <label className="lbl" htmlFor="test">
-            Estimate (min)
+            {t('task.estimate')}
           </label>
           <input
             id="test"
@@ -301,7 +336,7 @@ export function TaskEditor({ open, onClose, task }: { open: boolean; onClose: ()
         </div>
         <div className="field">
           <label className="lbl" htmlFor="tkind">
-            Kind
+            {t('task.kind_label')}
           </label>
           <select
             id="tkind"
@@ -309,8 +344,8 @@ export function TaskEditor({ open, onClose, task }: { open: boolean; onClose: ()
             value={task.kind}
             onChange={(e) => void update(s, 'tasks', task.id, { kind: e.target.value as Task['kind'] })}
           >
-            <option value="task">Task</option>
-            <option value="decision">Decision</option>
+            <option value="task">{t('task.kind.task')}</option>
+            <option value="decision">{t('task.kind.decision')}</option>
           </select>
         </div>
       </div>
@@ -320,7 +355,7 @@ export function TaskEditor({ open, onClose, task }: { open: boolean; onClose: ()
           checked={!!task.hardDeadline}
           onChange={(e) => void update(s, 'tasks', task.id, { hardDeadline: e.target.checked })}
         />{' '}
-        Hard deadline
+        {t('task.hard_deadline')}
       </label>
       <label className="check">
         <input
@@ -328,10 +363,10 @@ export function TaskEditor({ open, onClose, task }: { open: boolean; onClose: ()
           checked={task.isBlocker}
           onChange={(e) => void update(s, 'tasks', task.id, { isBlocker: e.target.checked })}
         />{' '}
-        Blocks its content/project
+        {t('task.blocks_parent')}
       </label>
       <div className="field">
-        <span className="lbl">Project</span>
+        <span className="lbl">{t('common.project')}</span>
         <ProjectSelect
           value={task.projectId}
           onChange={(v) => void update(s, 'tasks', task.id, { projectId: v })}
@@ -339,26 +374,26 @@ export function TaskEditor({ open, onClose, task }: { open: boolean; onClose: ()
       </div>
       {task.kind === 'decision' && (
         <div className="field">
-          <span className="lbl">Decision / resolution</span>
+          <span className="lbl">{t('task.resolution')}</span>
           <AutoText
             multiline
             value={task.resolution}
             onSave={(v) =>
               update(s, 'tasks', task.id, { resolution: v || null }, { coalesceKey: `t:${task.id}:res` })
             }
-            ariaLabel="Resolution"
+            ariaLabel={t('task.resolution')}
           />
         </div>
       )}
       <div className="field">
-        <span className="lbl">Notes</span>
+        <span className="lbl">{t('common.notes')}</span>
         <AutoText
           multiline
           value={task.notes}
           onSave={(v) =>
             update(s, 'tasks', task.id, { notes: v || null }, { coalesceKey: `t:${task.id}:notes` })
           }
-          ariaLabel="Notes"
+          ariaLabel={t('common.notes')}
         />
       </div>
     </Sheet>
@@ -367,11 +402,12 @@ export function TaskEditor({ open, onClose, task }: { open: boolean; onClose: ()
 
 export function QuickTask({
   parent,
-  placeholder = 'Add a task…',
+  placeholder,
 }: {
   parent?: { contentId?: string; projectId?: string | null; ideaId?: string };
   placeholder?: string;
 }) {
+  const { t } = useT();
   const s = useSession();
   const [v, setV] = useState('');
   const [blocker, setBlocker] = useState(false);
@@ -405,17 +441,18 @@ export function QuickTask({
         style={{ flex: 1, minWidth: 120 }}
         value={v}
         onChange={(e) => setV(e.target.value)}
-        placeholder={placeholder}
-        aria-label="New task title"
+        placeholder={placeholder ?? t('task.add_placeholder')}
+        aria-label={t('task.new_title')}
       />
       {parent?.contentId && (
         <label className="check meta" style={{ minHeight: 0 }}>
-          <input type="checkbox" checked={blocker} onChange={(e) => setBlocker(e.target.checked)} /> blocker
+          <input type="checkbox" checked={blocker} onChange={(e) => setBlocker(e.target.checked)} />{' '}
+          {t('task.blocker')}
         </label>
       )}
       {v && (
         <Button size="sm" type="submit">
-          Add
+          {t('common.add')}
         </Button>
       )}
     </form>
@@ -455,27 +492,27 @@ export function archiveTrashItems(
 ): MenuItemDef[] {
   return [
     rec.archivedAt
-      ? { id: 'unarchive', label: 'Unarchive', run: () => void archive(s, table, rec.id, false) }
+      ? { id: 'unarchive', label: t('common.unarchive'), run: () => void archive(s, table, rec.id, false) }
       : {
           id: 'archive',
-          label: 'Archive',
+          label: t('common.archive'),
           run: () =>
             void archive(s, table, rec.id).then(() =>
-              toast('Archived', {
-                action: { label: 'Undo', run: () => void archive(s, table, rec.id, false) },
+              toast(t('toast.archived'), {
+                action: { label: t('common.undo'), run: () => void archive(s, table, rec.id, false) },
               }),
             ),
         },
     rec.deletedAt
-      ? { id: 'restore', label: 'Restore from Trash', run: () => void restore(s, table, rec.id) }
+      ? { id: 'restore', label: t('common.restore_trash'), run: () => void restore(s, table, rec.id) }
       : {
           id: 'trash',
-          label: 'Move to Trash',
+          label: t('common.move_to_trash'),
           danger: true,
           run: () =>
             void trash(s, table, rec.id).then(() => {
-              toast('Moved to Trash (kept 30 days)', {
-                action: { label: 'Undo', run: () => void restore(s, table, rec.id) },
+              toast(t('toast.trashed'), {
+                action: { label: t('common.undo'), run: () => void restore(s, table, rec.id) },
               });
               after?.();
             }),
@@ -490,6 +527,7 @@ export function ArchivedNotice({
   rec: { id: string; archivedAt?: string | null; deletedAt?: string | null };
   table: EntityTable;
 }) {
+  const { t, fmt } = useT();
   const s = useSession();
   if (rec.deletedAt)
     return (
@@ -497,11 +535,10 @@ export function ArchivedNotice({
         className="banner warning"
         style={{ borderRadius: 8, border: '1px solid var(--line)', marginBottom: 12 }}
       >
-        <Trash2 size={16} aria-hidden /> In Trash since {fmtDay(rec.deletedAt)}. It will be deleted
-        permanently after 30 days.
+        <Trash2 size={16} aria-hidden /> {t('notice.in_trash', { date: fmt.date(rec.deletedAt) })}
         <span className="spacer" />
         <Button size="sm" onClick={() => void restore(s, table, rec.id)}>
-          <Undo2 size={14} /> Restore
+          <Undo2 size={14} /> {t('common.restore')}
         </Button>
       </div>
     );
@@ -511,11 +548,10 @@ export function ArchivedNotice({
         className="banner info"
         style={{ borderRadius: 8, border: '1px solid var(--line)', marginBottom: 12 }}
       >
-        <Archive size={16} aria-hidden /> Archived {fmtDay(rec.archivedAt)} — kept for history, hidden from
-        active views.
+        <Archive size={16} aria-hidden /> {t('notice.archived', { date: fmt.date(rec.archivedAt) })}
         <span className="spacer" />
         <Button size="sm" onClick={() => void archive(s, table, rec.id, false)}>
-          <ArchiveRestore size={14} /> Unarchive
+          <ArchiveRestore size={14} /> {t('common.unarchive')}
         </Button>
       </div>
     );
@@ -524,6 +560,7 @@ export function ArchivedNotice({
 
 /** Shows conflict copies kept when two devices edited the same long text concurrently. */
 export function ConflictNotice({ recordId, table }: { recordId: string; table: EntityTable }) {
+  const { t, fmt } = useT();
   const s = useSession();
   const conflicts = useLive(
     (ss) =>
@@ -543,19 +580,18 @@ export function ConflictNotice({ recordId, table }: { recordId: string; table: E
         className="banner warning"
         style={{ borderRadius: 8, border: '1px solid var(--line)', marginBottom: 12 }}
       >
-        Edited on two devices at the same time — the other version of{' '}
-        {conflicts.map((c) => c.field).join(', ')} was kept so nothing is lost.
+        {t('conflict.notice', { fields: conflicts.map((c) => t(`field.${c.field}`)).join(', ') })}
         <span className="spacer" />
         <Button size="sm" onClick={() => setOpen(true)}>
-          Compare
+          {t('conflict.compare')}
         </Button>
       </div>
-      <Sheet open={open} onClose={() => setOpen(false)} title="Other versions" wide>
+      <Sheet open={open} onClose={() => setOpen(false)} title={t('conflict.title')} wide>
         {conflicts.map((c) => (
           <div key={c.id} className="box">
             <div className="hstack">
-              <strong>{c.field}</strong>
-              <span className="meta">kept {fmtDay(c.at)}</span>
+              <strong>{t(`field.${c.field}`)}</strong>
+              <span className="meta">{t('conflict.kept', { date: fmt.date(c.at) })}</span>
             </div>
             <pre className="json">{String(c.value ?? '')}</pre>
             <div className="hstack">
@@ -563,25 +599,25 @@ export function ConflictNotice({ recordId, table }: { recordId: string; table: E
                 size="sm"
                 onClick={() =>
                   void update(s, table, recordId, { [c.field]: c.value } as never, {
-                    label: 'Use other version',
+                    label: 'h.useOtherVersion',
                   }).then(() => s.db.conflicts.update(c.id, { resolved: true }))
                 }
               >
-                Use this version
+                {t('conflict.use')}
               </Button>
               <Button
                 size="sm"
                 variant="ghost"
                 onClick={() => void navigator.clipboard?.writeText(String(c.value ?? ''))}
               >
-                Copy
+                {t('common.copy')}
               </Button>
               <Button
                 size="sm"
                 variant="ghost"
                 onClick={() => void s.db.conflicts.update(c.id, { resolved: true })}
               >
-                Dismiss
+                {t('common.dismiss')}
               </Button>
             </div>
           </div>
@@ -627,6 +663,7 @@ export function MediaThumb({
 }
 
 export function ExtLink({ href, children }: { href: string | null | undefined; children?: ReactNode }) {
+  const { t } = useT();
   const safe = safeHttpUrl(href ?? null);
   if (!safe) return <span className="meta">{href}</span>;
   let host = '';
@@ -642,6 +679,7 @@ export function ExtLink({ href, children }: { href: string | null | undefined; c
       rel="noopener noreferrer"
       className="hstack"
       style={{ gap: 4, color: 'var(--accent-strong)' }}
+      aria-label={children ? undefined : t('a11y.open_link', { host })}
     >
       {children ?? host} <ExternalLink size={12} aria-hidden />
     </a>
@@ -658,6 +696,7 @@ export function References({
   fromId: string;
   projectId?: string | null;
 }) {
+  const { t } = useT();
   const s = useSession();
   const links = useLive(
     (ss) =>
@@ -677,7 +716,7 @@ export function References({
   const [open, setOpen] = useState(false);
   return (
     <div className="stack" style={{ gap: 8 }}>
-      {links.length === 0 && <div className="meta">No references yet.</div>}
+      {links.length === 0 && <div className="meta">{t('refs.none')}</div>}
       {links.length > 0 && (
         <div className="list">
           {links.map((l, i) => {
@@ -688,15 +727,15 @@ export function References({
                 <MediaThumb mediaId={r.mediaId} url={r.thumbUrl} alt="" />
                 <div className="grow">
                   <Link to="/library/$id" params={{ id: r.id }} className="title">
-                    {r.title || r.originalUrl || 'Untitled'}
+                    {libraryTitle(r)}
                   </Link>
                   <div className="sub">
-                    {r.role} · {r.kind}
+                    {t(`library.role.${r.role}`)} · {t(`library.kind.${r.kind}`)}
                     {l.note ? ` · ${l.note}` : ''}
                   </div>
                 </div>
-                {r.originalUrl && <ExtLink href={r.originalUrl}>{''}</ExtLink>}
-                <IconButton label="Remove reference" size="sm" onClick={() => void unlink(s, l.id)}>
+                {r.originalUrl && <ExtLink href={r.originalUrl} />}
+                <IconButton label={t('refs.remove')} size="sm" onClick={() => void unlink(s, l.id)}>
                   <X size={14} />
                 </IconButton>
               </div>
@@ -706,7 +745,7 @@ export function References({
       )}
       <div>
         <Button size="sm" onClick={() => setOpen(true)}>
-          <Link2 size={14} /> Add reference
+          <Link2 size={14} /> {t('refs.add')}
         </Button>
       </div>
       <RefPicker
@@ -733,6 +772,7 @@ function RefPicker({
   fromId: string;
   projectId?: string | null;
 }) {
+  const { t } = useT();
   const s = useSession();
   const { search } = useApp();
   const [q, setQ] = useState('');
@@ -750,7 +790,7 @@ function RefPicker({
   }, [q, url, search]);
   const pick = async (id: string) => {
     await linkRecords(s, fromType, fromId, 'library', id, 'references');
-    toast('Reference linked');
+    toast(t('refs.linked'));
     onClose();
   };
   const createFromUrl = async () => {
@@ -764,7 +804,7 @@ function RefPicker({
     ).find((x) => !x.deletedAt);
     if (dup) return pick(dup.id);
     const r = await create(s, 'library', {
-      title: p ? displayTitleForUrl(p) : url,
+      title: p ? displayTitleForUrl(p) : null,
       role: 'reference',
       kind: p?.kind === 'video' ? 'video' : 'link',
       originalUrl: url,
@@ -782,26 +822,26 @@ function RefPicker({
           .filter((r) => !r.deletedAt)
           .map((r) => ({
             id: r.id,
-            title: r.title || r.originalUrl || 'Untitled',
-            sub: `${r.role} · ${r.kind}`,
+            title: libraryTitle(r),
+            sub: `${t(`library.role.${r.role}`)} · ${t(`library.kind.${r.kind}`)}`,
           }));
   return (
-    <Sheet open={open} onClose={onClose} title="Add reference">
+    <Sheet open={open} onClose={onClose} title={t('refs.add')}>
       <input
         className="input"
         autoFocus
-        placeholder="Search the Library or paste a URL"
+        placeholder={t('refs.search_placeholder')}
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        aria-label="Search references or paste URL"
+        aria-label={t('refs.search_placeholder')}
       />
       {url && (
         <Button variant="primary" onClick={() => void createFromUrl()}>
-          <Plus size={14} /> Save link as reference
+          <Plus size={14} /> {t('refs.save_link')}
         </Button>
       )}
       <div className="list">
-        {list.length === 0 && <div className="row static meta">Nothing found.</div>}
+        {list.length === 0 && <div className="row static meta">{t('common.nothing_found')}</div>}
         {list.map((r) => (
           <button key={r.id} type="button" className="row" onClick={() => void pick(r.id)}>
             <div className="grow">
@@ -819,28 +859,29 @@ function RefPicker({
 export function TagEditor({
   value,
   onChange,
-  label = 'Tags',
+  labelKey = 'common.tag',
 }: {
   value: string[] | undefined;
   onChange: (v: string[]) => void;
-  label?: string;
+  labelKey?: string;
 }) {
+  const { t } = useT();
   const [draft, setDraft] = useState('');
   const tags = value ?? [];
   const add = () => {
-    const t = draft.trim().replace(/^#/, '');
-    if (t && !tags.includes(t)) onChange([...tags, t]);
+    const x = draft.trim().replace(/^#/, '');
+    if (x && !tags.includes(x)) onChange([...tags, x]);
     setDraft('');
   };
   return (
     <div className="hstack" style={{ gap: 6 }}>
-      {tags.map((t) => (
-        <span key={t} className="tag">
-          {t}
+      {tags.map((x) => (
+        <span key={x} className="tag">
+          {x}
           <button
             type="button"
-            aria-label={`Remove ${t}`}
-            onClick={() => onChange(tags.filter((x) => x !== t))}
+            aria-label={t('common.remove_item', { item: x })}
+            onClick={() => onChange(tags.filter((y) => y !== x))}
             style={{
               border: 0,
               background: 'none',
@@ -855,9 +896,9 @@ export function TagEditor({
       ))}
       <input
         className="input plain"
-        style={{ width: 140, minHeight: 28 }}
-        placeholder={`+ ${label.toLowerCase()}`}
-        aria-label={`Add ${label.toLowerCase()}`}
+        style={{ width: 150, minHeight: 28 }}
+        placeholder={`+ ${t(labelKey)}`}
+        aria-label={t('common.add_item', { item: t(labelKey) })}
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         onKeyDown={(e) => {
@@ -873,6 +914,7 @@ export function TagEditor({
 }
 
 export function HistoryList({ recordId }: { recordId: string }) {
+  const { t, fmt } = useT();
   const entries = useLive(
     (ss) =>
       ss.db.history
@@ -884,20 +926,14 @@ export function HistoryList({ recordId }: { recordId: string }) {
     [recordId],
     [],
   );
-  if (!entries.length) return <div className="meta">No local history yet.</div>;
+  if (!entries.length) return <div className="meta">{t('history.none')}</div>;
   return (
     <ul style={{ margin: 0, paddingLeft: 16 }} className="meta">
       {entries.map((e) => (
         <li key={e.id}>
           {e.actor === 'ai' ? '✧ ' : ''}
-          {e.label} ·{' '}
-          {new Date(e.at).toLocaleString(undefined, {
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-          })}
-          {e.undone ? ' (undone)' : ''}
+          {historyLabel(e.label, e.labelParams)} · {fmt.dateTime(e.at)}
+          {e.undone ? ` (${t('history.undone')})` : ''}
         </li>
       ))}
     </ul>
@@ -907,8 +943,8 @@ export function HistoryList({ recordId }: { recordId: string }) {
 export function useNow(intervalMs = 60_000): number {
   const [n, setN] = useState(Date.now());
   useEffect(() => {
-    const t = setInterval(() => setN(Date.now()), intervalMs);
-    return () => clearInterval(t);
+    const i = setInterval(() => setN(Date.now()), intervalMs);
+    return () => clearInterval(i);
   }, [intervalMs]);
   return n;
 }
@@ -927,8 +963,8 @@ export function downloadText(name: string, text: string, mime = 'application/jso
 export function useDebounced<T>(v: T, ms = 150): T {
   const [d, setD] = useState(v);
   useEffect(() => {
-    const t = setTimeout(() => setD(v), ms);
-    return () => clearTimeout(t);
+    const x = setTimeout(() => setD(v), ms);
+    return () => clearTimeout(x);
   }, [v, ms]);
   return d;
 }
@@ -940,3 +976,9 @@ export function sortByUpdated<T extends { updatedAt: string }>(xs: T[]): T[] {
 export const isLive = <T extends { deletedAt?: string | null; archivedAt?: string | null }>(x: T) =>
   !x.deletedAt && !x.archivedAt;
 export { nowIso, useMemo };
+
+/** Built-in template names are shown localized while the user has not renamed them (stored value stays canonical). */
+export function templateName(tpl: { id: string; name: string }): string {
+  const builtin = DEFAULT_TEMPLATES.find((d) => d.id === tpl.id);
+  return builtin && builtin.name === tpl.name ? t(`template.${tpl.id}`) : tpl.name;
+}

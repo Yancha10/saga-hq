@@ -4,10 +4,12 @@ import { useState } from 'react';
 import { useLive, useSession } from '../../app/context';
 import type { Content, Project } from '../../data/schema';
 import { create } from '../../data/store';
+import { fmt, t, useT } from '../../i18n';
 import { Button, Empty, Pill, Sheet, Tabs } from '../../ui/kit';
 import { PageHeader } from '../../ui/PageHeader';
 
 export function ProjectsPage() {
+  useT();
   const s = useSession();
   const navigate = useNavigate();
   const [filter, setFilter] = useState<'active' | 'paused' | 'done' | 'archived'>('active');
@@ -24,7 +26,7 @@ export function ProjectsPage() {
       return {
         projects,
         content: content.filter((c) => !c.deletedAt),
-        tasks: tasks.filter((t) => !t.deletedAt),
+        tasks: tasks.filter((x) => !x.deletedAt),
       };
     },
     [],
@@ -50,37 +52,36 @@ export function ProjectsPage() {
   return (
     <div className="page">
       <PageHeader
-        title="Projects"
+        title={t('nav.projects')}
         actions={
           <Button variant="primary" onClick={() => setOpen(true)}>
-            <Plus size={15} /> New project
+            <Plus size={15} /> {t('projects.new')}
           </Button>
         }
       />
       <div style={{ marginBottom: 12 }}>
         <Tabs
-          label="Project filter"
+          label={t('projects.filter_label')}
           value={filter}
           onChange={setFilter}
           options={[
-            { value: 'active', label: 'Active' },
-            { value: 'paused', label: 'Paused' },
-            { value: 'done', label: 'Done' },
-            { value: 'archived', label: 'Archived' },
+            { value: 'active', label: t('project.status.active') },
+            { value: 'paused', label: t('project.status.paused') },
+            { value: 'done', label: t('project.status.done') },
+            { value: 'archived', label: t('common.archived') },
           ]}
         />
       </div>
       {list.length === 0 ? (
         <Empty
-          title="No projects here"
+          title={t('projects.none')}
           action={
             <Button variant="primary" onClick={() => setOpen(true)}>
-              Create a project
+              {t('today.create_project')}
             </Button>
           }
         >
-          Projects are strategic containers — a launch, a season, a series — that pull together content,
-          ideas, tasks and results.
+          {t('projects.empty_body')}
         </Empty>
       ) : (
         <div className="list">
@@ -94,21 +95,21 @@ export function ProjectsPage() {
                       <Star
                         size={13}
                         fill="currentColor"
-                        aria-label="Focus project"
+                        aria-label={t('reason.focus_project')}
                         style={{ marginRight: 6, color: 'var(--accent)' }}
                       />
                     )}
                     {p.name}
                   </div>
-                  <div className="sub">{p.goal || 'No goal set'}</div>
+                  <div className="sub">{p.goal || t('projects.no_goal')}</div>
                 </div>
                 <span className="meta num hide-mobile">
-                  {st.active} active · {st.published} published
+                  {t('projects.counts', { active: st.active, published: st.published })}
                 </span>
-                {st.blocked > 0 && <Pill tone="warn">{st.blocked} blocked</Pill>}
+                {st.blocked > 0 && <Pill tone="warn">{t('projects.n_blocked', { count: st.blocked })}</Pill>}
                 {st.next && (
                   <span className="tag hide-mobile">
-                    next {new Date(st.next).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                    {t('projects.next', { date: fmt.date(st.next, { day: 'numeric', month: 'short' }) })}
                   </span>
                 )}
               </Link>
@@ -119,7 +120,7 @@ export function ProjectsPage() {
       <Sheet
         open={open}
         onClose={() => setOpen(false)}
-        title="New project"
+        title={t('projects.new')}
         footer={
           <Button
             variant="primary"
@@ -138,13 +139,13 @@ export function ProjectsPage() {
               void navigate({ to: '/projects/$id', params: { id: p.id } });
             }}
           >
-            Create
+            {t('common.create')}
           </Button>
         }
       >
         <div className="field">
           <label className="lbl" htmlFor="pname">
-            Name
+            {t('common.name')}
           </label>
           <input
             id="pname"
@@ -152,19 +153,19 @@ export function ProjectsPage() {
             autoFocus
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. GTA VI Launch"
+            placeholder={t('projects.name_placeholder')}
           />
         </div>
         <div className="field">
           <label className="lbl" htmlFor="pgoal">
-            Goal (optional)
+            {t('projects.goal_optional')}
           </label>
           <input
             id="pgoal"
             className="input"
             value={goal}
             onChange={(e) => setGoal(e.target.value)}
-            placeholder="One line: what success looks like"
+            placeholder={t('projects.goal_placeholder')}
           />
         </div>
       </Sheet>

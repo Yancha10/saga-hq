@@ -12,9 +12,7 @@ const THUMB_EDGE = 512;
 
 export class MediaTooLargeError extends Error {
   constructor() {
-    super(
-      'This file is larger than 100 MB. Link it instead (e.g. a Drive or Studio URL) — Saga HQ is not a video store.',
-    );
+    super('MEDIA_TOO_LARGE');
     this.name = 'MediaTooLargeError';
   }
 }
@@ -156,7 +154,7 @@ export async function storeDownloaded(s: Session, id: string, blob: Blob): Promi
 }
 
 export async function markUploaded(s: Session, id: string, driveFileId: string): Promise<void> {
-  await update(s, 'media', id, { driveFileId }, { label: 'Media uploaded', history: false });
+  await update(s, 'media', id, { driveFileId }, { label: 'h.mediaUploaded', history: false });
   await s.db.mediaBlobs.update([id, 'full'], { pinned: 0 });
 }
 

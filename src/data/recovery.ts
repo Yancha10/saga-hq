@@ -8,12 +8,17 @@ import { countData, replaceWorkspaceData, serializeWorkspace, type WorkspaceData
 
 const KEEP = 7;
 
-export async function createRecoveryPoint(s: Session, reason: string): Promise<RecoveryPoint> {
+export async function createRecoveryPoint(
+  s: Session,
+  reason: 'import_local' | 'upgrade' | 'restore_point' | 'restore_backup' | 'merge_backup' | 'sync_merge',
+  reasonParams?: Record<string, string | number>,
+): Promise<RecoveryPoint> {
   const data = await serializeWorkspace(s.db);
   const point: RecoveryPoint = {
     id: ulid(),
     at: nowIso(),
     reason,
+    ...(reasonParams ? { reasonParams } : {}),
     schemaVersion: SCHEMA_VERSION,
     counts: countData(data),
     data: JSON.stringify(data),
@@ -33,10 +38,10 @@ export async function listRecoveryPoints(s: Session): Promise<Omit<RecoveryPoint
 export async function restoreRecoveryPoint(s: Session, id: string): Promise<void> {
   s.assertLive();
   const point = await s.db.recovery.get(id);
-  if (!point) throw new Error('Recovery point not found');
-  if (point.schemaVersion > SCHEMA_VERSION) throw new Error('Recovery point is from a newer version');
+  if (!point) throw new Error('RECOVERY_NOT_FOUND');
+  if (point.schemaVersion > SCHEMA_VERSION) throw new Error('RECOVERY_NEWER');
   const data = JSON.parse(point.data) as WorkspaceData;
-  await createRecoveryPoint(s, 'Before restoring a recovery point');
+  await createRecoveryPoint(s, 'restore_point');
   s.assertLive();
   // Restored records get fresh revisions so the restore propagates through sync as a new edit.
   const rev = s.hlc.now();

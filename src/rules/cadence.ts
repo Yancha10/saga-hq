@@ -1,17 +1,17 @@
 import type { Publication, Workspace } from '../data/schema';
-import { PLATFORM_LABEL } from '../data/schema';
 import { addDays, DAY, startOfDay, startOfWeek } from './time';
 
+/** Language-neutral gap description; rendered by i18n. */
 export interface Gap {
   platform: Publication['platform'];
   day?: string; // ISO date of a preferred day with nothing planned
   weekStart: string;
   planned: number;
   target: number;
-  message: string;
+  remainingDays: number;
 }
 
-/** Compare planned publications for this and next week against the optional cadence targets. */
+/** Compare planned publications against the optional cadence targets (never schedules anything). */
 export function cadenceGaps(
   ws: Workspace | undefined,
   pubs: Publication[],
@@ -34,14 +34,14 @@ export function cadenceGaps(
     const at = (p: Publication) => Date.parse((p.publishedAt ?? p.scheduledAt)!);
     const weekStart = startOfWeek(now).getTime();
     const thisWeek = mine.filter((p) => at(p) >= weekStart && at(p) < weekStart + 7 * DAY).length;
+    const remainingDays = Math.max(1, Math.round((weekStart + 7 * DAY - today) / DAY));
     if (thisWeek < c.perWeek) {
-      const remainingDays = Math.max(1, Math.round((weekStart + 7 * DAY - today) / DAY));
       out.push({
         platform: c.platform,
         weekStart: new Date(weekStart).toISOString(),
         planned: thisWeek,
         target: c.perWeek,
-        message: `${PLATFORM_LABEL[c.platform]}: ${thisWeek}/${c.perWeek} planned this week (${remainingDays} day${remainingDays > 1 ? 's' : ''} left)`,
+        remainingDays,
       });
     }
     for (const dow of c.preferredDays ?? []) {
@@ -56,7 +56,7 @@ export function cadenceGaps(
             weekStart: startOfWeek(d).toISOString(),
             planned: 0,
             target: c.perWeek,
-            message: `${date.toLocaleDateString(undefined, { weekday: 'short' })}: no ${PLATFORM_LABEL[c.platform]} planned`,
+            remainingDays,
           });
       }
     }
@@ -64,6 +64,6 @@ export function cadenceGaps(
   return out;
 }
 
-export function nextSlots(_days = 7, now = Date.now()): Date[] {
-  return Array.from({ length: _days }, (_, i) => addDays(startOfDay(now), i));
+export function nextSlots(days = 7, now = Date.now()): Date[] {
+  return Array.from({ length: days }, (_, i) => addDays(startOfDay(now), i));
 }

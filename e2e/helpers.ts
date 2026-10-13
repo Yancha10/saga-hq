@@ -16,7 +16,7 @@ export async function capture(page: Page, text: string): Promise<number> {
     .click({ position: { x: 5, y: 5 } })
     .catch(() => {});
   await page.keyboard.press('c');
-  const box = page.getByRole('textbox', { name: "What's on your mind?" });
+  const box = page.getByRole('textbox', { name: 'What’s on your mind?' });
   await box.fill(text);
   await page.keyboard.press('Control+Enter');
   await expect(page.getByText('Saved to Inbox')).toBeVisible();

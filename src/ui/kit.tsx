@@ -2,6 +2,7 @@ import { X } from 'lucide-react';
 import { type ButtonHTMLAttributes, type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { Dialog, Heading, Modal, ModalOverlay } from 'react-aria-components';
 import { markDirty } from '../app/status';
+import { t, useT } from '../i18n';
 
 type BtnProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: 'primary' | 'ghost' | 'danger' | 'default';
@@ -299,7 +300,7 @@ export function Sheet({
         <Dialog className="dialog" aria-label={title} style={{ outline: 'none' }}>
           <div className="modal-head">
             <Heading slot="title">{title}</Heading>
-            <IconButton label="Close" onClick={onClose}>
+            <IconButton label={t('common.close')} onClick={onClose}>
               <X size={18} />
             </IconButton>
           </div>
@@ -335,7 +336,7 @@ export function Confirm({
       title={title}
       footer={
         <>
-          <Button onClick={onClose}>Cancel</Button>
+          <Button onClick={onClose}>{t('common.cancel')}</Button>
           <Button
             variant={danger ? 'danger' : 'primary'}
             onClick={() => {
@@ -389,7 +390,7 @@ export function Progress({ value, label }: { value: number; label?: string }) {
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={Math.round(value * 100)}
-      aria-label={label ?? 'Readiness'}
+      aria-label={label ?? t('content.readiness')}
     >
       <span style={{ width: `${Math.round(value * 100)}%` }} />
     </div>
@@ -400,6 +401,8 @@ export function Kbd({ children }: { children: ReactNode }) {
   return <kbd className="kbd">{children}</kbd>;
 }
 
-export function Spinner({ label = 'Loading' }: { label?: string }) {
+export function Spinner({ label }: { label?: string }) {
+  useT();
+  label ??= t('common.loading');
   return <span className="spin" role="status" aria-label={label} />;
 }

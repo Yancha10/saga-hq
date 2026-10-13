@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import type { Platform } from '../../data/schema';
+import { fmt, parseNum, t, useT } from '../../i18n';
+import { platformName } from '../../i18n/render';
 import { COMMON_METRICS } from '../../rules/analytics';
 import { Button } from '../../ui/kit';
 
@@ -15,8 +17,11 @@ export function MetricsForm({
   onSubmit: (m: Record<string, number>) => Promise<void> | void;
   initial?: Record<string, number>;
 }) {
+  useT();
   const [vals, setVals] = useState<Record<string, string>>(
-    Object.fromEntries(Object.entries(initial ?? {}).map(([k, v]) => [k, String(v)])),
+    Object.fromEntries(
+      Object.entries(initial ?? {}).map(([k, v]) => [k, fmt.num(v, { useGrouping: false })]),
+    ),
   );
   const [more, setMore] = useState(false);
   const shown = COMMON_METRICS.filter((m) => more || PRIMARY.includes(m.key));
@@ -27,7 +32,7 @@ export function MetricsForm({
         e.preventDefault();
         const out: Record<string, number> = {};
         for (const [k, v] of Object.entries(vals)) {
-          const n = Number(String(v).replace(/[, ]/g, '').replace(/k$/i, '000'));
+          const n = parseNum(String(v));
           if (v !== '' && Number.isFinite(n)) out[k] = n;
         }
         if (!Object.keys(out).length) return;
@@ -38,7 +43,7 @@ export function MetricsForm({
         {shown.map((m) => (
           <div key={m.key} className="field">
             <label className="lbl" htmlFor={`m-${m.key}`}>
-              {m.label}
+              {t(`metric.${m.key}`)}
             </label>
             <input
               id={`m-${m.key}`}
@@ -52,14 +57,12 @@ export function MetricsForm({
       </div>
       <div className="hstack">
         <Button type="submit" variant="primary">
-          Save results
+          {t('metrics.save')}
         </Button>
         <Button variant="ghost" onClick={() => setMore((x) => !x)}>
-          {more ? 'Fewer metrics' : 'More metrics'}
+          {more ? t('metrics.fewer') : t('metrics.more')}
         </Button>
-        <span className="meta">
-          Metrics are kept per platform ({platform}); they are never summed across platforms.
-        </span>
+        <span className="meta">{t('metrics.note', { platform: platformName(platform) })}</span>
       </div>
     </form>
   );

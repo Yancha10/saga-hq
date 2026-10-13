@@ -35,7 +35,8 @@ export type NewRecord<T extends EntityTable> = Omit<EntityMap[T], MetaKey> & { i
 export type Patch<T extends EntityTable> = Partial<Omit<EntityMap[T], MetaKey>>;
 
 export interface MutateOpts {
-  label: string;
+  label: string; // i18n key, e.g. 'h.edit'
+  labelParams?: Record<string, string | number>;
   actor?: HistoryEntry['actor'];
   coalesceKey?: string;
   history?: boolean;
@@ -235,13 +236,13 @@ export function reportPersistError(e: unknown): void {
   if (err?.name === 'SessionClosedError') return;
   logger.error('store', 'write failed', err);
   const quota = err?.name === 'QuotaExceededError' || /quota/i.test(err?.message ?? '');
-  const msg = quota
-    ? 'Not saved: this device is out of storage space. Free space or export a backup.'
+  const code = quota
+    ? 'error.persist_quota'
     : err?.name === 'ValidationError'
-      ? `Not saved: ${err.message}`
-      : 'Not saved: the local database rejected the change. Your last edit may be lost — check Settings › Storage.';
-  saveStatus.set({ state: 'error', error: msg });
-  setBanner({ id: 'persist', kind: 'error', message: msg });
+      ? 'error.persist_validation'
+      : 'error.persist_failed';
+  saveStatus.set({ state: 'error', error: code });
+  setBanner({ id: 'persist', kind: 'error', msgKey: code });
 }
 
 async function writeHistory(s: Session, opts: MutateOpts, ops: HistoryOp[]): Promise<void> {
@@ -270,6 +271,7 @@ async function writeHistory(s: Session, opts: MutateOpts, ops: HistoryOp[]): Pro
     at: new Date(now).toISOString(),
     actor: opts.actor ?? 'user',
     label: opts.label,
+    ...(opts.labelParams ? { labelParams: opts.labelParams } : {}),
     ops,
     ...(opts.coalesceKey ? { coalesceKey: opts.coalesceKey } : {}),
   };
@@ -294,7 +296,12 @@ export function create<T extends EntityTable>(
   label?: string,
   origin?: Provenance,
 ) {
-  return mutate(s, { label: label ?? `Create ${table}` }, (m) => m.create(table, data), origin);
+  return mutate(
+    s,
+    label ? { label } : { label: 'h.create', labelParams: { entity: table } },
+    (m) => m.create(table, data),
+    origin,
+  );
 }
 
 export function update<T extends EntityTable>(
@@ -304,7 +311,9 @@ export function update<T extends EntityTable>(
   patch: Patch<T>,
   opts?: Partial<MutateOpts>,
 ) {
-  return mutate(s, { label: opts?.label ?? `Edit ${table}`, ...opts }, (m) => m.update(table, id, patch));
+  return mutate(s, { label: 'h.edit', labelParams: { entity: table }, ...opts }, (m) =>
+    m.update(table, id, patch),
+  );
 }
 
 const CASCADE: Partial<Record<EntityTable, { table: EntityTable; key: string }[]>> = {
@@ -318,7 +327,7 @@ const CASCADE: Partial<Record<EntityTable, { table: EntityTable; key: string }[]
 };
 
 /** Move to Trash (recoverable for 30 days). Children of content go with it and come back with it. */
-export function trash(s: Session, table: EntityTable, id: string, label = 'Move to Trash') {
+export function trash(s: Session, table: EntityTable, id: string, label = 'h.trash') {
   return mutate(s, { label }, async (m) => {
     const at = nowIso();
     await m.update(table, id, { deletedAt: at, trashGroup: null } as never);
@@ -331,7 +340,7 @@ export function trash(s: Session, table: EntityTable, id: string, label = 'Move 
 }
 
 export function restore(s: Session, table: EntityTable, id: string) {
-  return mutate(s, { label: 'Restore from Trash' }, async (m) => {
+  return mutate(s, { label: 'h.restore' }, async (m) => {
     await m.update(table, id, { deletedAt: null } as never);
     for (const c of CASCADE[table] ?? []) {
       const kids = (await s.db.table(c.table).where(c.key).equals(id).toArray()) as Record<string, unknown>[];
@@ -343,7 +352,7 @@ export function restore(s: Session, table: EntityTable, id: string) {
 }
 
 export function archive(s: Session, table: EntityTable, id: string, archived = true) {
-  return mutate(s, { label: archived ? 'Archive' : 'Unarchive' }, (m) =>
+  return mutate(s, { label: archived ? 'h.archive' : 'h.unarchive' }, (m) =>
     m.update(table, id, { archivedAt: archived ? nowIso() : null } as never),
   );
 }
@@ -362,7 +371,7 @@ export async function purgeExpired(s: Session, now = Date.now()): Promise<number
     });
   }
   if (victims.length) {
-    await mutate(s, { label: 'Empty expired trash', history: false }, async (m) => {
+    await mutate(s, { label: 'h.purgeExpired', history: false }, async (m) => {
       for (const [t, id] of victims) {
         await m.purge(t, id);
         n++;
@@ -376,7 +385,7 @@ export async function purgeExpired(s: Session, now = Date.now()): Promise<number
 }
 
 export async function purgeNow(s: Session, table: EntityTable, id: string): Promise<void> {
-  await mutate(s, { label: 'Delete permanently', history: false }, (m) => m.purge(table, id));
+  await mutate(s, { label: 'h.purge', history: false }, (m) => m.purge(table, id));
 }
 
 // ---------- Undo ----------
@@ -390,7 +399,7 @@ export async function undoLast(s: Session): Promise<HistoryEntry | null> {
 }
 
 export async function undoEntry(s: Session, entry: HistoryEntry): Promise<void> {
-  await mutate(s, { label: `Undo: ${entry.label}`, history: false }, async (m) => {
+  await mutate(s, { label: 'h.undo', history: false }, async (m) => {
     for (const op of [...entry.ops].reverse()) {
       if (op.before === null) {
         await m.update(op.table, op.id, { deletedAt: nowIso() } as never);

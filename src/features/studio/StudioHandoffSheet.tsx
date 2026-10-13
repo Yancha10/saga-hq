@@ -5,6 +5,7 @@ import { useApp, useLive, useSession } from '../../app/context';
 import { toast } from '../../app/status';
 import { getMeta } from '../../data/db';
 import type { LibraryItem, Shot } from '../../data/schema';
+import { t, useT } from '../../i18n';
 import {
   buildHandoff,
   encodePayload,
@@ -28,6 +29,7 @@ export function StudioHandoffSheet({
   b: Bundle;
   shot?: Shot;
 }) {
+  useT();
   const s = useSession();
   const { account } = useApp();
   const [handoff, setHandoff] = useState<Handoff | null>(null);
@@ -63,32 +65,20 @@ export function StudioHandoffSheet({
   const link = studioUrl && payload.length <= MAX_FRAGMENT_CHARS ? studioDeepLink(studioUrl, payload) : null;
   const json = handoff ? JSON.stringify(handoff, null, 2) : '';
   return (
-    <Sheet
-      open={open}
-      onClose={onClose}
-      title={shot ? 'Send shot to Saga Studio' : 'Send to Saga Studio'}
-      wide
-    >
-      <p className="meta">
-        A versioned <code>saga.handoff</code> v1 package. Nothing is uploaded anywhere: the link keeps the
-        data in the URL fragment, and the file stays on your device.
-      </p>
+    <Sheet open={open} onClose={onClose} title={shot ? t('studio.send_shot') : t('studio.send')} wide>
+      <p className="meta">{t('studio.handoff_intro')}</p>
       <div className="hstack">
         {link ? (
           <a className="btn primary" href={link} target="_blank" rel="noopener noreferrer">
-            <ExternalLink size={14} /> Open in Saga Studio
+            <ExternalLink size={14} /> {t('studio.open_in')}
           </a>
         ) : (
-          <span className="meta">
-            {studioUrl
-              ? 'Package too large for a link — use the file.'
-              : 'Set your Saga Studio URL in Settings › Integrations to enable the direct link.'}
-          </span>
+          <span className="meta">{studioUrl ? t('studio.too_large') : t('studio.set_url')}</span>
         )}
         <Button
-          onClick={() => void navigator.clipboard?.writeText(json).then(() => toast('Handoff JSON copied'))}
+          onClick={() => void navigator.clipboard?.writeText(json).then(() => toast(t('studio.json_copied')))}
         >
-          <Clipboard size={14} /> Copy JSON
+          <Clipboard size={14} /> {t('studio.copy_json')}
         </Button>
         <Button
           onClick={() =>
@@ -98,16 +88,15 @@ export function StudioHandoffSheet({
             )
           }
         >
-          <Download size={14} /> Download file
+          <Download size={14} /> {t('studio.download')}
         </Button>
       </div>
       <details>
-        <summary className="meta">Preview package ({payload.length} chars encoded)</summary>
+        <summary className="meta">{t('studio.preview', { n: payload.length })}</summary>
         <pre className="json">{json}</pre>
       </details>
       <p className="meta">
-        Results coming back from Studio (<code>saga.return</code>)?{' '}
-        <Link to="/studio/import">Import them here</Link>.
+        {t('studio.results_back')} <Link to="/studio/import">{t('studio.import_here')}</Link>
       </p>
     </Sheet>
   );

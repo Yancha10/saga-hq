@@ -29,7 +29,7 @@ describe('schema migrations', () => {
     delete MIGRATIONS[SCHEMA_VERSION];
     expect(calls).toEqual([SCHEMA_VERSION]);
     const rps = await s.db.recovery.toArray();
-    expect(rps[0]?.reason).toMatch(/Before upgrade/);
+    expect(rps[0]?.reason).toBe('upgrade');
     expect(JSON.parse(rps[0]!.data).tables.ideas[0].title).toBe('old');
   });
 
@@ -66,7 +66,7 @@ describe('storage failures are never silent', () => {
     await expect(create(s, 'ideas', { title: 'x', status: 'new' })).rejects.toThrow();
     spy.mockRestore();
     expect(saveStatus.get().state).toBe('error');
-    expect(banners.get().find((b) => b.id === 'persist')?.message).toMatch(/out of storage/);
+    expect(banners.get().find((b) => b.id === 'persist')?.msgKey).toBe('error.persist_quota');
     expect(await s.db.ideas.count()).toBe(0);
   });
 

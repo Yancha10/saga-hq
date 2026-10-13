@@ -16,7 +16,7 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   reporter: [['list'], ['json', { outputFile: 'test-results/e2e.json' }]],
-  use: { trace: 'retain-on-failure', launchOptions },
+  use: { trace: 'retain-on-failure', launchOptions, locale: 'en-US' },
   webServer: [
     { command: 'node scripts/serve-static.mjs dist 4173 /', port: 4173, reuseExistingServer: true },
     {
@@ -29,23 +29,38 @@ export default defineConfig({
   projects: [
     {
       name: 'prod-root',
-      testMatch: /(daily|offline|essential|pwa)\.spec\.ts/,
-      use: { ...devices['Desktop Chrome'], baseURL: 'http://localhost:4173/', launchOptions },
+      testMatch: /(daily|offline|essential|pwa|i18n-offline)\.spec\.ts/,
+      use: {
+        ...devices['Desktop Chrome'],
+        baseURL: 'http://localhost:4173/',
+        launchOptions,
+        locale: 'en-US',
+      },
     },
     {
       name: 'prod-subpath',
       testMatch: /(essential|offline)\.spec\.ts/,
-      use: { ...devices['Desktop Chrome'], baseURL: 'http://localhost:4174/saga-hq/', launchOptions },
+      use: {
+        ...devices['Desktop Chrome'],
+        baseURL: 'http://localhost:4174/saga-hq/',
+        launchOptions,
+        locale: 'en-US',
+      },
     },
     {
       name: 'prod-mobile',
       testMatch: /(essential|mobile)\.spec\.ts/,
-      use: { ...devices['Pixel 7'], baseURL: 'http://localhost:4173/', launchOptions },
+      use: { ...devices['Pixel 7'], baseURL: 'http://localhost:4173/', launchOptions, locale: 'en-US' },
     },
     {
       name: 'e2e-build',
-      testMatch: /(accounts|a11y|responsive|perf|secretary)\.spec\.ts/,
-      use: { ...devices['Desktop Chrome'], baseURL: 'http://localhost:4175/', launchOptions },
+      testMatch: /(accounts|a11y|responsive|perf|secretary|i18n)\.spec\.ts/,
+      use: {
+        ...devices['Desktop Chrome'],
+        baseURL: 'http://localhost:4175/',
+        launchOptions,
+        locale: 'en-US',
+      },
     },
   ],
 });

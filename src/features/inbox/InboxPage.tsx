@@ -8,18 +8,19 @@ import { truncate } from '../../core/util';
 import { type TriageTarget, triage } from '../../data/domain';
 import type { Capture } from '../../data/schema';
 import { trash, undoLast } from '../../data/store';
+import { t, useT } from '../../i18n';
 import { relDays } from '../../rules/time';
 import { Button, Empty, Pill } from '../../ui/kit';
 import { PageHeader } from '../../ui/PageHeader';
 import { ExtLink, MediaThumb, ProjectSelect } from '../common';
 
-const TARGETS: { t: TriageTarget; label: string; key: string }[] = [
-  { t: 'idea', label: 'Idea', key: 'i' },
-  { t: 'task', label: 'Task', key: 't' },
-  { t: 'research', label: 'Research', key: 'r' },
-  { t: 'reference', label: 'Reference', key: 'f' },
-  { t: 'content', label: 'Content', key: 'c' },
-  { t: 'note', label: 'Note', key: 'n' },
+const TARGETS: { t: TriageTarget; key: string }[] = [
+  { t: 'idea', key: 'i' },
+  { t: 'task', key: 't' },
+  { t: 'research', key: 'r' },
+  { t: 'reference', key: 'f' },
+  { t: 'content', key: 'c' },
+  { t: 'note', key: 'n' },
 ];
 
 const suggestionTarget = (c: Capture): TriageTarget => {
@@ -28,17 +29,10 @@ const suggestionTarget = (c: Capture): TriageTarget => {
   if (sug.type === 'library') return sug.role === 'reference' ? 'reference' : 'research';
   return sug.type as TriageTarget;
 };
-const TARGET_LABEL: Record<TriageTarget, string> = {
-  idea: 'Idea',
-  task: 'Task',
-  research: 'Research',
-  reference: 'Reference',
-  asset: 'Asset',
-  content: 'Content',
-  note: 'Note',
-};
+const targetLabel = (x: TriageTarget): string => t(`triage.${x}`);
 
 export function InboxPage() {
+  useT();
   const s = useSession();
   const { openCapture, toggleSecretary } = useApp();
   const search = useSearch({ strict: false }) as { focus?: string };
@@ -62,13 +56,15 @@ export function InboxPage() {
   }, [search.focus, items]);
   const cur = items[Math.min(sel, items.length - 1)];
 
-  const doTriage = async (c: Capture, t: TriageTarget) => {
-    await triage(s, c, t, { projectId: projectFor[c.id] ?? c.projectId ?? null });
-    toast(`Moved to ${TARGET_LABEL[t]}`, { action: { label: 'Undo', run: () => void undoLast(s) } });
+  const doTriage = async (c: Capture, target: TriageTarget) => {
+    await triage(s, c, target, { projectId: projectFor[c.id] ?? c.projectId ?? null });
+    toast(t('inbox.moved_to', { target: targetLabel(target) }), {
+      action: { label: t('common.undo'), run: () => void undoLast(s) },
+    });
   };
   const doArchive = async (c: Capture) => {
-    await trash(s, 'captures', c.id, 'Discard capture');
-    toast('Capture discarded (in Trash 30 days)', { action: { label: 'Undo', run: () => void undoLast(s) } });
+    await trash(s, 'captures', c.id, 'h.discard');
+    toast(t('inbox.discarded'), { action: { label: t('common.undo'), run: () => void undoLast(s) } });
   };
 
   const shortcuts = useMemo(
@@ -89,34 +85,30 @@ export function InboxPage() {
   return (
     <div className="page">
       <PageHeader
-        title="Inbox"
-        sub={
-          items.length
-            ? `${items.length} to sort · J/K move · ↵ accept suggestion · I/T/R/F/C/N convert · E discard`
-            : 'Everything you capture lands here first.'
-        }
+        title={t('nav.inbox')}
+        sub={items.length ? t('inbox.sub', { count: items.length }) : t('inbox.sub_empty')}
         actions={
           <>
-            <Button onClick={() => openCapture()}>Capture</Button>
+            <Button onClick={() => openCapture()}>{t('capture.button')}</Button>
             <Button variant="ghost" onClick={() => toggleSecretary({ intent: 'ask' })}>
-              <Sparkles size={15} /> Ask
+              <Sparkles size={15} /> {t('common.ask')}
             </Button>
           </>
         }
       />
       {items.length === 0 ? (
         <Empty
-          title="Inbox zero"
+          title={t('inbox.zero')}
           action={
             <Button variant="primary" onClick={() => openCapture()}>
-              Capture something
+              {t('inbox.capture_something')}
             </Button>
           }
         >
-          Capture ideas, links, photos and voice notes in seconds — sort them later.
+          {t('inbox.empty_body')}
         </Empty>
       ) : (
-        <div className="list" role="list" aria-label="Captures">
+        <div className="list" role="list" aria-label={t('inbox.captures')}>
           {items.map((c, i) => {
             const target = suggestionTarget(c);
             return (
@@ -131,19 +123,25 @@ export function InboxPage() {
                 }}
                 onFocusCapture={() => setSel(i)}
               >
-                {c.mediaIds[0] && <MediaThumb mediaId={c.mediaIds[0]} alt="Captured media" />}
+                {c.mediaIds[0] && <MediaThumb mediaId={c.mediaIds[0]} alt={t('inbox.captured_media')} />}
                 <div className="grow" style={{ minWidth: 200 }}>
                   <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                    {truncate(c.text ?? (c.mediaIds.length ? `${c.mode} capture` : ''), 500)}
+                    {truncate(
+                      c.text ??
+                        (c.mediaIds.length
+                          ? t('inbox.mode_capture', { mode: t(`capture.mode.${c.mode}`) })
+                          : ''),
+                      500,
+                    )}
                   </div>
                   <div className="sub hstack" style={{ gap: 6, marginTop: 4 }}>
                     <span>{relDays(c.createdAt)}</span>
-                    <span>· {c.mode}</span>
+                    <span>· {t(`capture.mode.${c.mode}`)}</span>
                     {c.url && <ExtLink href={c.url} />}
                     {c.suggestion && (
                       <Pill tone="ai">
-                        looks like {TARGET_LABEL[target].toLowerCase()}
-                        {c.suggestion.reason ? ` (${c.suggestion.reason})` : ''}
+                        {t('inbox.looks_like', { target: targetLabel(target) })}
+                        {c.suggestion.reason ? ` (${t(`capture.reason.${c.suggestion.reason}`)})` : ''}
                       </Pill>
                     )}
                   </div>
@@ -152,9 +150,9 @@ export function InboxPage() {
                       size="sm"
                       variant="primary"
                       onClick={() => void doTriage(c, target)}
-                      aria-label={`Accept: make ${TARGET_LABEL[target]}`}
+                      aria-label={t('inbox.accept', { target: targetLabel(target) })}
                     >
-                      → {TARGET_LABEL[target]}
+                      → {targetLabel(target)}
                     </Button>
                     {TARGETS.filter((x) => x.t !== target).map((x) => (
                       <Button key={x.t} size="sm" variant="ghost" onClick={() => void doTriage(c, x.t)}>
@@ -167,7 +165,7 @@ export function InboxPage() {
                         ) : (
                           <BookOpen size={13} />
                         )}
-                        {x.label}
+                        {targetLabel(x.t)}
                       </Button>
                     ))}
                     <div style={{ width: 170 }}>
@@ -180,9 +178,9 @@ export function InboxPage() {
                       size="sm"
                       variant="ghost"
                       onClick={() => void doArchive(c)}
-                      aria-label="Discard capture"
+                      aria-label={t('inbox.discard_capture')}
                     >
-                      <Archive size={13} /> Discard
+                      <Archive size={13} /> {t('inbox.discard')}
                     </Button>
                   </div>
                 </div>

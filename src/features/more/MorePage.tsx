@@ -11,9 +11,11 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useApp, useLive } from '../../app/context';
+import { fmt, t, useT } from '../../i18n';
 import { PageHeader } from '../../ui/PageHeader';
 
 export function MorePage() {
+  useT();
   const { toggleSecretary } = useApp();
   const inbox = useLive(
     (s) =>
@@ -26,29 +28,29 @@ export function MorePage() {
     0,
   );
   const items = [
-    { to: '/search', label: 'Search everything', icon: Search },
-    { to: '/inbox', label: 'Inbox', icon: Inbox, count: inbox },
-    { to: '/calendar', label: 'Agenda', icon: CalendarDays },
-    { to: '/projects', label: 'Projects', icon: FolderKanban },
-    { to: '/tasks', label: 'All tasks', icon: CheckSquare },
-    { to: '/library', label: 'Library', icon: BookOpen },
-    { to: '/insights', label: 'Insights', icon: LineChart },
-    { to: '/settings', label: 'Settings', icon: Settings },
+    { to: '/search', label: t('search.everything'), icon: Search },
+    { to: '/inbox', label: t('nav.inbox'), icon: Inbox, count: inbox },
+    { to: '/calendar', label: t('nav.calendar'), icon: CalendarDays },
+    { to: '/projects', label: t('nav.projects'), icon: FolderKanban },
+    { to: '/tasks', label: t('nav.tasks_all'), icon: CheckSquare },
+    { to: '/library', label: t('nav.library'), icon: BookOpen },
+    { to: '/insights', label: t('nav.insights'), icon: LineChart },
+    { to: '/settings', label: t('nav.settings'), icon: Settings },
   ];
   return (
     <div className="page narrow">
-      <PageHeader title="More" />
+      <PageHeader title={t('nav.more')} />
       <div className="list">
         {items.map((i) => (
           <Link key={i.to} to={i.to} className="row">
             <i.icon size={19} aria-hidden />
             <div className="grow title">{i.label}</div>
-            {i.count ? <span className="pill accent">{i.count}</span> : null}
+            {i.count ? <span className="pill accent">{fmt.num(i.count)}</span> : null}
           </Link>
         ))}
         <button type="button" className="row" onClick={() => toggleSecretary()}>
           <Sparkles size={19} aria-hidden />
-          <div className="grow title">Secretary</div>
+          <div className="grow title">{t('nav.secretary')}</div>
         </button>
       </div>
     </div>

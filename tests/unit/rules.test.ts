@@ -47,8 +47,8 @@ describe('priority engine', () => {
       tasks: [task({ id: 'x', title: 'Overdue', dueAt: '2026-10-10T10:00:00Z' })],
     });
     expect(c[0]!.title).toBe('Today');
-    expect(c[0]!.reasons.join(' ')).toMatch(/publishes/);
-    expect(c.find((x) => x.title === 'Overdue')!.reasons).toContain('overdue');
+    expect(c[0]!.reasons.map((r) => r.code)).toContain('publishes_at');
+    expect(c.find((x) => x.title === 'Overdue')!.reasons.map((r) => r.code)).toContain('overdue');
   });
   it('blocked items are demoted and flagged', () => {
     const c = scoreCandidates({
@@ -58,7 +58,7 @@ describe('priority engine', () => {
       content: [content({ id: 'a', priority: 'high', _blocked: 1 })],
     });
     expect(c[0]!.blocked).toBe(true);
-    expect(c[0]!.reasons).toContain('blocked');
+    expect(c[0]!.reasons.map((r) => r.code)).toContain('blocked');
   });
 });
 
@@ -94,8 +94,10 @@ describe('Today model', () => {
     });
     expect(t.focus.pinned).toHaveLength(0);
     expect(t.focus.suggested.length).toBeGreaterThan(0);
-    expect(t.attention.some((a) => a.kind === 'missing' && a.detail.includes('cover'))).toBe(true);
-    expect(t.quickWins[0]?.reasons.join()).toMatch(/only cover missing/);
+    expect(t.attention.some((a) => a.kind === 'missing' && a.missing?.includes('cover'))).toBe(true);
+    expect(t.quickWins[0]?.reasons.some((r) => r.code === 'only_missing' && r.items?.[0] === 'cover')).toBe(
+      true,
+    );
   });
 });
 
@@ -106,7 +108,7 @@ describe('cadence', () => {
       [],
       NOW,
     );
-    expect(gaps.some((g) => g.message.includes('0/4'))).toBe(true);
+    expect(gaps.some((g) => !g.day && g.planned === 0 && g.target === 4)).toBe(true);
     expect(gaps.some((g) => g.day)).toBe(true);
   });
 });

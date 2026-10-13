@@ -31,8 +31,11 @@ Rules:
 Allowed action types: createTask {title, content?, project?, dueAt?, isBlocker?}, createIdea {title, hook?, project?}, createContent {title, idea?, project?, format?}, changeStatus {target, status}, scheduleEvent {title, startAt, content?, kind?}, linkReference {from, to}, saveLearning {statement, kind: "observation"|"hypothesis", evidence?: [handles]}.
 Never propose deleting or archiving anything.`;
 
+const LANGUAGE_NAME: Record<string, string> = { es: 'Spanish', en: 'English' };
+
 export function buildPrompt(pack: ContextPack, question: string): { system: string; user: string } {
-  const system = `${SYSTEM_RULES}\n\nTask: ${ROLE[pack.intent]}`;
+  const lang = LANGUAGE_NAME[pack.locale] ?? 'English';
+  const system = `${SYSTEM_RULES}\n- Answer in ${lang} (the user's interface language) unless the request explicitly asks for another language; e.g. "write this caption in English" must be answered in English. Action JSON keys, action types and status values stay exactly as specified (English identifiers).\n\nTask: ${ROLE[pack.intent]}`;
   const user = `Today is ${pack.today}.\n\nWORKSPACE CONTEXT (JSON):\n${JSON.stringify({ facts: pack.facts, notes: pack.notes, records: pack.entities.map((e) => ({ handle: e.handle, type: e.type, ...e.fields })) })}\n\nREQUEST: ${question || 'Give me the brief.'}`;
   return { system, user };
 }

@@ -14,6 +14,7 @@ import { IdeaDetail } from '../features/ideas/IdeaDetail';
 import { IdeasPage } from '../features/ideas/IdeasPage';
 import { InboxPage } from '../features/inbox/InboxPage';
 import { TodayPage } from '../features/today/TodayPage';
+import { useT } from '../i18n';
 import { Shell } from './Shell';
 
 const anySearch = (s: Record<string, unknown>) => s as Record<string, string | undefined>;
@@ -90,18 +91,26 @@ const routeTree = root.addChildren([
 
 /** A screen failed to render: data is untouched; offer a way back instead of a dead end. */
 function RouteError({ error, reset }: ErrorComponentProps) {
+  const { t } = useT();
   logger.error('ui', 'screen crashed', error);
   return (
     <div className="recovery" role="alert">
-      <h2>This screen hit an error</h2>
-      <p className="muted">Your data is safe — nothing was changed. Go back to Today or try again.</p>
+      <h2>{t('error.screen_title')}</h2>
+      <p className="muted">{t('error.screen_body')}</p>
       <pre className="json">{String((error as Error)?.message ?? error)}</pre>
       <div className="hstack">
-        <a className="btn primary" href="#/" onClick={() => reset()}>
-          Go to Today
-        </a>
+        <button
+          type="button"
+          className="btn primary"
+          onClick={() => {
+            location.hash = '#/';
+            reset();
+          }}
+        >
+          {t('error.go_today')}
+        </button>
         <button type="button" className="btn" onClick={() => reset()}>
-          Try again
+          {t('common.try_again')}
         </button>
       </div>
     </div>

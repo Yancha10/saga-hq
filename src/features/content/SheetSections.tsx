@@ -6,11 +6,9 @@ import { toast } from '../../app/status';
 import { ulid } from '../../core/ulid';
 import { safeHttpUrl } from '../../core/url';
 import { median } from '../../core/util';
-import { SECTION_LABEL } from '../../data/derive';
 import { logSnapshot, markPublished, schedulePublication } from '../../data/domain';
 import {
   type Content,
-  PLATFORM_LABEL,
   PLATFORMS,
   type Platform,
   type Publication,
@@ -18,6 +16,8 @@ import {
   type Shot,
 } from '../../data/schema';
 import { update } from '../../data/store';
+import { fmt, t, useT } from '../../i18n';
+import { errorText, platformName } from '../../i18n/render';
 import { addMedia, mediaUrl } from '../../media/store';
 import { fromLocalInput, toLocalInput } from '../../rules/time';
 import { AutoText, Button, IconButton, Pill, Sheet } from '../../ui/kit';
@@ -42,6 +42,7 @@ function SecHead({
   children?: ReactNode;
   title?: string;
 }) {
+  useT();
   const s = useSession();
   const c = b.content;
   const manual = sec !== 'results' && !!c.sectionDone?.[sec];
@@ -51,8 +52,8 @@ function SecHead({
         {sec !== 'results' && (
           <span className={`sec-dot ${done ? 'done' : c._stage === sec ? 'part' : ''}`} aria-hidden />
         )}
-        {title ?? SECTION_LABEL[sec as SheetSection]}
-        {sec !== 'results' && done && <span className="sr-only"> (complete)</span>}
+        {title ?? t(`section.${sec}`)}
+        {sec !== 'results' && done && <span className="sr-only"> ({t('common.complete')})</span>}
       </h3>
       {children}
       {sec !== 'results' && (
@@ -64,7 +65,7 @@ function SecHead({
             void update(s, 'content', c.id, { sectionDone: { ...(c.sectionDone ?? {}), [sec]: !manual } })
           }
         >
-          {manual ? <Check size={13} /> : null} {manual ? 'Marked done' : 'Mark done'}
+          {manual ? <Check size={13} /> : null} {manual ? t('sheet.marked_done') : t('sheet.mark_done')}
         </Button>
       )}
     </header>
@@ -72,61 +73,60 @@ function SecHead({
 }
 
 export function ConceptSection({ b, edit, done }: { b: Bundle; edit: Edit; done: boolean }) {
+  useT();
   const c = b.content;
   const words = (c.script ?? '').trim().split(/\s+/).filter(Boolean).length;
   return (
-    <section className="sheet-sec" id="sec-concept" aria-label="Concept">
+    <section className="sheet-sec" id="sec-concept" aria-label={t('section.concept')}>
       <SecHead sec="concept" b={b} done={done} />
       <div className="stack">
         <div className="field">
-          <span className="lbl">Hook</span>
+          <span className="lbl">{t('field.hook')}</span>
           <AutoText
             value={c.hook}
             onSave={(v) => edit({ hook: v || null }, 'hook')}
-            ariaLabel="Hook"
-            placeholder="The first second"
+            ariaLabel={t('field.hook')}
+            placeholder={t('sheet.hook_placeholder')}
           />
         </div>
         <div className="field">
-          <span className="lbl">Concept</span>
+          <span className="lbl">{t('field.concept')}</span>
           <AutoText
             multiline
             value={c.concept}
             onSave={(v) => edit({ concept: v || null }, 'concept')}
-            ariaLabel="Concept"
-            placeholder="What happens"
+            ariaLabel={t('field.concept')}
+            placeholder={t('sheet.concept_placeholder')}
             rows={3}
           />
         </div>
         <div className="field">
-          <span className="lbl">Script</span>
+          <span className="lbl">{t('field.script')}</span>
           <AutoText
             multiline
             value={c.script}
             onSave={(v) => edit({ script: v || null }, 'script')}
-            ariaLabel="Script"
-            placeholder="Lines, beats, dialogue…"
+            ariaLabel={t('field.script')}
+            placeholder={t('sheet.script_placeholder')}
             rows={6}
           />
-          <span className="hint num">
-            {words} words · ~{Math.round(words / 2.5)}s spoken
-          </span>
+          <span className="hint num">{t('sheet.words', { count: words, sec: Math.round(words / 2.5) })}</span>
         </div>
         <div className="form-grid">
           <div className="field">
-            <span className="lbl">Objective</span>
+            <span className="lbl">{t('sheet.objective')}</span>
             <AutoText
               value={c.objective}
               onSave={(v) => edit({ objective: v || null }, 'obj')}
-              ariaLabel="Objective"
+              ariaLabel={t('sheet.objective')}
             />
           </div>
           <div className="field">
-            <span className="lbl">Audience</span>
+            <span className="lbl">{t('sheet.audience')}</span>
             <AutoText
               value={c.audience}
               onSave={(v) => edit({ audience: v || null }, 'aud')}
-              ariaLabel="Audience"
+              ariaLabel={t('sheet.audience')}
             />
           </div>
         </div>
@@ -136,8 +136,9 @@ export function ConceptSection({ b, edit, done }: { b: Bundle; edit: Edit; done:
 }
 
 export function ReferencesSection({ b, done }: { b: Bundle; done: boolean }) {
+  useT();
   return (
-    <section className="sheet-sec" id="sec-references" aria-label="References">
+    <section className="sheet-sec" id="sec-references" aria-label={t('section.references')}>
       <SecHead sec="references" b={b} done={done} />
       <References fromType="content" fromId={b.content.id} projectId={b.content.projectId} />
     </section>
@@ -145,6 +146,7 @@ export function ReferencesSection({ b, done }: { b: Bundle; done: boolean }) {
 }
 
 export function GenerateSection({ b, edit, done }: { b: Bundle; edit: Edit; done: boolean }) {
+  useT();
   const s = useSession();
   const c = b.content;
   const shots = (c.shots ?? []).filter((x) => !x.deleted).sort((a, x) => a.order - x.order);
@@ -169,29 +171,29 @@ export function GenerateSection({ b, edit, done }: { b: Bundle; edit: Edit; done
       ],
     });
   return (
-    <section className="sheet-sec" id="sec-generate" aria-label="Generate">
+    <section className="sheet-sec" id="sec-generate" aria-label={t('section.generate')}>
       <SecHead sec="generate" b={b} done={done}>
         <Button size="sm" onClick={() => setHandoff('content')}>
-          <Send size={13} /> Open in Saga Studio
+          <Send size={13} /> {t('studio.open_in')}
         </Button>
       </SecHead>
       <div className="stack">
         <div className="field">
-          <span className="lbl">Production notes</span>
+          <span className="lbl">{t('field.productionNotes')}</span>
           <AutoText
             multiline
             value={c.productionNotes}
             onSave={(v) => edit({ productionNotes: v || null }, 'pnotes')}
-            ariaLabel="Production notes"
-            placeholder="Prompts, models, characters, approach…"
+            ariaLabel={t('field.productionNotes')}
+            placeholder={t('sheet.pnotes_placeholder')}
             rows={2}
           />
         </div>
         {shots.length === 0 ? (
           <div className="hstack">
-            <span className="meta">Simple piece? Skip shots. Multi-shot production?</span>
+            <span className="meta">{t('sheet.shots_hint')}</span>
             <Button size="sm" onClick={() => void addShot()}>
-              <Plus size={13} /> Add shot structure
+              <Plus size={13} /> {t('sheet.add_shot_structure')}
             </Button>
           </div>
         ) : (
@@ -199,25 +201,26 @@ export function GenerateSection({ b, edit, done }: { b: Bundle; edit: Edit; done
             {shots.map((sh, i) => (
               <div key={sh.id} className="box">
                 <div className="hstack">
-                  <strong>Shot {String(i + 1).padStart(2, '0')}</strong>
+                  <strong>{t('sheet.shot_n', { n: String(i + 1).padStart(2, '0') })}</strong>
                   <select
                     className="select"
                     style={{ width: 130, minHeight: 28 }}
-                    aria-label={`Shot ${i + 1} status`}
+                    aria-label={t('sheet.shot_status', { n: i + 1 })}
                     value={sh.status}
                     onChange={(e) => void setShot(sh.id, { status: e.target.value as Shot['status'] })}
                   >
-                    <option value="todo">To do</option>
-                    <option value="generating">Generating</option>
-                    <option value="selected">Selected</option>
-                    <option value="final">Final</option>
+                    {(['todo', 'generating', 'selected', 'final'] as const).map((st) => (
+                      <option key={st} value={st}>
+                        {t(`shot.status.${st}`)}
+                      </option>
+                    ))}
                   </select>
                   <span className="spacer" />
                   <Button size="sm" variant="ghost" onClick={() => setHandoff(sh)}>
-                    <Send size={13} /> Studio
+                    <Send size={13} /> {t('studio.short')}
                   </Button>
                   <IconButton
-                    label={`Remove shot ${i + 1}`}
+                    label={t('sheet.remove_shot', { n: i + 1 })}
                     size="sm"
                     onClick={() =>
                       void edit({
@@ -234,27 +237,27 @@ export function GenerateSection({ b, edit, done }: { b: Bundle; edit: Edit; done
                   multiline
                   value={sh.description}
                   onSave={(v) => setShot(sh.id, { description: v })}
-                  ariaLabel={`Shot ${i + 1} description`}
-                  placeholder="What we see"
+                  ariaLabel={t('sheet.shot_desc', { n: i + 1 })}
+                  placeholder={t('sheet.what_we_see')}
                   rows={2}
                 />
                 <div className="form-grid">
                   <div className="field">
-                    <span className="lbl">Dialogue</span>
+                    <span className="lbl">{t('hook.dialogue')}</span>
                     <AutoText
                       value={sh.dialogue}
                       onSave={(v) => setShot(sh.id, { dialogue: v || null })}
-                      ariaLabel={`Shot ${i + 1} dialogue`}
+                      ariaLabel={t('sheet.shot_dialogue', { n: i + 1 })}
                     />
                   </div>
                   <div className="field">
-                    <span className="lbl">Duration (s)</span>
+                    <span className="lbl">{t('content.duration_s')}</span>
                     <input
                       type="number"
                       min={0}
                       className="input"
                       value={sh.durationSec ?? ''}
-                      aria-label={`Shot ${i + 1} duration`}
+                      aria-label={t('sheet.shot_duration', { n: i + 1 })}
                       onChange={(e) =>
                         void setShot(sh.id, { durationSec: e.target.value ? Number(e.target.value) : null })
                       }
@@ -262,17 +265,17 @@ export function GenerateSection({ b, edit, done }: { b: Bundle; edit: Edit; done
                   </div>
                 </div>
                 <div className="field">
-                  <span className="lbl">Prompt</span>
+                  <span className="lbl">{t('sheet.prompt')}</span>
                   <AutoText
                     multiline
                     value={sh.prompt}
                     onSave={(v) => setShot(sh.id, { prompt: v || null })}
-                    ariaLabel={`Shot ${i + 1} prompt`}
+                    ariaLabel={t('sheet.shot_prompt', { n: i + 1 })}
                     rows={2}
                   />
                 </div>
                 <div className="field">
-                  <span className="lbl">Selected output (URL)</span>
+                  <span className="lbl">{t('sheet.selected_output')}</span>
                   <AutoText
                     value={sh.selectedOutput}
                     onSave={(v) =>
@@ -281,7 +284,7 @@ export function GenerateSection({ b, edit, done }: { b: Bundle; edit: Edit; done
                         ...(v ? { status: sh.status === 'final' ? 'final' : 'selected' } : {}),
                       })
                     }
-                    ariaLabel={`Shot ${i + 1} selected output`}
+                    ariaLabel={t('sheet.shot_output', { n: i + 1 })}
                     placeholder="https://…"
                   />
                   {sh.selectedOutput && <ExtLink href={sh.selectedOutput} />}
@@ -290,7 +293,7 @@ export function GenerateSection({ b, edit, done }: { b: Bundle; edit: Edit; done
             ))}
             <div>
               <Button size="sm" onClick={() => void addShot()}>
-                <Plus size={13} /> Add shot
+                <Plus size={13} /> {t('sheet.add_shot')}
               </Button>
             </div>
           </div>
@@ -333,60 +336,59 @@ function UploadButton({
 }
 
 export function EditSection({ b, edit, done }: { b: Bundle; edit: Edit; done: boolean }) {
+  useT();
   const s = useSession();
   const c = b.content;
   return (
-    <section className="sheet-sec" id="sec-edit" aria-label="Edit">
+    <section className="sheet-sec" id="sec-edit" aria-label={t('section.edit')}>
       <SecHead sec="edit" b={b} done={done} />
       <div className="stack">
         <div className="field">
-          <span className="lbl">Final export</span>
+          <span className="lbl">{t('sheet.final_export')}</span>
           <div className="hstack">
             <div style={{ flex: 1, minWidth: 200 }}>
               <AutoText
                 value={c.finalExportUrl}
                 onSave={(v) => edit({ finalExportUrl: v || null }, 'export')}
-                ariaLabel="Final export URL"
-                placeholder="Link to the final file (Drive, Studio output…)"
+                ariaLabel={t('sheet.final_export_url')}
+                placeholder={t('sheet.final_export_placeholder')}
               />
             </div>
             <UploadButton
-              label="Attach file"
+              label={t('sheet.attach_file')}
               accept="image/*,video/*"
               onFile={async (f) => {
                 try {
                   const m = await addMedia(s, f, f.name);
                   await edit({ finalExportMediaId: m.id });
                 } catch (e) {
-                  toast((e as Error).message, { kind: 'error' });
+                  toast(errorText(e), { kind: 'error' });
                 }
               }}
             />
           </div>
           {c.finalExportMediaId && (
-            <span className="hint">File attached ({c.finalExportMediaId.slice(-6)}).</span>
+            <span className="hint">{t('sheet.file_attached', { id: c.finalExportMediaId.slice(-6) })}</span>
           )}
-          <span className="hint">
-            Large videos: link them instead of uploading — Saga HQ is not a video store.
-          </span>
+          <span className="hint">{t('sheet.large_videos')}</span>
         </div>
         <div className="field">
-          <span className="lbl">Edit notes</span>
+          <span className="lbl">{t('field.editNotes')}</span>
           <AutoText
             multiline
             value={c.editNotes}
             onSave={(v) => edit({ editNotes: v || null }, 'enotes')}
-            ariaLabel="Edit notes"
-            placeholder="Clips, voice, music, transitions…"
+            ariaLabel={t('field.editNotes')}
+            placeholder={t('sheet.enotes_placeholder')}
             rows={2}
           />
         </div>
         <div className="field">
-          <span className="lbl">Audio / music</span>
+          <span className="lbl">{t('sheet.audio')}</span>
           <AutoText
             value={c.audioNote}
             onSave={(v) => edit({ audioNote: v || null }, 'audio')}
-            ariaLabel="Audio"
+            ariaLabel={t('sheet.audio')}
           />
         </div>
       </div>
@@ -403,6 +405,7 @@ const CAPTION_LIMIT: Partial<Record<Platform, number>> = {
 };
 
 export function PackageSection({ b, edit, done }: { b: Bundle; edit: Edit; done: boolean }) {
+  useT();
   const s = useSession();
   const c = b.content;
   const len =
@@ -411,72 +414,85 @@ export function PackageSection({ b, edit, done }: { b: Bundle; edit: Edit; done:
     .filter(Boolean)
     .join('\n\n');
   return (
-    <section className="sheet-sec" id="sec-package" aria-label="Package">
+    <section className="sheet-sec" id="sec-package" aria-label={t('section.package')}>
       <SecHead sec="package" b={b} done={done} />
       <div className="grid2" style={{ gap: 16 }}>
         <div className="stack">
           <div className="field">
-            <span className="lbl">Caption</span>
+            <span className="lbl">{t('field.caption')}</span>
             <AutoText
               multiline
               value={c.caption}
               onSave={(v) => edit({ caption: v || null }, 'caption')}
-              ariaLabel="Caption"
+              ariaLabel={t('field.caption')}
               rows={4}
             />
             <span className="hint num">
-              {len} chars{' '}
+              {t('sheet.chars', { count: len })}{' '}
               {c.platforms
                 .filter((p) => CAPTION_LIMIT[p])
                 .map((p) => (
                   <span key={p} style={{ color: len > CAPTION_LIMIT[p]! ? 'var(--danger)' : undefined }}>
-                    · {PLATFORM_LABEL[p]} {CAPTION_LIMIT[p]}
+                    · {platformName(p)} {fmt.num(CAPTION_LIMIT[p]!)}
                   </span>
                 ))}
             </span>
           </div>
           <div className="field">
-            <span className="lbl">Hashtags</span>
-            <TagEditor value={c.hashtags} onChange={(v) => void edit({ hashtags: v })} label="Hashtag" />
+            <span className="lbl">{t('sheet.hashtags')}</span>
+            <TagEditor
+              value={c.hashtags}
+              onChange={(v) => void edit({ hashtags: v })}
+              labelKey="sheet.hashtag"
+            />
           </div>
           <div>
             <Button
               size="sm"
               onClick={() =>
-                void navigator.clipboard?.writeText(fullCaption).then(() => toast('Caption copied'))
+                void navigator.clipboard?.writeText(fullCaption).then(() => toast(t('sheet.caption_copied')))
               }
             >
-              <Clipboard size={13} /> Copy caption
+              <Clipboard size={13} /> {t('sheet.copy_caption')}
             </Button>
           </div>
         </div>
         <div className="stack">
           <div className="field">
-            <span className="lbl">Cover</span>
+            <span className="lbl">{t('content.quick.cover')}</span>
             <div className="hstack">
-              <MediaThumb mediaId={c.coverMediaId} url={c.coverUrl} alt="Cover" className="thumb-sm" />
+              <MediaThumb
+                mediaId={c.coverMediaId}
+                url={c.coverUrl}
+                alt={t('content.quick.cover')}
+                className="thumb-sm"
+              />
               <UploadButton
-                label="Upload cover"
+                label={t('sheet.upload_cover')}
                 accept="image/*"
                 onFile={async (f) => {
-                  const m = await addMedia(s, f, f.name);
-                  await edit({ coverMediaId: m.id });
+                  try {
+                    const m = await addMedia(s, f, f.name);
+                    await edit({ coverMediaId: m.id });
+                  } catch (e) {
+                    toast(errorText(e), { kind: 'error' });
+                  }
                 }}
               />
             </div>
             <AutoText
               value={c.coverUrl}
               onSave={(v) => edit({ coverUrl: v || null }, 'coverurl')}
-              ariaLabel="Cover URL"
-              placeholder="…or a link to the cover"
+              ariaLabel={t('sheet.cover_url')}
+              placeholder={t('sheet.cover_url_placeholder')}
             />
           </div>
           <div className="field">
-            <span className="lbl">Cover title</span>
+            <span className="lbl">{t('sheet.cover_title')}</span>
             <AutoText
               value={c.coverText}
               onSave={(v) => edit({ coverText: v || null }, 'covertext')}
-              ariaLabel="Cover title"
+              ariaLabel={t('sheet.cover_title')}
             />
           </div>
         </div>
@@ -486,6 +502,7 @@ export function PackageSection({ b, edit, done }: { b: Bundle; edit: Edit; done:
 }
 
 function PubRow({ b, p }: { b: Bundle; p: Publication }) {
+  useT();
   const s = useSession();
   const c = b.content;
   const [url, setUrl] = useState(p.url ?? '');
@@ -496,7 +513,7 @@ function PubRow({ b, p }: { b: Bundle; p: Publication }) {
       if (u) {
         const a = document.createElement('a');
         a.href = u;
-        a.download = `${c.title.slice(0, 40) || 'cover'}`;
+        a.download = `${c.title.slice(0, 40) || 'cover'}`; // file name, not UI text
         a.click();
       }
     } else if (c.coverUrl && safeHttpUrl(c.coverUrl))
@@ -504,19 +521,11 @@ function PubRow({ b, p }: { b: Bundle; p: Publication }) {
   };
   return (
     <div className="row static" style={{ flexWrap: 'wrap', alignItems: 'center' }}>
-      <strong style={{ width: 90 }}>{PLATFORM_LABEL[p.platform]}</strong>
+      <strong style={{ width: 90 }}>{platformName(p.platform)}</strong>
       {p.status === 'published' ? (
         <>
           <Pill tone="ok" dot>
-            Published{' '}
-            {p.publishedAt
-              ? new Date(p.publishedAt).toLocaleString(undefined, {
-                  day: 'numeric',
-                  month: 'short',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })
-              : ''}
+            {t('content.status.published')} {p.publishedAt ? fmt.dateTime(p.publishedAt) : ''}
           </Pill>
           {p.url && <ExtLink href={p.url} />}
         </>
@@ -526,16 +535,16 @@ function PubRow({ b, p }: { b: Bundle; p: Publication }) {
             type="datetime-local"
             className="input"
             style={{ width: 210 }}
-            aria-label={`${PLATFORM_LABEL[p.platform]} publish time`}
+            aria-label={t('sheet.publish_time', { platform: platformName(p.platform) })}
             value={toLocalInput(p.scheduledAt)}
             onChange={(e) => void schedulePublication(s, c, p.platform, fromLocalInput(e.target.value), p)}
           />
           <Button size="sm" variant="primary" onClick={() => setAskUrl(true)}>
-            Mark published
+            {t('h.published')}
           </Button>
           {(c.coverMediaId || c.coverUrl) && (
             <Button size="sm" variant="ghost" onClick={() => void downloadCover()}>
-              <Download size={13} /> Cover
+              <Download size={13} /> {t('content.quick.cover')}
             </Button>
           )}
         </>
@@ -543,23 +552,23 @@ function PubRow({ b, p }: { b: Bundle; p: Publication }) {
       <Sheet
         open={askUrl}
         onClose={() => setAskUrl(false)}
-        title={`Published on ${PLATFORM_LABEL[p.platform]}`}
+        title={t('sheet.published_on', { platform: platformName(p.platform) })}
         footer={
           <Button
             variant="primary"
             onClick={async () => {
               await markPublished(s, c, p, safeHttpUrl(url) ?? null);
               setAskUrl(false);
-              toast('Published — Today will remind you to log 24h and 7d results');
+              toast(t('sheet.published_toast'));
             }}
           >
-            Save
+            {t('common.save')}
           </Button>
         }
       >
         <div className="field">
           <label className="lbl" htmlFor="puburl">
-            Post URL (optional, recommended)
+            {t('sheet.post_url')}
           </label>
           <input
             id="puburl"
@@ -570,21 +579,19 @@ function PubRow({ b, p }: { b: Bundle; p: Publication }) {
             placeholder="https://…"
           />
         </div>
-        <p className="meta">
-          Saga HQ does not post for you — this records that you published, so results and learnings can attach
-          to it.
-        </p>
+        <p className="meta">{t('sheet.no_autopost')}</p>
       </Sheet>
     </div>
   );
 }
 
 export function PublishSection({ b, done }: { b: Bundle; done: boolean }) {
+  useT();
   const s = useSession();
   const c = b.content;
   const missingPlatforms = c.platforms.filter((p) => !b.publications.some((x) => x.platform === p));
   return (
-    <section className="sheet-sec" id="sec-publish" aria-label="Publish">
+    <section className="sheet-sec" id="sec-publish" aria-label={t('section.publish')}>
       <SecHead sec="publish" b={b} done={done} />
       <div className="stack">
         {b.publications.length > 0 && (
@@ -602,21 +609,18 @@ export function PublishSection({ b, done }: { b: Bundle; done: boolean }) {
             .slice(0, 6)
             .map((p) => (
               <Button key={p} size="sm" onClick={() => void schedulePublication(s, c, p, null)}>
-                <Plus size={13} /> {PLATFORM_LABEL[p]}
+                <Plus size={13} /> {platformName(p)}
               </Button>
             ))}
         </div>
-        {b.publications.length === 0 && (
-          <span className="meta">
-            Add a platform, then pick a date. Planning a publication never posts anything automatically.
-          </span>
-        )}
+        {b.publications.length === 0 && <span className="meta">{t('sheet.publish_hint')}</span>}
       </div>
     </section>
   );
 }
 
 export function ResultsSection({ b }: { b: Bundle }) {
+  useT();
   const s = useSession();
   const c = b.content;
   const published = b.publications.filter((p) => p.status === 'published');
@@ -652,16 +656,14 @@ export function ResultsSection({ b }: { b: Bundle }) {
     [],
   );
   return (
-    <section className="sheet-sec" id="sec-results" aria-label="Results and learning">
-      <SecHead sec="results" b={b} title="Results & learning">
+    <section className="sheet-sec" id="sec-results" aria-label={t('sheet.results_learning')}>
+      <SecHead sec="results" b={b} title={t('sheet.results_learning')}>
         <Button size="sm" variant="ghost" onClick={() => setLearnOpen(true)}>
-          Write learning
+          {t('sheet.write_learning')}
         </Button>
       </SecHead>
       {published.length === 0 ? (
-        <div className="meta">
-          Results appear after publication. Log a few numbers at 24h and 7d — that’s enough to learn.
-        </div>
+        <div className="meta">{t('sheet.results_hint')}</div>
       ) : (
         <div className="stack">
           {published.map((p) => {
@@ -673,19 +675,17 @@ export function ResultsSection({ b }: { b: Bundle }) {
             return (
               <div key={p.id} className="box">
                 <div className="hstack">
-                  <strong>{PLATFORM_LABEL[p.platform]}</strong>
+                  <strong>{platformName(p.platform)}</strong>
                   {v24 !== undefined && bl?.median && bl.n >= 5 ? (
                     <Pill tone={v24 / bl.median >= 1 ? 'ok' : 'warn'}>
-                      24h views {(v24 / bl.median).toFixed(1)}× platform median (n={bl.n})
+                      {t('sheet.vs_median', { ratio: fmt.ratio(v24 / bl.median), n: bl.n })}
                     </Pill>
                   ) : (
-                    <span className="meta">
-                      {bl && bl.n < 5 ? 'Not enough history for a baseline yet (n<5)' : ''}
-                    </span>
+                    <span className="meta">{bl && bl.n < 5 ? t('sheet.no_baseline') : ''}</span>
                   )}
                   <span className="spacer" />
                   <Button size="sm" onClick={() => setLogFor(p)}>
-                    Log results
+                    {t('h.logResults')}
                   </Button>
                 </div>
                 {snaps.length > 0 && (
@@ -693,9 +693,9 @@ export function ResultsSection({ b }: { b: Bundle }) {
                     <table className="table">
                       <thead>
                         <tr>
-                          <th>When</th>
+                          <th>{t('sheet.when')}</th>
                           {[...new Set(snaps.flatMap((x) => Object.keys(x.metrics)))].map((k) => (
-                            <th key={k}>{k}</th>
+                            <th key={k}>{t(`metric.${k}`)}</th>
                           ))}
                         </tr>
                       </thead>
@@ -705,7 +705,7 @@ export function ResultsSection({ b }: { b: Bundle }) {
                             <td>{x.checkpoint ?? `${Math.round(x.ageHours)}h`}</td>
                             {[...new Set(snaps.flatMap((y) => Object.keys(y.metrics)))].map((k) => (
                               <td key={k} className="num">
-                                {x.metrics[k]?.toLocaleString() ?? '—'}
+                                {x.metrics[k] !== undefined ? fmt.num(x.metrics[k]!) : '—'}
                               </td>
                             ))}
                           </tr>
@@ -729,7 +729,7 @@ export function ResultsSection({ b }: { b: Bundle }) {
                   })
                 }
               >
-                Done reviewing
+                {t('sheet.done_reviewing')}
               </Button>
             </div>
           )}
@@ -737,25 +737,23 @@ export function ResultsSection({ b }: { b: Bundle }) {
       )}
       {evidence.length > 0 && (
         <div className="meta" style={{ marginTop: 8 }}>
-          Evidence for {evidence.length} learning{evidence.length > 1 ? 's' : ''}:{' '}
+          {t('sheet.evidence_for', { count: evidence.length })}{' '}
           {evidence.map((l) => (
             <Link key={l.id} to="/learnings/$id" params={{ id: l.fromId }} className="tag">
-              view
+              {t('common.view_lower')}
             </Link>
           ))}
         </div>
       )}
-      <Sheet open={!!logFor} onClose={() => setLogFor(null)} title="Log results">
+      <Sheet open={!!logFor} onClose={() => setLogFor(null)} title={t('h.logResults')}>
         {logFor && (
           <>
-            <p className="meta">
-              Checkpoint is detected from the time since publishing (±20%): 1h, 6h, 24h, 72h, 7d, 28d.
-            </p>
+            <p className="meta">{t('sheet.checkpoint_hint')}</p>
             <MetricsForm
               platform={logFor.platform}
               onSubmit={async (m) => {
                 await logSnapshot(s, logFor, m);
-                toast('Results saved');
+                toast(t('today.results_saved'));
                 setLogFor(null);
               }}
             />

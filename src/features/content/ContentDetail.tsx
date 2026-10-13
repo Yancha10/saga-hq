@@ -3,10 +3,12 @@ import { ArrowRight, CheckCircle2, ImagePlus, Link2, ListPlus, Pin, Sparkles, Ty
 import { useState } from 'react';
 import { useApp, useIsPhone, useLive, useSession } from '../../app/context';
 import { toast } from '../../app/status';
-import { MISSING_LABEL, SECTION_LABEL, sectionComplete } from '../../data/derive';
+import { sectionComplete } from '../../data/derive';
 import { editContent, flagBlocked, moveToTomorrow, setContentStatus, togglePin } from '../../data/domain';
-import { CONTENT_STATUS_LABEL, CONTENT_STATUSES, type Content, type SheetSection } from '../../data/schema';
+import { CONTENT_STATUSES, type Content, type SheetSection } from '../../data/schema';
 import { undoLast, update } from '../../data/store';
+import { fmt, t, useT } from '../../i18n';
+import { missingList } from '../../i18n/render';
 import { AutoText, Button, Empty, Progress, Sheet } from '../../ui/kit';
 import { PageHeader } from '../../ui/PageHeader';
 import {
@@ -21,6 +23,7 @@ import {
   RecordMenu,
   TagEditor,
   TaskRow,
+  templateName,
 } from '../common';
 import {
   ConceptSection,
@@ -46,12 +49,12 @@ export function useContentBundle(id: string) {
       ]);
       return {
         content,
-        tasks: tasks.filter((t) => !t.deletedAt),
+        tasks: tasks.filter((x) => !x.deletedAt),
         publications: publications.filter((p) => !p.deletedAt),
         links: links.filter((l) => !l.deletedAt),
         snapshots: snapshots.filter((x) => !x.deletedAt),
         ws,
-        template: ws?.formatTemplates.find((t) => t.id === content.formatTemplateId),
+        template: ws?.formatTemplates.find((tp) => tp.id === content.formatTemplateId),
       };
     },
     [id],
@@ -61,6 +64,7 @@ export function useContentBundle(id: string) {
 export type Bundle = NonNullable<ReturnType<typeof useContentBundle>> & { content: Content };
 
 export function ContentDetail() {
+  useT();
   const { id } = useParams({ strict: false }) as { id: string };
   const s = useSession();
   const navigate = useNavigate();
@@ -73,7 +77,7 @@ export function ContentDetail() {
   if (!b.content)
     return (
       <div className="page">
-        <Empty title="Content not found">It may have been deleted permanently.</Empty>
+        <Empty title={t('content.not_found')}>{t('common.maybe_deleted')}</Empty>
       </div>
     );
   const bundle = b as Bundle;
@@ -96,10 +100,12 @@ export function ContentDetail() {
   const edit = async (patch: Partial<Content>, key?: string) => {
     const r = await editContent(s, c, patch, key ? `c:${c.id}:${key}` : undefined);
     if (r.autoProducing)
-      toast('Moved to Producing', { action: { label: 'Undo', run: () => void undoLast(s) } });
+      toast(t('content.moved_producing'), {
+        action: { label: t('common.undo'), run: () => void undoLast(s) },
+      });
   };
   const missing = (c._missing ?? []).filter((m) => m !== 'publishDate' || c.status !== 'published');
-  const blockers = bundle.tasks.filter((t) => t.isBlocker && t.status !== 'done');
+  const blockers = bundle.tasks.filter((x) => x.isBlocker && x.status !== 'done');
 
   const quickActions = (
     <div className="hstack" style={{ marginBottom: 12, gap: 6 }}>
@@ -107,66 +113,70 @@ export function ContentDetail() {
         size="sm"
         onClick={() =>
           void setContentStatus(s, c, 'ready').then(() =>
-            toast(missing.length ? `Ready — ${missing.length} item(s) still missing` : 'Marked Ready'),
+            toast(
+              missing.length
+                ? t('content.ready_missing', { count: missing.length })
+                : t('content.marked_ready'),
+            ),
           )
         }
       >
-        <CheckCircle2 size={14} /> Ready
+        <CheckCircle2 size={14} /> {t('content.quick.ready')}
       </Button>
       <a className="btn sm" href="#sec-package">
-        <Type size={14} /> Caption
+        <Type size={14} /> {t('field.caption')}
       </a>
       <a className="btn sm" href="#sec-package">
-        <ImagePlus size={14} /> Cover
+        <ImagePlus size={14} /> {t('content.quick.cover')}
       </a>
       {c._nextPublishAt && (
         <Button
           size="sm"
           onClick={() =>
             void moveToTomorrow(s, c).then(() =>
-              toast('Moved to tomorrow', { action: { label: 'Undo', run: () => void undoLast(s) } }),
+              toast(t('content.moved_tomorrow'), {
+                action: { label: t('common.undo'), run: () => void undoLast(s) },
+              }),
             )
           }
         >
-          <ArrowRight size={14} /> Tomorrow
+          <ArrowRight size={14} /> {t('content.quick.tomorrow')}
         </Button>
       )}
       <a className="btn sm" href="#sec-references">
-        <Link2 size={14} /> Reference
+        <Link2 size={14} /> {t('triage.reference')}
       </a>
       <a className="btn sm" href="#tasks">
-        <ListPlus size={14} /> Task
+        <ListPlus size={14} /> {t('task.kind.task')}
       </a>
       <Button
         size="sm"
         onClick={() => toggleSecretary({ intent: 'producer', focus: { entity: 'content', id: c.id } })}
       >
-        <Sparkles size={14} /> Ask
+        <Sparkles size={14} /> {t('common.ask')}
       </Button>
     </div>
   );
 
   const inspector = (
-    <aside className="inspector" aria-label="Content details">
+    <aside className="inspector" aria-label={t('content.details')}>
       <div className="box">
         <div className="hstack">
           <ContentStatus c={c} />
           <span className="spacer" />
-          <span className="meta num">{Math.round((c._readyPct ?? 0) * 100)}% ready</span>
+          <span className="meta num">{t('content.pct_ready', { pct: fmt.pct(c._readyPct ?? 0) })}</span>
         </div>
         <Progress value={c._readyPct ?? 0} />
         {missing.length > 0 ? (
-          <div className="meta">
-            Missing: {missing.map((m) => MISSING_LABEL[m as keyof typeof MISSING_LABEL]).join(', ')}
-          </div>
+          <div className="meta">{t('content.missing', { items: missingList(missing) })}</div>
         ) : (
           <div className="meta" style={{ color: 'var(--ok)' }}>
-            Everything required is in place.
+            {t('content.all_in_place')}
           </div>
         )}
         <div className="field">
           <label className="lbl" htmlFor="cst">
-            Status
+            {t('common.status')}
           </label>
           <select
             id="cst"
@@ -176,14 +186,14 @@ export function ContentDetail() {
           >
             {CONTENT_STATUSES.map((st) => (
               <option key={st} value={st}>
-                {CONTENT_STATUS_LABEL[st]}
+                {t(`content.status.${st}`)}
               </option>
             ))}
           </select>
         </div>
         <div className="field">
           <label className="lbl" htmlFor="cproj">
-            Project
+            {t('common.project')}
           </label>
           <ProjectSelect
             id="cproj"
@@ -193,7 +203,7 @@ export function ContentDetail() {
         </div>
         <div className="field">
           <label className="lbl" htmlFor="cfmt">
-            Format
+            {t('common.format')}
           </label>
           <select
             id="cfmt"
@@ -201,15 +211,15 @@ export function ContentDetail() {
             value={c.formatTemplateId}
             onChange={(e) => void update(s, 'content', c.id, { formatTemplateId: e.target.value })}
           >
-            {(bundle.ws?.formatTemplates ?? []).map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
+            {(bundle.ws?.formatTemplates ?? []).map((tp) => (
+              <option key={tp.id} value={tp.id}>
+                {templateName(tp)}
               </option>
             ))}
           </select>
         </div>
         <div className="field">
-          <span className="lbl">Platforms</span>
+          <span className="lbl">{t('common.platforms')}</span>
           <PlatformPicker
             value={c.platforms}
             onChange={(v) => void update(s, 'content', c.id, { platforms: v })}
@@ -217,7 +227,7 @@ export function ContentDetail() {
         </div>
         <div className="field">
           <label className="lbl" htmlFor="cprio">
-            Priority
+            {t('common.priority')}
           </label>
           <select
             id="cprio"
@@ -227,40 +237,40 @@ export function ContentDetail() {
               void update(s, 'content', c.id, { priority: (e.target.value || null) as Content['priority'] })
             }
           >
-            <option value="">None</option>
-            <option value="low">Low</option>
-            <option value="med">Medium</option>
-            <option value="high">High</option>
+            <option value="">{t('priority.none')}</option>
+            <option value="low">{t('priority.low')}</option>
+            <option value="med">{t('priority.med')}</option>
+            <option value="high">{t('priority.high')}</option>
           </select>
         </div>
       </div>
       <div className="box" id="tasks">
         <div className="hstack">
-          <h4 style={{ flex: 1 }}>Tasks & blockers</h4>
+          <h4 style={{ flex: 1 }}>{t('content.tasks_blockers')}</h4>
           <Button size="sm" variant="ghost" onClick={() => setBlockOpen(true)}>
-            Flag blocked
+            {t('h.blocked')}
           </Button>
         </div>
         {blockers.length > 0 && (
           <div className="meta" style={{ color: 'var(--warn)' }}>
-            Blocked by: {blockers.map((t) => t.title).join(' · ')}
+            {t('content.blocked_by', { list: blockers.map((x) => x.title).join(' · ') })}
           </div>
         )}
         <div className="list">
           {bundle.tasks
-            .filter((t) => t.status !== 'done')
-            .map((t) => (
-              <TaskRow key={t.id} t={t} showParent={false} />
+            .filter((x) => x.status !== 'done')
+            .map((x) => (
+              <TaskRow key={x.id} t={x} showParent={false} />
             ))}
           <QuickTask parent={{ contentId: c.id, projectId: c.projectId }} />
         </div>
       </div>
       <div className="box">
-        <h4>Attributes for learning (optional)</h4>
+        <h4>{t('content.attributes')}</h4>
         <div className="form-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
           <div className="field">
             <label className="lbl" htmlFor="ahook">
-              Hook type
+              {t('content.hook_type')}
             </label>
             <select
               id="ahook"
@@ -273,17 +283,16 @@ export function ContentDetail() {
               }
             >
               <option value="">—</option>
-              <option value="question">Question</option>
-              <option value="dialogue">Dialogue</option>
-              <option value="cold_open">Cold open</option>
-              <option value="reveal">Reveal</option>
-              <option value="text">Text hook</option>
-              <option value="other">Other</option>
+              {(['question', 'dialogue', 'cold_open', 'reveal', 'text', 'other'] as const).map((h) => (
+                <option key={h} value={h}>
+                  {t(`hook.${h}`)}
+                </option>
+              ))}
             </select>
           </div>
           <div className="field">
             <label className="lbl" htmlFor="adur">
-              Duration (s)
+              {t('content.duration_s')}
             </label>
             <input
               id="adur"
@@ -302,23 +311,23 @@ export function ContentDetail() {
             />
           </div>
           <div className="field">
-            <span className="lbl">Tone</span>
+            <span className="lbl">{t('ideas.tone')}</span>
             <AutoText
               value={c.attributes?.tone}
               onSave={(v) =>
                 update(s, 'content', c.id, { attributes: { ...(c.attributes ?? {}), tone: v || null } })
               }
-              ariaLabel="Tone"
+              ariaLabel={t('ideas.tone')}
             />
           </div>
           <div className="field">
-            <span className="lbl">Topic</span>
+            <span className="lbl">{t('content.topic')}</span>
             <AutoText
               value={c.attributes?.topic}
               onSave={(v) =>
                 update(s, 'content', c.id, { attributes: { ...(c.attributes ?? {}), topic: v || null } })
               }
-              ariaLabel="Topic"
+              ariaLabel={t('content.topic')}
             />
           </div>
         </div>
@@ -332,35 +341,35 @@ export function ContentDetail() {
               })
             }
           />{' '}
-          Has dialogue
+          {t('content.has_dialogue')}
         </label>
         <div className="field">
-          <span className="lbl">Cast</span>
+          <span className="lbl">{t('ideas.cast')}</span>
           <TagEditor
             value={c.attributes?.cast}
             onChange={(v) =>
               void update(s, 'content', c.id, { attributes: { ...(c.attributes ?? {}), cast: v } })
             }
-            label="Person"
+            labelKey="common.person"
           />
         </div>
         <div className="field">
-          <span className="lbl">AI models used</span>
+          <span className="lbl">{t('content.ai_models')}</span>
           <TagEditor
             value={c.attributes?.aiModels}
             onChange={(v) =>
               void update(s, 'content', c.id, { attributes: { ...(c.attributes ?? {}), aiModels: v } })
             }
-            label="Model"
+            labelKey="common.model"
           />
         </div>
         <div className="field">
-          <span className="lbl">Tags</span>
+          <span className="lbl">{t('common.tags')}</span>
           <TagEditor value={c.tags} onChange={(v) => void update(s, 'content', c.id, { tags: v })} />
         </div>
       </div>
       <details className="box">
-        <summary className="lbl">History</summary>
+        <summary className="lbl">{t('common.history')}</summary>
         <HistoryList recordId={c.id} />
       </details>
     </aside>
@@ -370,13 +379,12 @@ export function ContentDetail() {
     <div className="page" style={{ maxWidth: 1440 }}>
       <PageHeader
         back
-        title="Production sheet"
+        title={t('content.sheet')}
         sub={
           c.ideaId ? (
             <>
-              From{' '}
               <Link to="/ideas/$id" params={{ id: c.ideaId }}>
-                idea
+                {t('content.from_idea')}
               </Link>
             </>
           ) : undefined
@@ -388,22 +396,26 @@ export function ContentDetail() {
               onClick={() =>
                 void togglePin(s, { entity: 'content', id: c.id }).then((r) =>
                   toast(
-                    r === 'full' ? 'Focus holds 3 items' : r === 'pinned' ? 'Pinned to Focus' : 'Unpinned',
+                    r === 'full'
+                      ? t('today.focus_full')
+                      : r === 'pinned'
+                        ? t('content.pinned')
+                        : t('content.unpinned'),
                   ),
                 )
               }
             >
-              <Pin size={15} /> Focus
+              <Pin size={15} /> {t('today.focus')}
             </Button>
             <Button
               variant="ghost"
               className="hide-mobile"
               onClick={() => toggleSecretary({ intent: 'producer', focus: { entity: 'content', id: c.id } })}
             >
-              <Sparkles size={15} /> What’s missing?
+              <Sparkles size={15} /> {t('content.whats_missing')}
             </Button>
             <RecordMenu
-              label="Content actions"
+              label={t('content.actions')}
               items={archiveTrashItems(s, 'content', c, () => void navigate({ to: '/content' }))}
             />
           </>
@@ -413,36 +425,29 @@ export function ContentDetail() {
       <ConflictNotice recordId={c.id} table="content" />
       {phone && quickActions}
       <div className="sheet">
-        <nav className="sheet-rail" aria-label="Production sheet sections">
+        <nav className="sheet-rail" aria-label={t('content.sheet_sections')}>
           {sections.map((sec) => {
             const done = sectionComplete(sec, derivIn);
             return (
               <a key={sec} href={`#sec-${sec}`}>
                 <span className={`sec-dot ${done ? 'done' : c._stage === sec ? 'part' : ''}`} aria-hidden />
-                {SECTION_LABEL[sec]}
-                <span className="sr-only">{done ? '(done)' : ''}</span>
+                {t(`section.${sec}`)}
+                <span className="sr-only">{done ? `(${t('common.done_lower')})` : ''}</span>
               </a>
             );
           })}
           <a href="#sec-results">
             <span className="sec-dot" aria-hidden />
-            Results
+            {t('projects.tab.results')}
           </a>
         </nav>
         <div>
           <AutoText
             value={c.title}
-            onSave={(v) =>
-              update(
-                s,
-                'content',
-                c.id,
-                { title: v || 'Untitled content' },
-                { coalesceKey: `c:${c.id}:title` },
-              )
-            }
+            onSave={(v) => update(s, 'content', c.id, { title: v }, { coalesceKey: `c:${c.id}:title` })}
             className="title plain"
-            ariaLabel="Content title"
+            ariaLabel={t('content.title_label')}
+            placeholder={t('common.untitled')}
           />
           {!phone && <div style={{ marginTop: 8 }}>{quickActions}</div>}
           {sections.includes('concept') && (
@@ -468,7 +473,7 @@ export function ContentDetail() {
       <Sheet
         open={blockOpen}
         onClose={() => setBlockOpen(false)}
-        title="What is blocking this?"
+        title={t('content.what_blocking')}
         footer={
           <Button
             variant="primary"
@@ -477,10 +482,10 @@ export function ContentDetail() {
               await flagBlocked(s, c, blockReason.trim());
               setBlockReason('');
               setBlockOpen(false);
-              toast('Blocker added — it shows on Today until resolved');
+              toast(t('content.blocker_added'));
             }}
           >
-            Flag blocked
+            {t('h.blocked')}
           </Button>
         }
       >
@@ -489,22 +494,17 @@ export function ContentDetail() {
           autoFocus
           value={blockReason}
           onChange={(e) => setBlockReason(e.target.value)}
-          placeholder="e.g. Waiting for voice, need reference image"
-          aria-label="Blocker reason"
+          placeholder={t('content.blocker_placeholder')}
+          aria-label={t('content.blocker_reason')}
         />
         <div className="chips">
-          {[
-            'Need reference image',
-            'Waiting for voice',
-            'Cover missing',
-            'Need script decision',
-            'Generation failed',
-            'Need publish date',
-          ].map((r) => (
-            <button key={r} type="button" className="chip" onClick={() => setBlockReason(r)}>
-              {r}
-            </button>
-          ))}
+          {(['ref', 'voice', 'cover', 'script', 'gen', 'date'] as const)
+            .map((k) => t(`blocker.${k}`))
+            .map((r) => (
+              <button key={r} type="button" className="chip" onClick={() => setBlockReason(r)}>
+                {r}
+              </button>
+            ))}
         </div>
       </Sheet>
     </div>

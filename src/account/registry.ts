@@ -49,7 +49,7 @@ export async function upsertAccount(e: Omit<AccountEntry, 'lastUsedAt'>): Promis
 export async function getAccount(accountId: string): Promise<AccountEntry | undefined> {
   return reg().accounts.get(accountId);
 }
-export async function createLocal(name = 'Local workspace'): Promise<LocalEntry> {
+export async function createLocal(name = ''): Promise<LocalEntry> {
   const e: LocalEntry = { localId: ulid(), name, createdAt: nowIso(), lastUsedAt: nowIso() };
   await reg().locals.put(e);
   return e;

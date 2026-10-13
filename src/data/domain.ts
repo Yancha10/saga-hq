@@ -8,7 +8,8 @@ import { create, mutate, update } from './store';
 // ---------- Capture & triage ----------
 
 const TASK_RE =
-  /^(todo|to do|task|buy|call|email|send|book|fix|pay|reply|remind|check|finish|record|export|upload)\b|^\s*[-*]\s*\[\s?\]/i;
+  // Language-independent: English and Spanish imperative starters are both recognized regardless of UI language.
+  /^(todo|to do|task|buy|call|email|send|book|fix|pay|reply|remind|check|finish|record|export|upload|tarea|pendiente|por hacer|comprar|llamar|enviar|mandar|reservar|arreglar|pagar|responder|contestar|recordar|revisar|terminar|acabar|grabar|exportar|subir)(?![\p{L}])|^\s*[-*]\s*\[\s?\]/iu;
 
 export function suggestFor(
   text: string,
@@ -19,8 +20,8 @@ export function suggestFor(
     return { type: 'library', role: 'inspiration', by: 'rule', reason: 'link' };
   if (hasMedia && text.trim().length < 20)
     return { type: 'library', role: 'reference', by: 'rule', reason: 'image' };
-  if (TASK_RE.test(text.trim())) return { type: 'task', by: 'rule', reason: 'starts like a task' };
-  return { type: 'idea', by: 'rule', reason: 'free text' };
+  if (TASK_RE.test(text.trim())) return { type: 'task', by: 'rule', reason: 'task_like' };
+  return { type: 'idea', by: 'rule', reason: 'free_text' };
 }
 
 export async function capture(
@@ -42,11 +43,11 @@ export async function capture(
       status: 'inbox',
       suggestion:
         input.mode === 'task'
-          ? { type: 'task', by: 'rule', reason: 'captured as task' }
+          ? { type: 'task', by: 'rule', reason: 'captured_task' }
           : suggestFor(text, url, (input.mediaIds?.length ?? 0) > 0),
       projectId: input.projectId ?? null,
     },
-    'Capture',
+    'h.capture',
     { source: 'user' },
   );
 }
@@ -68,16 +69,14 @@ export async function triage(
   const origin = { source: 'capture' as const, captureId: c.id };
   const parsed = c.url ? parseUrl(c.url) : null;
   const title =
-    opts.title ||
-    firstLine(c.text?.replace(c.url ?? '', '')) ||
-    (parsed ? displayTitleForUrl(parsed) : 'Untitled');
-  return mutate(s, { label: `Triage capture → ${target}` }, async (m) => {
+    opts.title || firstLine(c.text?.replace(c.url ?? '', '')) || (parsed ? displayTitleForUrl(parsed) : '');
+  return mutate(s, { label: 'h.triage', labelParams: { target } }, async (m) => {
     let ref: { entity: string; id: string };
     if (target === 'idea') {
       const r = await m.create('ideas', { title, raw: c.text ?? null, status: 'new', projectId, origin });
       if (c.url || c.mediaIds.length) {
         const lib = await m.create('library', {
-          title: parsed ? displayTitleForUrl(parsed) : 'Captured media',
+          title: parsed ? displayTitleForUrl(parsed) : null,
           role: 'inspiration',
           kind: parsed ? 'link' : 'image',
           originalUrl: c.url ?? null,
@@ -189,7 +188,7 @@ export async function createVariant(
       status: 'new',
       ...(fields.origin ? { origin: fields.origin } : {}),
     },
-    'Create variant',
+    'h.variant',
   );
 }
 
@@ -198,7 +197,7 @@ export async function ideaToContent(
   idea: Idea,
   opts: { formatTemplateId: string; platforms: Platform[]; projectId?: string | null; title?: string },
 ): Promise<Content> {
-  return mutate(s, { label: 'Turn idea into content' }, async (m) => {
+  return mutate(s, { label: 'h.ideaToContent' }, async (m) => {
     const c = await m.create('content', {
       title: opts.title || idea.title,
       ideaId: idea.id,
@@ -259,7 +258,7 @@ export async function editContent(
   const auto =
     c.status === 'planned' && !patch.status && Object.keys(patch).some((k) => PRODUCTION_FIELDS.has(k));
   await update(s, 'content', c.id, auto ? { ...patch, status: 'producing' } : patch, {
-    label: auto ? 'Edit content · moved to Producing' : 'Edit content',
+    label: auto ? 'h.editContentProducing' : 'h.editContent',
     ...(coalesceKey && !auto ? { coalesceKey } : {}),
   });
   return { autoProducing: auto };
@@ -271,7 +270,7 @@ export async function setContentStatus(s: Session, c: Content, status: ContentSt
     'content',
     c.id,
     { status, ...(status === 'reviewed' ? { reviewedAt: nowIso() } : {}) },
-    { label: `Status → ${status}` },
+    { label: 'h.status', labelParams: { status } },
   );
 }
 
@@ -282,7 +281,7 @@ export async function schedulePublication(
   at: string | null,
   existing?: Publication,
 ): Promise<void> {
-  await mutate(s, { label: at ? 'Schedule publication' : 'Unschedule publication' }, async (m) => {
+  await mutate(s, { label: at ? 'h.schedule' : 'h.unschedule' }, async (m) => {
     if (existing)
       await m.update('publications', existing.id, {
         scheduledAt: at,
@@ -308,7 +307,7 @@ export async function markPublished(
   url: string | null,
   at = nowIso(),
 ): Promise<void> {
-  await mutate(s, { label: 'Mark published' }, async (m) => {
+  await mutate(s, { label: 'h.published' }, async (m) => {
     await m.update('publications', pub.id, {
       status: 'published',
       publishedAt: at,
@@ -331,7 +330,7 @@ export async function logSnapshot(
     ? Math.max(0, (Date.parse(observedAt) - Date.parse(pub.publishedAt)) / 3600_000)
     : 0;
   const cp = (checkpoint ?? snapCheckpoint(ageHours)) as never;
-  await mutate(s, { label: 'Log results' }, async (m) => {
+  await mutate(s, { label: 'h.logResults' }, async (m) => {
     await m.create('snapshots', {
       publicationId: pub.id,
       contentId: pub.contentId,
@@ -368,7 +367,7 @@ export async function flagBlocked(
       contentId: c.id,
       projectId: c.projectId ?? null,
     },
-    'Flag blocked',
+    'h.blocked',
   );
 }
 
@@ -378,7 +377,7 @@ export async function toggleTask(s: Session, id: string, done: boolean): Promise
     'tasks',
     id,
     { status: done ? 'done' : 'todo', doneAt: done ? nowIso() : null },
-    { label: done ? 'Complete task' : 'Reopen task' },
+    { label: done ? 'h.taskDone' : 'h.taskReopen' },
   );
 }
 
@@ -386,7 +385,7 @@ export async function moveToTomorrow(s: Session, c: Content): Promise<void> {
   const pubs = (await s.db.publications.where('contentId').equals(c.id).toArray()).filter(
     (p) => !p.deletedAt && p.scheduledAt && p.status !== 'published',
   );
-  await mutate(s, { label: 'Move to tomorrow' }, async (m) => {
+  await mutate(s, { label: 'h.tomorrow' }, async (m) => {
     for (const p of pubs)
       await m.update('publications', p.id, {
         scheduledAt: new Date(Date.parse(p.scheduledAt!) + 86400_000).toISOString(),
@@ -404,7 +403,7 @@ export async function togglePin(s: Session, ref: FocusRef): Promise<'pinned' | '
   const focus = has
     ? ws.focus.filter((f) => !(f.entity === ref.entity && f.id === ref.id))
     : [...ws.focus, ref];
-  await update(s, 'workspace', 'workspace', { focus }, { label: has ? 'Unpin from Focus' : 'Pin to Focus' });
+  await update(s, 'workspace', 'workspace', { focus }, { label: has ? 'h.unpin' : 'h.pin' });
   return has ? 'unpinned' : 'pinned';
 }
 
@@ -421,9 +420,9 @@ export async function linkRecords(
   );
   if (existing && !existing.deletedAt) return;
   if (existing) await update(s, 'links', existing.id, { deletedAt: null });
-  else await create(s, 'links', { fromType, fromId, toType, toId, type }, 'Link');
+  else await create(s, 'links', { fromType, fromId, toType, toId, type }, 'h.link');
 }
 
 export async function unlink(s: Session, linkId: string): Promise<void> {
-  await update(s, 'links', linkId, { deletedAt: nowIso() }, { label: 'Remove link' });
+  await update(s, 'links', linkId, { deletedAt: nowIso() }, { label: 'h.unlink' });
 }

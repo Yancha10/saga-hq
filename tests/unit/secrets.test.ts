@@ -33,7 +33,7 @@ describe('secret isolation (release gate)', () => {
 
     const backup = JSON.stringify(await buildBackup(s, { includeMedia: true }));
     const serialized = JSON.stringify(await serializeWorkspace(s.db));
-    const rp = await createRecoveryPoint(s, 'test');
+    const rp = await createRecoveryPoint(s, 'restore_point');
     const logs = JSON.stringify(getLogs());
     const diag = JSON.stringify(await buildDiagnostics(s));
 

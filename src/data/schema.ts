@@ -5,14 +5,6 @@ export const SCHEMA_VERSION = 1;
 
 export const PLATFORMS = ['instagram', 'tiktok', 'youtube', 'youtube_shorts', 'x', 'other'] as const;
 export type Platform = (typeof PLATFORMS)[number];
-export const PLATFORM_LABEL: Record<Platform, string> = {
-  instagram: 'Instagram',
-  tiktok: 'TikTok',
-  youtube: 'YouTube',
-  youtube_shorts: 'YT Shorts',
-  x: 'X',
-  other: 'Other',
-};
 
 const iso = z.string();
 const opt = <T extends z.ZodType>(t: T) => t.nullish();
@@ -184,14 +176,6 @@ export const CONTENT_STATUSES = [
   'reviewed',
 ] as const;
 export type ContentStatus = (typeof CONTENT_STATUSES)[number];
-export const CONTENT_STATUS_LABEL: Record<ContentStatus, string> = {
-  planned: 'Planned',
-  producing: 'Producing',
-  ready: 'Ready',
-  scheduled: 'Scheduled',
-  published: 'Published',
-  reviewed: 'Reviewed',
-};
 
 export const contentSchema = z.looseObject({
   ...base,

@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { useLive, useSession } from '../../app/context';
 import type { Idea } from '../../data/schema';
 import { create } from '../../data/store';
+import { t, useT } from '../../i18n';
 import { relDays } from '../../rules/time';
 import { Button, Empty, Pill, Tabs } from '../../ui/kit';
 import { PageHeader } from '../../ui/PageHeader';
@@ -13,6 +14,7 @@ type Filter = 'active' | 'shortlisted' | 'new' | 'parked' | 'committed' | 'archi
 const PAGE = 100;
 
 export function IdeasPage() {
+  useT();
   const s = useSession();
   const navigate = useNavigate();
   const [filter, setFilter] = useState<Filter>('active');
@@ -49,31 +51,31 @@ export function IdeasPage() {
   };
   return (
     <div className="page">
-      <PageHeader title="Ideas" sub={`${filtered.length} shown`} />
+      <PageHeader title={t('nav.ideas')} sub={t('common.n_shown', { count: filtered.length })} />
       <div className="hstack" style={{ marginBottom: 12 }}>
         <Tabs
-          label="Idea filter"
+          label={t('ideas.filter_label')}
           value={filter}
           onChange={(v) => {
             setFilter(v);
             setLimit(PAGE);
           }}
           options={[
-            { value: 'active', label: 'Active' },
-            { value: 'shortlisted', label: 'Shortlist' },
-            { value: 'new', label: 'New' },
-            { value: 'committed', label: 'In content' },
-            { value: 'parked', label: 'Parked' },
-            { value: 'archived', label: 'Archived' },
+            { value: 'active', label: t('ideas.filter.active') },
+            { value: 'shortlisted', label: t('ideas.filter.shortlisted') },
+            { value: 'new', label: t('ideas.filter.new') },
+            { value: 'committed', label: t('ideas.filter.committed') },
+            { value: 'parked', label: t('ideas.filter.parked') },
+            { value: 'archived', label: t('ideas.filter.archived') },
           ]}
         />
         <input
           className="input"
           style={{ maxWidth: 240 }}
-          placeholder="Filter…"
+          placeholder={t('common.filter_ellipsis')}
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          aria-label="Filter ideas"
+          aria-label={t('ideas.filter_aria')}
         />
         <div style={{ width: 200 }}>
           <ProjectSelect value={project} onChange={setProject} />
@@ -91,22 +93,20 @@ export function IdeasPage() {
         <input
           className="input plain"
           style={{ flex: 1 }}
-          placeholder="New idea title — Enter to create"
+          placeholder={t('ideas.new_placeholder')}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          aria-label="New idea title"
+          aria-label={t('ideas.new_aria')}
         />
         {draft && (
           <Button size="sm" type="submit">
-            Create
+            {t('common.create')}
           </Button>
         )}
       </form>
       {filtered.length === 0 ? (
-        <Empty title={ideas.length ? 'No ideas match' : 'No ideas yet'}>
-          {ideas.length
-            ? 'Try another filter.'
-            : 'Capture thoughts from anywhere with the + button, then turn the good ones into content.'}
+        <Empty title={ideas.length ? t('ideas.none_match') : t('ideas.none')}>
+          {ideas.length ? t('common.try_other_filter') : t('ideas.empty_body')}
         </Empty>
       ) : (
         <div className="list">
@@ -115,24 +115,26 @@ export function IdeasPage() {
               <div className="grow">
                 <div className="title">
                   {i.status === 'shortlisted' ? '★ ' : ''}
-                  {i.title || 'Untitled idea'}
+                  {i.title || t('ideas.untitled')}
                 </div>
                 <div className="sub">
                   {[
                     i.hook,
                     i.projectId && pName.get(i.projectId),
                     i.format,
-                    i.variantLabel && `variant: ${i.variantLabel}`,
+                    i.variantLabel && t('ideas.variant_of', { label: i.variantLabel }),
                   ]
                     .filter(Boolean)
                     .join(' · ') || relDays(i.updatedAt)}
                 </div>
               </div>
-              {variantCount.get(i.id) ? <span className="tag">{variantCount.get(i.id)} variants</span> : null}
+              {variantCount.get(i.id) ? (
+                <span className="tag">{t('ideas.n_variants', { count: variantCount.get(i.id) ?? 0 })}</span>
+              ) : null}
               <Pill
                 tone={i.status === 'shortlisted' ? 'accent' : i.status === 'committed' ? 'ok' : undefined}
               >
-                {i.status}
+                {t(`idea.status.${i.status}`)}
               </Pill>
             </Link>
           ))}
@@ -143,7 +145,10 @@ export function IdeasPage() {
               style={{ border: 0, background: 'none', textAlign: 'left', cursor: 'pointer' }}
               onClick={() => setLimit((l) => l + PAGE)}
             >
-              Show {Math.min(PAGE, filtered.length - limit)} more of {filtered.length - limit}
+              {t('common.show_more_of', {
+                n: Math.min(PAGE, filtered.length - limit),
+                total: filtered.length - limit,
+              })}
             </button>
           )}
         </div>

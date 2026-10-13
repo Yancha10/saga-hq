@@ -14,7 +14,7 @@ export const MIGRATIONS: Record<number, (s: Session) => Promise<void>> = {
 
 export async function runMigrations(s: Session, from: number): Promise<number> {
   if (from >= SCHEMA_VERSION) return from;
-  await createRecoveryPoint(s, `Before upgrade v${from} → v${SCHEMA_VERSION}`);
+  await createRecoveryPoint(s, 'upgrade', { from, to: SCHEMA_VERSION });
   for (let v = from + 1; v <= SCHEMA_VERSION; v++) {
     const m = MIGRATIONS[v];
     if (m) await m(s);

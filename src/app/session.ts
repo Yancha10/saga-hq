@@ -101,7 +101,7 @@ export class Session {
       // Initial defaults use the minimal HLC so any real edit on any device wins over them.
       rev: `000000000-0000-${this.deviceId}`,
       fieldRevs: {},
-      name: this.ref.kind === 'account' ? 'My workspace' : 'Local workspace',
+      name: '', // rendered with a localized placeholder; never store UI-language defaults
       platforms: [],
       cadence: [],
       formatTemplates: DEFAULT_TEMPLATES,

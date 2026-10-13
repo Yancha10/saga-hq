@@ -96,10 +96,20 @@ export function parseUrl(raw: string): ParsedUrl | null {
   return out;
 }
 
+/** Language-neutral default title derived from a URL (platform/handle/id only, no UI words). */
 export function displayTitleForUrl(p: ParsedUrl): string {
   const where =
-    p.platform && p.platform !== 'web' ? p.platform[0]!.toUpperCase() + p.platform.slice(1) : p.host;
-  if (p.handle && p.kind !== 'account') return `${where} ${p.kind ?? 'link'} · ${p.handle}`;
-  if (p.handle) return `${where} · ${p.handle}`;
-  return `${where} ${p.kind && p.kind !== 'link' ? p.kind : 'link'}`;
+    p.platform && p.platform !== 'web'
+      ? ((
+          {
+            youtube: 'YouTube',
+            tiktok: 'TikTok',
+            instagram: 'Instagram',
+            x: 'X',
+            reddit: 'Reddit',
+          } as Record<string, string>
+        )[p.platform] ?? p.host)
+      : p.host;
+  const extra = p.handle ?? p.externalId;
+  return extra ? `${where} · ${extra}` : where;
 }

@@ -15,7 +15,8 @@ export interface HistoryEntry {
   id: string;
   at: string;
   actor: 'user' | 'ai' | 'sync' | 'import';
-  label: string;
+  label: string; // i18n key (language-neutral)
+  labelParams?: Record<string, string | number>;
   coalesceKey?: string;
   ops: HistoryOp[];
   undone?: boolean;
@@ -34,7 +35,8 @@ export interface ConflictCopy {
 export interface RecoveryPoint {
   id: string;
   at: string;
-  reason: string;
+  reason: string; // stable code, rendered by i18n (`recovery.reason.<code>`)
+  reasonParams?: Record<string, string | number>;
   schemaVersion: number;
   counts: Record<string, number>;
   data: string; // JSON of syncable tables only (never secrets / local-only tables)

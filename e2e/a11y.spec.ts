@@ -60,7 +60,7 @@ test('keyboard: palette and capture reachable without a mouse; dialog traps and 
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { name: 'Inbox' }).first()).toBeVisible();
   await page.keyboard.press('c');
-  await expect(page.getByRole('textbox', { name: "What's on your mind?" })).toBeFocused();
+  await expect(page.getByRole('textbox', { name: 'What’s on your mind?' })).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
 });

@@ -31,24 +31,19 @@ export interface ProviderConfig {
   apiKey: string;
 }
 
-export const PROVIDER_INFO: Record<
-  ProviderId,
-  { label: string; defaultModel: string; keyHelp: string; consoleUrl: string }
-> = {
-  anthropic: {
-    label: 'Anthropic (Claude API)',
-    defaultModel: 'claude-opus-5-5',
-    keyHelp: 'An Anthropic API key (sk-ant-…). A Claude.ai subscription does not include API credits.',
-    consoleUrl: 'https://console.anthropic.com/',
-  },
-  openai: {
-    label: 'OpenAI API',
-    defaultModel: '',
-    keyHelp:
-      'An OpenAI API key (sk-…). A ChatGPT subscription does not include API billing. Enter a current chat model id from your OpenAI dashboard.',
-    consoleUrl: 'https://platform.openai.com/',
-  },
-};
+export const PROVIDER_INFO: Record<ProviderId, { label: string; defaultModel: string; consoleUrl: string }> =
+  {
+    anthropic: {
+      label: 'Anthropic (Claude API)',
+      defaultModel: 'claude-opus-5-5',
+      consoleUrl: 'https://console.anthropic.com/',
+    },
+    openai: {
+      label: 'OpenAI API',
+      defaultModel: '',
+      consoleUrl: 'https://platform.openai.com/',
+    },
+  };
 
 async function anthropicComplete(cfg: ProviderConfig, req: CompletionRequest): Promise<CompletionResult> {
   const { default: Anthropic } = await import('@anthropic-ai/sdk');

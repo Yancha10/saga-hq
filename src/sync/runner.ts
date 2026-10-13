@@ -8,9 +8,19 @@ import { type DriveApi, DriveError } from './driveApi';
 import { SyncBlockedError, SyncEngine } from './engine';
 
 export type SyncPhase = 'off' | 'idle' | 'syncing' | 'offline' | 'needs_auth' | 'blocked' | 'error';
+/** Stable codes rendered by i18n (`sync.code.<CODE>`). */
+export type SyncCode =
+  | 'SYNC_NEEDS_AUTH'
+  | 'SYNC_OTHER_TAB'
+  | 'SYNC_BLOCKED_ACCOUNT'
+  | 'SYNC_BLOCKED_SCHEMA'
+  | 'SYNC_BLOCKED_OTHER'
+  | 'DRIVE_BUSY'
+  | 'DRIVE_ERROR'
+  | 'SYNC_FAILED';
 export interface SyncStatus {
   phase: SyncPhase;
-  message?: string;
+  code?: SyncCode;
   lastSyncAt?: string;
   pendingUploads?: number;
   quota?: { limit?: number; usage: number };
@@ -40,6 +50,8 @@ export class SyncRunner {
   private lastInput = Date.now();
   private lastQuotaAt = 0;
   private stopped = false;
+  private leader = false;
+  private leaderRelease: (() => void) | null = null;
 
   constructor(
     readonly session: Session,
@@ -139,9 +151,6 @@ export class SyncRunner {
     this.timer = setTimeout(() => void this.run('full'), this.nextDelay());
   }
 
-  private leader = false;
-  private leaderRelease: (() => void) | null = null;
-
   /** Only one tab per workspace syncs (Web Locks). Other tabs see changes through shared IndexedDB. */
   private async ensureLeader(): Promise<boolean> {
     if (this.leader) return true;
@@ -170,7 +179,7 @@ export class SyncRunner {
   private async run(kind: 'full' | 'push'): Promise<void> {
     if (this.stopped || !this.session.isLive()) return;
     if (!(await this.ensureLeader())) {
-      syncStatus.set((p) => ({ ...p, phase: 'idle', message: 'Syncing in another tab' }));
+      syncStatus.set((p) => ({ ...p, phase: 'idle', code: 'SYNC_OTHER_TAB' }));
       this.reschedule();
       return;
     }
@@ -196,7 +205,7 @@ export class SyncRunner {
       syncStatus.set((p) => ({
         ...p,
         phase: 'idle',
-        message: undefined,
+        code: undefined,
         pendingUploads,
         ...(st.lastSyncAt ? { lastSyncAt: st.lastSyncAt } : {}),
       }));
@@ -219,51 +228,37 @@ export class SyncRunner {
     }
     if (e instanceof SyncBlockedError) {
       this.stop();
-      syncStatus.set((p) => ({ ...p, phase: 'blocked', message: e.message }));
-      setBanner({
-        id: 'sync',
-        kind: 'error',
-        message: `Sync stopped: ${e.message} Your local data is safe.`,
-      });
+      const code: SyncCode =
+        e.reason === 'accountMismatch'
+          ? 'SYNC_BLOCKED_ACCOUNT'
+          : e.reason === 'futureSchema'
+            ? 'SYNC_BLOCKED_SCHEMA'
+            : 'SYNC_BLOCKED_OTHER';
+      syncStatus.set((p) => ({ ...p, phase: 'blocked', code }));
+      setBanner({ id: 'sync', kind: 'error', msgKey: `sync.banner.${code}` });
       return;
     }
     if (e instanceof DriveError) {
       if (e.kind === 'auth') {
-        syncStatus.set((p) => ({
-          ...p,
-          phase: 'needs_auth',
-          message: 'Sync paused — reconnect Google to resume.',
-        }));
+        syncStatus.set((p) => ({ ...p, phase: 'needs_auth', code: 'SYNC_NEEDS_AUTH' }));
         this.failures = 0;
         if (this.timer) clearTimeout(this.timer);
-        this.stopped = false;
         return;
       }
-      if (e.kind === 'quota') {
-        setBanner({
-          id: 'sync',
-          kind: 'warning',
-          message:
-            'Your Google Drive is full. Saga HQ keeps working locally; free Drive space to resume syncing.',
-        });
-      }
+      if (e.kind === 'quota') setBanner({ id: 'sync', kind: 'warning', msgKey: 'sync.banner.DRIVE_FULL' });
       if (e.kind === 'network') {
         syncStatus.set((p) => ({ ...p, phase: 'offline' }));
         this.failures = Math.min(this.failures + 1, 8);
         return;
       }
       this.failures = Math.min(this.failures + 1, 8);
-      syncStatus.set((p) => ({
-        ...p,
-        phase: 'error',
-        message: e.retryable ? 'Drive is busy — retrying automatically.' : e.message,
-      }));
+      syncStatus.set((p) => ({ ...p, phase: 'error', code: e.retryable ? 'DRIVE_BUSY' : 'DRIVE_ERROR' }));
       logger.warn('sync', `drive error ${e.kind} ${e.status}`);
       return;
     }
     this.failures = Math.min(this.failures + 1, 8);
     logger.error('sync', 'sync failed', e);
-    syncStatus.set((p) => ({ ...p, phase: 'error', message: 'Sync failed — retrying. Local data is safe.' }));
+    syncStatus.set((p) => ({ ...p, phase: 'error', code: 'SYNC_FAILED' }));
   }
 
   private async housekeeping(): Promise<void> {
@@ -276,12 +271,7 @@ export class SyncRunner {
       const q = await this.drive.quota();
       syncStatus.set((p) => ({ ...p, quota: q }));
       if (q.limit !== undefined && q.limit - q.usage < LOW_SPACE_BYTES)
-        setBanner({
-          id: 'drive-space',
-          kind: 'warning',
-          message:
-            'Your Google Drive has less than 1 GB free. Saga HQ never deletes your content automatically — free space in Drive or Settings › Storage.',
-        });
+        setBanner({ id: 'drive-space', kind: 'warning', msgKey: 'sync.banner.DRIVE_LOW' });
       else clearBanner('drive-space');
     }
   }
@@ -320,7 +310,7 @@ export class SyncRunner {
         await s.db.uploads.update(job.id, {
           state: 'failed',
           attempts: job.attempts + 1,
-          lastError: (e as Error).message,
+          lastError: (e as DriveError).kind ?? 'other',
         });
         if (e instanceof DriveError && (e.kind === 'auth' || e.kind === 'quota')) throw e;
       }

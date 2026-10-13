@@ -3,16 +3,16 @@ import type { Content, Publication, Snapshot } from '../data/schema';
 
 /** Platform-scoped metric keys. Cross-platform totals are deliberately not computed. */
 export const COMMON_METRICS = [
-  { key: 'views', label: 'Views / plays' },
-  { key: 'likes', label: 'Likes' },
-  { key: 'comments', label: 'Comments' },
-  { key: 'shares', label: 'Shares' },
-  { key: 'saves', label: 'Saves' },
-  { key: 'avgWatchSec', label: 'Avg watch (s)' },
-  { key: 'retentionPct', label: 'Retention / completion %' },
-  { key: 'followers', label: 'Followers gained' },
-  { key: 'profileVisits', label: 'Profile visits' },
-  { key: 'reach', label: 'Reach' },
+  { key: 'views' },
+  { key: 'likes' },
+  { key: 'comments' },
+  { key: 'shares' },
+  { key: 'saves' },
+  { key: 'avgWatchSec' },
+  { key: 'retentionPct' },
+  { key: 'followers' },
+  { key: 'profileVisits' },
+  { key: 'reach' },
 ] as const;
 
 export const CHECKPOINTS = [
