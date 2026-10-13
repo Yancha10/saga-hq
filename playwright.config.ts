@@ -44,7 +44,7 @@ export default defineConfig({
     },
     {
       name: 'e2e-build',
-      testMatch: /(accounts|a11y|responsive|perf)\.spec\.ts/,
+      testMatch: /(accounts|a11y|responsive|perf|secretary)\.spec\.ts/,
       use: { ...devices['Desktop Chrome'], baseURL: 'http://localhost:4175/', launchOptions },
     },
   ],

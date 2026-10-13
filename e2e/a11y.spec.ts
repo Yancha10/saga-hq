@@ -56,7 +56,7 @@ test('keyboard: palette and capture reachable without a mouse; dialog traps and 
   await page.keyboard.press('Control+k');
   await expect(page.getByRole('combobox', { name: /Search everything/ })).toBeFocused();
   await page.keyboard.type('Inbox');
-  await page.keyboard.press('ArrowDown');
+  await expect(page.getByRole('option').first()).toContainText('Inbox');
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { name: 'Inbox' }).first()).toBeVisible();
   await page.keyboard.press('c');

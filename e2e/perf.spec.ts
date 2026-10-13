@@ -3,7 +3,15 @@ import { go, startLocal } from './helpers';
 
 test('performance with a large synthetic workspace', async ({ page }) => {
   test.setTimeout(300_000);
+  const c0 = Date.now();
+  await page.goto('./');
+  await page.getByRole('button', { name: /Start locally/ }).waitFor();
+  const coldFirstVisitMs = Date.now() - c0;
   await startLocal(page);
+  const w0 = Date.now();
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Today', exact: true }).first()).toBeVisible();
+  const warmEmptyReloadMs = Date.now() - w0;
   const t0 = Date.now();
   const counts = await page.evaluate(() =>
     (window as unknown as { __sagaTest: { seed: (n: object) => Promise<object> } }).__sagaTest.seed({
@@ -14,7 +22,7 @@ test('performance with a large synthetic workspace', async ({ page }) => {
     }),
   );
   const seedMs = Date.now() - t0;
-  const m: Record<string, number> = { seedMs };
+  const m: Record<string, number> = { coldFirstVisitMs, warmEmptyReloadMs, seedMs };
   const time = async (name: string, fn: () => Promise<void>) => {
     const s = Date.now();
     await fn();
@@ -60,6 +68,10 @@ test('performance with a large synthetic workspace', async ({ page }) => {
     await page.getByRole('textbox', { name: "What's on your mind?" }).fill('perf capture');
     await page.keyboard.press('Control+Enter');
     await expect(page.getByText('Saved to Inbox')).toBeVisible();
+  });
+  await time('accountSwitchReload', async () => {
+    await page.evaluate(() => location.reload());
+    await expect(page.getByRole('heading', { name: 'Today', exact: true }).first()).toBeVisible();
   });
   console.log(`[perf] dataset ${JSON.stringify(counts)}\n[perf] ${JSON.stringify(m)}`);
   expect(m.coldReloadToToday).toBeLessThan(15000);

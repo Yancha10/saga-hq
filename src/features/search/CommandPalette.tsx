@@ -273,7 +273,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       o.id === 'ask' ||
       ['idea', 'task', 'content', 'proj'].includes(o.id);
     return q
-      ? [...results, ...commands.filter(filt), ...nav.filter((o) => o.label.toLowerCase().includes(ql))]
+      ? [...nav.filter((o) => o.label.toLowerCase().includes(ql)), ...results, ...commands.filter(filt)]
       : [...commands, ...nav];
   }, [q, hits]);
 
