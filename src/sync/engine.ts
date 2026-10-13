@@ -363,6 +363,7 @@ export class SyncEngine {
       touched.get(t)!.add(id);
     };
     await this.db.transaction('rw', [...SYNC_TABLES, 'tombstones', 'conflicts', 'meta'], async () => {
+      s.hlc.observe((await this.db.meta.get('hlc'))?.value as never);
       for (const { t, r } of valid) {
         s.hlc.receive(r.rev);
         const local = (await this.db.table(t).get(r.id)) as never;

@@ -86,6 +86,9 @@ export class SyncRunner {
 
   stop(): void {
     this.stopped = true;
+    this.leaderRelease?.();
+    this.leaderRelease = null;
+    this.leader = false;
     if (this.timer) clearTimeout(this.timer);
     if (this.pushTimer) clearTimeout(this.pushTimer);
     this.timer = null;
@@ -134,8 +137,41 @@ export class SyncRunner {
     this.timer = setTimeout(() => void this.run('full'), this.nextDelay());
   }
 
+  private leader = false;
+  private leaderRelease: (() => void) | null = null;
+
+  /** Only one tab per workspace syncs (Web Locks). Other tabs see changes through shared IndexedDB. */
+  private async ensureLeader(): Promise<boolean> {
+    if (this.leader) return true;
+    const locks = (navigator as Navigator & { locks?: LockManager }).locks;
+    if (!locks) {
+      this.leader = true;
+      return true;
+    }
+    await new Promise<void>((resolveTry) => {
+      void locks.request(`sagahq-sync:${this.session.ref.dbName}`, { ifAvailable: true }, async (lock) => {
+        if (!lock) {
+          resolveTry();
+          return;
+        }
+        this.leader = true;
+        resolveTry();
+        await new Promise<void>((release) => {
+          this.leaderRelease = release;
+          this.session.addDisposer(() => release());
+        });
+      });
+    });
+    return this.leader;
+  }
+
   private async run(kind: 'full' | 'push'): Promise<void> {
     if (this.stopped || !this.session.isLive()) return;
+    if (!(await this.ensureLeader())) {
+      syncStatus.set((p) => ({ ...p, phase: 'idle', message: 'Syncing in another tab' }));
+      this.reschedule();
+      return;
+    }
     if (this.running) {
       this.again = true;
       return;

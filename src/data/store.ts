@@ -5,6 +5,7 @@ import { deepEqual, nowIso } from '../core/util';
 import { logger } from '../diagnostics/logger';
 import type { HistoryEntry, HistoryOp } from './db';
 import { deriveContent } from './derive';
+
 import {
   ENTITY_SCHEMAS,
   META_FIELDS,
@@ -189,6 +190,9 @@ export async function mutate<R>(
   const m = new Mutator(s, origin);
   try {
     const result = await s.db.transaction('rw', ALL_TABLES, async () => {
+      // Other tabs of this browser share the device id: adopt their clock first so revisions stay
+      // monotonic per device (IndexedDB serializes these transactions).
+      s.hlc.observe((await s.db.meta.get('hlc'))?.value as never);
       const r = await fn(m);
       if (m.deriveIds.size) await recomputeDerived(s, m.deriveIds);
       if (opts.history !== false && m.ops.length) await writeHistory(s, opts, m.ops);

@@ -52,6 +52,12 @@ export class Hlc {
     this.state = { ms, c };
   }
 
+  /** Adopt a persisted state written by another tab of the same device (shared IndexedDB). */
+  observe(st: HlcState | undefined): void {
+    if (!st) return;
+    if (st.ms > this.state.ms || (st.ms === this.state.ms && st.c > this.state.c)) this.state = { ...st };
+  }
+
   snapshot(): HlcState {
     return { ...this.state };
   }
