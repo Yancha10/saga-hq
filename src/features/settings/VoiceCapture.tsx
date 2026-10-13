@@ -556,6 +556,21 @@ export function VoiceCaptureSec() {
           <li>{t('voice.s4_b')}</li>
           <li>{t('voice.s4_c')}</li>
         </ol>
+        {quickUrl && (
+          <div className="voice-planb">
+            <p className="meta">
+              <b>{t('voice.planb_title')}</b> {t('voice.planb_body')}
+            </p>
+            <ol className="voice-howto">
+              <li>{t('voice.planb_a')}</li>
+              <li>{t('voice.planb_b')}</li>
+              <li>{t('voice.planb_c')}</li>
+            </ol>
+            <div className="copy-box">
+              <CopyRow label={t('voice.planb_link')} value={`${quickUrl}&t=`} secret />
+            </div>
+          </div>
+        )}
       </Step>
 
       <Step n={6} title={t('voice.s5_title')}>

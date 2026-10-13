@@ -24,11 +24,11 @@
     status.className = 'q-status ' + (kind || '');
   }
 
-  function post(t) {
+  function post(t, source) {
     return fetch(cfg.u, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ key: cfg.k, text: t, source: 'pantalla-inicio' }),
+      body: JSON.stringify({ key: cfg.k, text: t, source: source || 'pantalla-inicio' }),
     })
       .then(function (r) { return r.text(); })
       .then(function (body) {
@@ -68,12 +68,12 @@
     }).catch(function () { say('Mantén pulsado el cuadro y elige Pegar.'); });
   });
 
-  send.addEventListener('click', function () {
+  function save(source) {
     var t = text.value.trim();
     if (!t) { text.focus(); return say('Escribe o dicta algo primero.'); }
     send.disabled = true;
     say('Guardando…');
-    post(t).then(function () {
+    post(t, source).then(function () {
       text.value = '';
       say('Guardado en Saga ✨ Lo verás en Hoy › Llegadas.', 'ok');
     }).catch(function (e) {
@@ -86,7 +86,18 @@
         say('Sin conexión: la guardo y la envío en cuanto vuelva la red.', 'bad');
       }
     }).finally(function () { send.disabled = false; });
-  });
+  }
+  send.addEventListener('click', function () { save(); });
+
+  // Opened by the iOS Shortcut with the dictated text in #t=…: send it right away, then drop it
+  // from the address so a reload never sends it twice.
+  var incoming = params.get('t');
+  if (incoming && cfg && !send.disabled) {
+    params.delete('t');
+    history.replaceState(null, '', location.pathname + location.search + '#' + params.toString());
+    text.value = incoming;
+    save('atajo');
+  }
 
   window.addEventListener('online', flush);
   document.addEventListener('visibilitychange', function () { if (!document.hidden) flush(); });

@@ -299,3 +299,24 @@ test('Home-screen quick capture page sends to the script and queues offline', as
   expect(overflow).toBeLessThanOrEqual(1);
   if (process.env.SHOTS_DIR) await page.screenshot({ path: `${process.env.SHOTS_DIR}/quick.png` });
 });
+
+test('Quick capture page sends the text a Shortcut passes in #t= once, without a tap', async ({ page }) => {
+  const sent: string[] = [];
+  await page.route('https://script.google.com/**', async (route) => {
+    sent.push(route.request().postData() ?? '');
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({ ok: true, v: 2, id: 'x' }),
+    });
+  });
+  const u = encodeURIComponent('https://script.google.com/macros/s/TEST/exec');
+  await page.goto(`./quick.html#u=${u}&k=clave123&t=${encodeURIComponent('Idea: Saga en un faro')}`);
+  await expect(page.getByText(/Guardado en Saga/)).toBeVisible();
+  expect(JSON.parse(sent[0]!)).toEqual({ key: 'clave123', text: 'Idea: Saga en un faro', source: 'atajo' });
+  expect(page.url()).not.toContain('t=');
+  await page.reload();
+  await page.waitForTimeout(500);
+  expect(sent).toHaveLength(1);
+});

@@ -1797,6 +1797,15 @@ export const es: Record<MessageKey, string> = {
   'voice.not_here': 'Aquí no: devolver a la Bandeja',
   'voice.nothing_new': 'Nada nuevo en el buzón',
   'voice.open_check': 'Abrir comprobación',
+  'voice.planb_a':
+    'Deja «Dictar texto». Borra «Obtener contenido de URL» y «Mostrar notificación» (la ⊗ de cada una).',
+  'voice.planb_b': 'Añade «Codificar URL» (busca: codificar). Después añade «Abrir URL» (busca: abrir URL).',
+  'voice.planb_body':
+    'Usa esta versión: el atajo le pasa tu idea a Safari y Safari la envía (y la guarda si no hay cobertura).',
+  'voice.planb_c':
+    'En «Abrir URL», toca URL, borra lo que haya, pega el enlace de abajo y, justo al final, toca la burbuja azul de «Codificar URL» que sale encima del teclado.',
+  'voice.planb_link': 'Enlace del atajo',
+  'voice.planb_title': '¿El atajo dice «La conexión de red se ha perdido»?',
   'voice.privacy':
     'La clave solo permite que tu propio script añada texto a tu buzón; se comparte entre tus dispositivos a través de tu espacio. Los textos viven en tu propio Drive; el script borra los de más de 60 días.',
   'voice.report': 'Copiar informe (para soporte)',

@@ -1770,6 +1770,15 @@ export const en = {
   'voice.not_here': 'Not here: back to Inbox',
   'voice.nothing_new': 'Nothing new in the inbox',
   'voice.open_check': 'Open the check',
+  'voice.planb_a':
+    'Keep “Dictate Text”. Delete “Get Contents of URL” and “Show Notification” (the ⊗ on each).',
+  'voice.planb_b': 'Add “URL Encode” (search: encode). Then add “Open URLs” (search: open URL).',
+  'voice.planb_body':
+    'Use this version: the Shortcut hands your idea to Safari, which sends it (and keeps it if there is no signal).',
+  'voice.planb_c':
+    'In “Open URLs”, tap URL, delete what is there, paste the link below and, at the very end, tap the blue bubble from “URL Encode” above the keyboard.',
+  'voice.planb_link': 'Shortcut link',
+  'voice.planb_title': 'Shortcut says “The network connection was lost”?',
   'voice.privacy':
     'The key only lets your own script append text to your inbox; it is shared by your devices through your workspace. Texts live in your own Drive; items older than 60 days are pruned by the script.',
   'voice.report': 'Copy report (for support)',
