@@ -56,7 +56,7 @@ export function log(level: Level, area: string, ...parts: unknown[]): void {
   const entry: LogEntry = { at: new Date().toISOString(), level, area, message: redact(stringify(parts)).slice(0, 2000) };
   buffer.push(entry);
   if (buffer.length > MAX) buffer.shift();
-  if (import.meta.env?.DEV && level !== 'debug') {
+  if (import.meta.env?.DEV && import.meta.env.MODE !== 'test' && level !== 'debug') {
     const fn = level === 'error' ? console.error : level === 'warn' ? console.warn : console.info;
     fn(`[${area}]`, entry.message);
   }
