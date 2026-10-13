@@ -334,9 +334,9 @@ export function CalendarPage() {
           className={phone ? '' : 'grid2'}
           style={phone ? undefined : { gridTemplateColumns: 'minmax(0, 1fr) 230px' }}
         >
-          <div className="week" role="grid" aria-label="Week">
+          <div className="week">
             {dayCells(7).map((d) => (
-              <div key={d} className="day" role="gridcell">
+              <section key={d} className="day" aria-label={new Date(d).toDateString()}>
                 <div className={`day-head ${sameDay(d, Date.now()) ? 'today' : ''}`}>
                   <span>{new Date(d).toLocaleDateString(undefined, { weekday: 'short' })}</span>
                   <span className="d num">{new Date(d).getDate()}</span>
@@ -363,7 +363,7 @@ export function CalendarPage() {
                       </div>
                     ))}
                 </div>
-              </div>
+              </section>
             ))}
           </div>
           {!phone && (
@@ -410,13 +410,12 @@ export function CalendarPage() {
       )}
 
       {view === 'month' && (
-        <div className="month" role="grid" aria-label="Month">
+        <div className="month">
           {dayCells(42).map((d) => {
             const its = items.filter((x) => sameDay(x.at, d));
             return (
               <div
                 key={d}
-                role="gridcell"
                 className={`cell ${new Date(d).getMonth() !== new Date(anchor).getMonth() ? 'out' : ''}`}
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={(e) => void onDropDay(d, e.dataTransfer.getData('text/plain'))}

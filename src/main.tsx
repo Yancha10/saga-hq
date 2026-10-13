@@ -17,3 +17,4 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 );
 void initPwa();
+if (import.meta.env.VITE_E2E_MOCKS === '1') void import('./app/testHooks').then((m) => m.installTestHooks());

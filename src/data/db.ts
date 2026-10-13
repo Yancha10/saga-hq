@@ -122,7 +122,7 @@ export class WorkspaceDB extends Dexie {
       ideas: 'id, rev, status, projectId, parentIdeaId, updatedAt',
       captures: 'id, rev, status, createdAt',
       content: 'id, rev, status, projectId, ideaId, updatedAt, _nextPublishAt',
-      publications: 'id, rev, contentId, scheduledAt, publishedAt, platform',
+      publications: 'id, rev, contentId, status, scheduledAt, publishedAt, platform',
       snapshots: 'id, rev, publicationId, contentId, observedAt',
       tasks: 'id, rev, status, dueAt, projectId, contentId, ideaId',
       events: 'id, rev, startAt, projectId, contentId',
