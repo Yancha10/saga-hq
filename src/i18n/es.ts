@@ -1751,6 +1751,7 @@ export const es: Record<MessageKey, string> = {
   'voice.diag.key': 'El script publicado tiene una clave distinta a la de esta app.',
   'voice.diag.login': 'Google pide iniciar sesión: la aplicación web no es pública.',
   'voice.diag.notjson': 'Tu script respondió con una página de Google en lugar de su respuesta.',
+  'voice.diag.old': 'La URL guardada aquí es de una publicación antigua del script.',
   'voice.fix.blocked':
     'Casi siempre es el acceso: Implementar › Gestionar implementaciones › ✏️ › Quién tiene acceso: «Cualquier usuario», Ejecutar como: yo, Versión: Nueva versión › Implementar. Si Google pidió permisos, acéptalos. Después usa «Abrir comprobación» de abajo para ver qué responde Google.',
   'voice.fix.drive':
@@ -1761,6 +1762,8 @@ export const es: Record<MessageKey, string> = {
     'Implementar › Gestionar implementaciones › ✏️ › Quién tiene acceso: «Cualquier usuario» (no «…con cuenta de Google») › Implementar.',
   'voice.fix.notjson':
     'Abre la comprobación de abajo para leerla. Si dice que no encuentra una función, guarda el código y publica una versión nueva (Gestionar implementaciones › ✏️ › Nueva versión). Si pide autorización, ejecuta el script una vez y acepta.',
+  'voice.fix.old':
+    'En Apps Script abre Implementar › Gestionar implementaciones, elige la más reciente (la de arriba), copia su URL de aplicación web, pégala aquí y pulsa Guardar. Si aún no lo has hecho: Copiar script, pégalo sustituyendo todo, Guardar y luego Implementar › Nueva implementación.',
   'voice.flow_label': 'Cómo viaja',
   'voice.flow_script': 'tu script',
   'voice.go_account': 'Conectar Google',
@@ -1842,6 +1845,7 @@ export const es: Record<MessageKey, string> = {
     'No ha llegado. Revisa el acceso de la implementación («Cualquier usuario»), la URL y que pegaste el último script.',
   'voice.test_ok': 'Funciona: tu script escribe en el buzón',
   'voice.testing': 'Probando…',
+  'voice.testing_url': 'Probando la URL que termina en {tail}',
   'voice.url_bad': 'Debería ser como https://script.google.com/macros/s/…/exec',
   'voice.url_label': 'URL de la aplicación web',
   'voice.url_saved': 'URL guardada',

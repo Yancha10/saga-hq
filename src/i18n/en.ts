@@ -1724,6 +1724,7 @@ export const en = {
   'voice.diag.key': 'The published script has a different key from this app.',
   'voice.diag.login': "Google asks to sign in: the web app isn't public.",
   'voice.diag.notjson': 'Your script answered with a Google page instead of its reply.',
+  'voice.diag.old': 'The URL saved here belongs to an old deployment of the script.',
   'voice.fix.blocked':
     "Usually it's the access setting: Deploy › Manage deployments › ✏️ › Who has access: “Anyone”, Execute as: Me, Version: New version › Deploy. If Google asked for permissions, accept them. Then use “Open the check” below to see what Google answers.",
   'voice.fix.drive':
@@ -1734,6 +1735,8 @@ export const en = {
     'Deploy › Manage deployments › ✏️ › Who has access: “Anyone” (not “Anyone with a Google account”) › Deploy.',
   'voice.fix.notjson':
     "Open the check below to read it. If it says a function isn't found, save the code and publish a new version (Manage deployments › ✏️ › New version). If it asks for authorization, run the script once and accept.",
+  'voice.fix.old':
+    "In Apps Script open Deploy › Manage deployments, select the most recent one (top of the list), copy its Web app URL, paste it here and tap Save. If you haven't yet: Copy script, paste it replacing everything, Save, then Deploy › New deployment.",
   'voice.flow_label': 'How it travels',
   'voice.flow_script': 'your script',
   'voice.go_account': 'Connect Google',
@@ -1813,6 +1816,7 @@ export const en = {
     "It didn't arrive. Check the deployment access (“Anyone”), the URL and that you pasted the latest script.",
   'voice.test_ok': 'It works: your script writes to the inbox',
   'voice.testing': 'Testing…',
+  'voice.testing_url': 'Testing the URL that ends in {tail}',
   'voice.url_bad': 'It should look like https://script.google.com/macros/s/…/exec',
   'voice.url_label': 'Web app URL',
   'voice.url_saved': 'URL saved',

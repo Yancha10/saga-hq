@@ -36,8 +36,8 @@ interface VoiceMeta {
   verifiedAt?: string;
 }
 const META = 'voiceCapture';
-type Diag = 'ok' | 'key' | 'drive' | 'login' | 'notjson' | 'blocked';
-const URL_RE = /^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/;
+type Diag = 'ok' | 'key' | 'old' | 'drive' | 'login' | 'notjson' | 'blocked';
+const URL_RE = /^https:\/\/script\.google\.com\/(a\/macros\/[^/]+|macros)\/s\/[\w-]+\/exec$/;
 
 async function copy(text: string, ok: string): Promise<void> {
   try {
@@ -148,7 +148,8 @@ export function VoiceCaptureSec() {
     setHint(null);
     const nonce = `test-${Math.random().toString(36).slice(2, 10)}`;
     const body = JSON.stringify({ key, text: nonce, source: 'test' });
-    let reply: 'json-ok' | 'json-key' | 'html-login' | 'html-other' | 'unreadable' = 'unreadable';
+    let reply: 'json-ok' | 'json-key' | 'json-old' | 'html-login' | 'html-other' | 'unreadable' =
+      'unreadable';
     try {
       const res = await fetch(meta.url, {
         method: 'POST',
@@ -157,8 +158,9 @@ export function VoiceCaptureSec() {
       });
       const text = await res.text();
       try {
-        const j = JSON.parse(text) as { ok?: boolean; error?: string; keyHint?: string };
-        reply = j.ok ? 'json-ok' : j.error === 'clave' ? 'json-key' : 'html-other';
+        const j = JSON.parse(text) as { ok?: boolean; error?: string; keyHint?: string; v?: number };
+        // replies without a version come from an outdated deployment of the script
+        reply = j.ok ? 'json-ok' : j.error === 'clave' ? (j.v ? 'json-key' : 'json-old') : 'html-other';
         if (j.keyHint !== undefined) setHint(j.keyHint);
       } catch {
         reply = /accounts\.google\.com|ServiceLogin|signin/i.test(text) ? 'html-login' : 'html-other';
@@ -185,13 +187,15 @@ export function VoiceCaptureSec() {
       ? 'ok'
       : reply === 'json-key'
         ? 'key'
-        : reply === 'json-ok'
-          ? 'drive'
-          : reply === 'html-login'
-            ? 'login'
-            : reply === 'html-other'
-              ? 'notjson'
-              : 'blocked';
+        : reply === 'json-old'
+          ? 'old'
+          : reply === 'json-ok'
+            ? 'drive'
+            : reply === 'html-login'
+              ? 'login'
+              : reply === 'html-other'
+                ? 'notjson'
+                : 'blocked';
     setDiag(d);
     if (d === 'ok') {
       await save({ verifiedAt: new Date().toISOString() });
@@ -343,6 +347,9 @@ export function VoiceCaptureSec() {
               <span>{t('voice.key_hint', { deployed: `${hint}…`, mine: `${key?.slice(0, 4)}…` })}</span>
             )}
             <span>{t(`voice.fix.${diag}`)}</span>
+            {meta.url && (
+              <span className="meta">{t('voice.testing_url', { tail: `…${meta.url.slice(-22)}` })}</span>
+            )}
           </div>
         )}
         {diag === 'ok' && (
