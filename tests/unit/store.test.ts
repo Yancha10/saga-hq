@@ -12,7 +12,7 @@ describe('command layer', () => {
     const idea = await create(s, 'ideas', { title: 'A', status: 'new' });
     expect(idea.fieldRevs.title).toBe(idea.rev);
     const up = await update(s, 'ideas', idea.id, { hook: 'h' });
-    expect(up!.fieldRevs.hook > idea.rev).toBe(true);
+    expect(up!.fieldRevs.hook! > idea.rev).toBe(true);
     expect(up!.fieldRevs.title).toBe(idea.rev);
     const up2 = await update(s, 'ideas', idea.id, { hook: 'h2' });
     expect(up2!.fieldPrev!.hook).toBe(up!.fieldRevs.hook);
