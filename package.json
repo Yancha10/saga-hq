@@ -1,0 +1,49 @@
+{
+  "name": "saga-hq",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Saga HQ — local-first creative operating system",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "build:test": "vite build --mode e2e --outDir dist-e2e",
+    "preview": "vite preview",
+    "typecheck": "tsc -b --noEmit",
+    "lint": "biome check . && node scripts/check-host-literals.mjs",
+    "format": "biome format --write .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "e2e": "playwright test",
+    "icons": "node scripts/gen-icons.mjs"
+  },
+  "dependencies": {
+    "@tanstack/react-router": "1.170.44",
+    "@tanstack/react-virtual": "3.14.18",
+    "dexie": "4.4.6",
+    "dexie-react-hooks": "4.4.0",
+    "lucide-react": "1.56.0",
+    "minisearch": "7.2.0",
+    "react": "19.3.0",
+    "react-aria-components": "1.22.1",
+    "react-dom": "19.3.0",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
+    "@biomejs/biome": "2.5.15",
+    "@playwright/test": "1.56.1",
+    "@testing-library/react": "16.3.3",
+    "@types/node": "22.19.0",
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
+    "@vitejs/plugin-react": "6.1.2",
+    "fake-indexeddb": "6.2.5",
+    "fast-check": "4.10.2",
+    "jsdom": "^26.1.0",
+    "typescript": "5.9.3",
+    "vite": "8.3.4",
+    "vite-plugin-pwa": "2.0.0",
+    "vitest": "5.0.4"
+  }
+}
