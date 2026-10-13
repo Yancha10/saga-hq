@@ -1771,6 +1771,18 @@ export const es: Record<MessageKey, string> = {
     '«Oye Siri, idea para Saga», o Compartir desde WhatsApp, ChatGPT o Claude. Va a tu propio Drive y Saga HQ lo coloca la próxima vez que se abra. Gratis y sin abrir la app.',
   'voice.hero_title': 'Dilo y ya está en Saga HQ',
   'voice.hide': 'Ocultar',
+  'voice.home_a': 'En el iPhone, toca Copiar enlace, abre Safari, pégalo en la barra de direcciones y ve.',
+  'voice.home_b': 'Toca Compartir (el cuadrado con la flecha) › Añadir a pantalla de inicio › Añadir.',
+  'voice.home_body':
+    'Una página de captura que se abre al instante: tocas el 🎤 del teclado, hablas y tocas Guardar. Sin la app Atajos.',
+  'voice.home_c':
+    'Listo: el icono «Idea Saga» abre la página. Habla con el 🎤 del teclado y toca Guardar en Saga.',
+  'voice.home_copied': 'Enlace copiado: pégalo en Safari',
+  'voice.home_copy': 'Copiar enlace',
+  'voice.home_note':
+    'El enlace lleva la dirección de tu script y tu clave solo después del #, que nunca se envía a ningún servidor. Sin cobertura, las ideas esperan en el móvil y se envían al volver la red.',
+  'voice.home_open': 'Abrir página de captura',
+  'voice.home_title': 'Lo más fácil: un botón en tu pantalla de inicio',
   'voice.inbox_ready': 'Buzón creado',
   'voice.instr_copied': 'Instrucciones copiadas',
   'voice.key_from_script': 'Clave de tu script (línea 4)',
@@ -1814,7 +1826,7 @@ export const es: Record<MessageKey, string> = {
     'Un solo atajo para Siri y para Compartir. Copia estos dos valores cuando la app Atajos te los pida.',
   'voice.s4_c':
     'Di «Oye Siri, idea para Saga». Desde WhatsApp, ChatGPT o Claude: mantén pulsado › Compartir › Idea para Saga.',
-  'voice.s4_title': 'Crea el atajo en el iPhone',
+  'voice.s4_title': 'Opcional: Siri y Compartir (app Atajos)',
   'voice.s5_body':
     'Empieza con una palabra. Sin ella, espera en la Bandeja con una sugerencia: nada se archiva mal en silencio.',
   'voice.s5_title': 'Dilo así y cae en su sitio',

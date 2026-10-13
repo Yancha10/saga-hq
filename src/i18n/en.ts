@@ -1744,6 +1744,18 @@ export const en = {
     '“Hey Siri, idea for Saga” — or Share from WhatsApp, ChatGPT or Claude. It goes to your own Drive and Saga HQ files it the next time it opens. Free, without opening the app.',
   'voice.hero_title': "Say it, and it's in Saga HQ",
   'voice.hide': 'Hide',
+  'voice.home_a': 'On your iPhone, tap Copy link, open Safari, paste it in the address bar and go.',
+  'voice.home_b': 'Tap Share (the square with the arrow) › Add to Home Screen › Add.',
+  'voice.home_body':
+    'A capture page that opens instantly: tap the 🎤 on the keyboard, speak, tap Save. No Shortcuts app needed.',
+  'voice.home_c':
+    'Done: the “Idea Saga” icon opens the page. Speak with the keyboard 🎤 and tap Save in Saga.',
+  'voice.home_copied': 'Link copied: paste it in Safari',
+  'voice.home_copy': 'Copy link',
+  'voice.home_note':
+    'The link carries your script address and key only after the #, which is never sent to any server. Without signal, ideas wait on the phone and are sent when it returns.',
+  'voice.home_open': 'Open capture page',
+  'voice.home_title': 'The easiest: a button on your home screen',
   'voice.inbox_ready': 'Inbox created',
   'voice.instr_copied': 'Instructions copied',
   'voice.key_from_script': 'Key from your script (line 4)',
@@ -1786,7 +1798,7 @@ export const en = {
     'One shortcut for Siri and for the Share sheet. Copy these two values when the Shortcuts app asks for them.',
   'voice.s4_c':
     'Say “Hey Siri, idea for Saga”. From WhatsApp, ChatGPT or Claude: long-press › Share › Idea for Saga.',
-  'voice.s4_title': 'Create the shortcut on your iPhone',
+  'voice.s4_title': 'Optional: Siri and the Share sheet (Shortcuts app)',
   'voice.s5_body':
     'Start with a word. Without one, it waits in the Inbox with a suggestion — nothing is filed wrongly in silence.',
   'voice.s5_title': 'Say it so it lands in the right place',

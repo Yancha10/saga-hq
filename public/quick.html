@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src https://script.google.com https://script.googleusercontent.com; base-uri 'none'; form-action 'none'; object-src 'none'"
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Idea Saga" />
+    <meta name="theme-color" content="#0c0a08" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+    <link rel="icon" href="icon.svg" />
+    <link rel="stylesheet" href="quick.css" />
+    <title>Idea para Saga</title>
+  </head>
+  <body>
+    <main class="q">
+      <header class="q-head">
+        <span class="q-orb" aria-hidden="true">✦</span>
+        <div>
+          <h1>Idea para Saga</h1>
+          <p class="q-sub" id="sub">Habla o escribe. Va directa a tu buzón.</p>
+        </div>
+      </header>
+
+      <div class="q-chips" role="group" aria-label="Dónde va">
+        <button type="button" data-prefix="Idea: ">Idea</button>
+        <button type="button" data-prefix="Tarea: ">Tarea</button>
+        <button type="button" data-prefix="Guion para ">Guion para…</button>
+        <button type="button" data-prefix="Radar: ">Radar</button>
+        <button type="button" data-prefix="Pieza: ">Pieza</button>
+      </div>
+
+      <label class="sr" for="text">Tu idea</label>
+      <textarea id="text" rows="7" placeholder="Toca aquí y pulsa 🎤 en el teclado para dictar…"></textarea>
+
+      <div class="q-actions">
+        <button type="button" class="q-btn ghost" id="paste">Pegar</button>
+        <button type="button" class="q-btn primary" id="send">Guardar en Saga</button>
+      </div>
+
+      <p class="q-status" id="status" role="status" aria-live="polite"></p>
+      <p class="q-hint">
+        Empieza con <b>Idea:</b>, <b>Tarea:</b> (con fecha, «el viernes»), <b>Guion para Faro:</b>, <b>Radar:</b> o
+        <b>Pieza:</b>. Sin palabra, va a la Bandeja.
+      </p>
+    </main>
+    <script src="quick.js"></script>
+  </body>
+</html>

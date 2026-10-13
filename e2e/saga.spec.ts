@@ -270,3 +270,32 @@ test('Voice capture settings explain the setup and need Google for a local works
   const r = await new AxeBuilder({ page: page as never }).withTags(['wcag2a', 'wcag2aa']).analyze();
   expect(r.violations.map((v) => v.id)).toEqual([]);
 });
+
+test('Home-screen quick capture page sends to the script and queues offline', async ({ page }) => {
+  const sent: string[] = [];
+  await page.route('https://script.google.com/**', async (route) => {
+    sent.push(route.request().postData() ?? '');
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({ ok: true, v: 2, id: 'x' }),
+    });
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(
+    `./quick.html#u=${encodeURIComponent('https://script.google.com/macros/s/TEST/exec')}&k=clave123`,
+  );
+  await page.getByRole('button', { name: 'Tarea' }).click();
+  await page.getByLabel('Tu idea').pressSequentially('llamar al estudio el viernes');
+  await page.getByRole('button', { name: 'Guardar en Saga' }).click();
+  await expect(page.getByText(/Guardado en Saga/)).toBeVisible();
+  expect(JSON.parse(sent[0]!)).toEqual({
+    key: 'clave123',
+    text: 'Tarea: llamar al estudio el viernes',
+    source: 'pantalla-inicio',
+  });
+  const overflow = await page.evaluate(() => document.scrollingElement!.scrollWidth - window.innerWidth);
+  expect(overflow).toBeLessThanOrEqual(1);
+  if (process.env.SHOTS_DIR) await page.screenshot({ path: `${process.env.SHOTS_DIR}/quick.png` });
+});

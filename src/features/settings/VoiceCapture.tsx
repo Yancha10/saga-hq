@@ -128,6 +128,11 @@ export function VoiceCaptureSec() {
   // URL and verification are shared by all devices too (older setups kept them per device).
   const url = ws?.voiceUrl ?? meta.url;
   const verifiedAt = ws?.voiceVerifiedAt ?? meta.verifiedAt;
+  // Personal link to the home-screen capture page; URL and key travel in the #fragment only.
+  const quickUrl =
+    url && key
+      ? `${new URL('quick.html', location.href.split('#')[0]).href}#u=${encodeURIComponent(url)}&k=${encodeURIComponent(key)}`
+      : null;
   const setShared = (patch: { voiceUrl?: string; voiceVerifiedAt?: string | null }) =>
     update(s, 'workspace', 'workspace', patch, { label: 'h.voiceSetup', history: false });
   useEffect(() => {
@@ -478,7 +483,31 @@ export function VoiceCaptureSec() {
         )}
       </Step>
 
-      <Step n={4} title={t('voice.s4_title')}>
+      <Step n={4} title={t('voice.home_title')}>
+        <p className="meta">{t('voice.home_body')}</p>
+        {quickUrl ? (
+          <>
+            <div className="hstack wrap">
+              <a className="btn primary" href={quickUrl} target="_blank" rel="noopener noreferrer">
+                <ExternalLink size={15} aria-hidden /> {t('voice.home_open')}
+              </a>
+              <Button onClick={() => void copy(quickUrl, t('voice.home_copied'))}>
+                <ClipboardCopy size={15} aria-hidden /> {t('voice.home_copy')}
+              </Button>
+            </div>
+            <ol className="voice-howto">
+              <li>{t('voice.home_a')}</li>
+              <li>{t('voice.home_b')}</li>
+              <li>{t('voice.home_c')}</li>
+            </ol>
+            <p className="meta explain">{t('voice.home_note')}</p>
+          </>
+        ) : (
+          <p className="meta">{t('voice.after_s1')}</p>
+        )}
+      </Step>
+
+      <Step n={5} title={t('voice.s4_title')}>
         <p className="meta">{t('voice.s4_body')}</p>
         {url && key && (
           <div className="copy-box">
@@ -529,7 +558,7 @@ export function VoiceCaptureSec() {
         </ol>
       </Step>
 
-      <Step n={5} title={t('voice.s5_title')}>
+      <Step n={6} title={t('voice.s5_title')}>
         <p className="meta">{t('voice.s5_body')}</p>
         <ul className="say-list">
           {(['idea', 'task', 'variant', 'radar', 'piece', 'free'] as const).map((k) => (
@@ -541,7 +570,7 @@ export function VoiceCaptureSec() {
         </ul>
       </Step>
 
-      <Step n={6} title={t('voice.s6_title')}>
+      <Step n={7} title={t('voice.s6_title')}>
         <p className="meta">{t('voice.s6_body')}</p>
         <div className="code-card">
           <div className="code-card-head">

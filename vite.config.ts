@@ -67,6 +67,8 @@ export default defineConfig(({ mode }) => {
         workbox: {
           globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
           navigateFallback: 'index.html',
+          // the home-screen quick capture page is its own document, never the app shell
+          navigateFallbackDenylist: [/quick\.html/],
           cleanupOutdatedCaches: true,
           clientsClaim: false,
           skipWaiting: false,
