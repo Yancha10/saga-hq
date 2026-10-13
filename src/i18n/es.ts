@@ -1751,19 +1751,19 @@ export const es: Record<MessageKey, string> = {
   'voice.diag.key': 'El script publicado tiene una clave distinta a la de esta app.',
   'voice.diag.login': 'Google pide iniciar sesión: la aplicación web no es pública.',
   'voice.diag.notjson': 'Tu script respondió con una página de Google en lugar de su respuesta.',
-  'voice.diag.old': 'La URL guardada aquí es de una publicación antigua del script.',
+  'voice.diag.old': 'El script publicado no usa la clave de esta app.',
   'voice.fix.blocked':
     'Casi siempre es el acceso: Implementar › Gestionar implementaciones › ✏️ › Quién tiene acceso: «Cualquier usuario», Ejecutar como: yo, Versión: Nueva versión › Implementar. Si Google pidió permisos, acéptalos. Después usa «Abrir comprobación» de abajo para ver qué responde Google.',
   'voice.fix.drive':
     'El script apunta a otro buzón: vuelve a copiar el script (lleva el id de este buzón), pégalo, guarda, Implementar › Nueva implementación y pega aquí la URL nueva.',
   'voice.fix.key':
-    'Solución más fácil: 1) Copiar script (botón) y pégalo en Apps Script sustituyendo todo. 2) Guarda. 3) Implementar › Nueva implementación (no «Gestionar») › Aplicación web · Yo · Cualquier usuario › Implementar. 4) Pega aquí la URL NUEVA y Guardar. 5) Prueba otra vez.',
+    "La forma más rápida: copia la clave que ves en Apps Script (línea 4, const KEY = '…', sin las comillas), pégala abajo y pulsa Usar esta clave. Después prueba otra vez.",
   'voice.fix.login':
     'Implementar › Gestionar implementaciones › ✏️ › Quién tiene acceso: «Cualquier usuario» (no «…con cuenta de Google») › Implementar.',
   'voice.fix.notjson':
     'Abre la comprobación de abajo para leerla. Si dice que no encuentra una función, guarda el código y publica una versión nueva (Gestionar implementaciones › ✏️ › Nueva versión). Si pide autorización, ejecuta el script una vez y acepta.',
   'voice.fix.old':
-    'En Apps Script abre Implementar › Gestionar implementaciones, elige la más reciente (la de arriba), copia su URL de aplicación web, pégala aquí y pulsa Guardar. Si aún no lo has hecho: Copiar script, pégalo sustituyendo todo, Guardar y luego Implementar › Nueva implementación.',
+    "La forma más rápida: copia la clave que ves en Apps Script (línea 4, const KEY = '…', sin las comillas), pégala abajo y pulsa Usar esta clave. Después prueba otra vez.",
   'voice.flow_label': 'Cómo viaja',
   'voice.flow_script': 'tu script',
   'voice.go_account': 'Conectar Google',
@@ -1773,8 +1773,10 @@ export const es: Record<MessageKey, string> = {
   'voice.hide': 'Ocultar',
   'voice.inbox_ready': 'Buzón creado',
   'voice.instr_copied': 'Instrucciones copiadas',
+  'voice.key_from_script': 'Clave de tu script (línea 4)',
   'voice.key_hint': 'La clave publicada empieza por {deployed}; la de esta app, por {mine}.',
   'voice.key_rotated': 'Clave nueva creada: vuelve a copiar el script y actualiza el atajo',
+  'voice.key_set': 'Clave actualizada en todos tus dispositivos. Prueba otra vez.',
   'voice.manage': 'Gestionar',
   'voice.manual_check': 'Para ver exactamente qué responde Google:',
   'voice.mock_label': 'Acciones del atajo',
@@ -1784,7 +1786,7 @@ export const es: Record<MessageKey, string> = {
   'voice.nothing_new': 'Nada nuevo en el buzón',
   'voice.open_check': 'Abrir comprobación',
   'voice.privacy':
-    'La clave se queda en este dispositivo y en tu script; nunca se sincroniza, ni va a copias, ni a ningún otro sitio. Los textos viven en tu propio Drive; el script borra los de más de 60 días.',
+    'La clave solo permite que tu propio script añada texto a tu buzón; se comparte entre tus dispositivos a través de tu espacio. Los textos viven en tu propio Drive; el script borra los de más de 60 días.',
   'voice.rotate_key': 'Nueva clave (actualiza el script y el atajo)',
   'voice.s1_body':
     'Saga HQ crea un archivo pequeño en su carpeta de Drive y una clave privada para tu atajo.',
@@ -1849,6 +1851,7 @@ export const es: Record<MessageKey, string> = {
   'voice.url_bad': 'Debería ser como https://script.google.com/macros/s/…/exec',
   'voice.url_label': 'URL de la aplicación web',
   'voice.url_saved': 'URL guardada',
+  'voice.use_key': 'Usar esta clave',
   'voice.working': 'Funciona',
   'week.bring_today': 'Pasar a hoy',
   'week.edit_capacity': 'Editar horas y objetivo',

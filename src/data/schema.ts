@@ -97,6 +97,8 @@ export const workspaceSchema = z.looseObject({
   checklist: z.array(checkItemSchema).max(60).optional(),
   checklistVersion: opt(z.number().int().min(0)),
   voiceInboxFileId: opt(z.string().max(200)),
+  /** Voice inbox key: only allows appending text to the inbox via the user's own script. Shared by the user's devices. */
+  voiceKey: opt(z.string().max(80)),
 });
 
 export const PROJECT_KINDS = ['project', 'series', 'campaign', 'season'] as const;

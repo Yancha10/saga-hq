@@ -1724,19 +1724,19 @@ export const en = {
   'voice.diag.key': 'The published script has a different key from this app.',
   'voice.diag.login': "Google asks to sign in: the web app isn't public.",
   'voice.diag.notjson': 'Your script answered with a Google page instead of its reply.',
-  'voice.diag.old': 'The URL saved here belongs to an old deployment of the script.',
+  'voice.diag.old': "The published script doesn't use this app's key.",
   'voice.fix.blocked':
     "Usually it's the access setting: Deploy › Manage deployments › ✏️ › Who has access: “Anyone”, Execute as: Me, Version: New version › Deploy. If Google asked for permissions, accept them. Then use “Open the check” below to see what Google answers.",
   'voice.fix.drive':
     "The script points to another inbox: copy the script again (it includes this inbox's id), paste it, save, Deploy › New deployment and paste the new URL here.",
   'voice.fix.key':
-    'Easiest fix: 1) Copy script (button) and paste it in Apps Script replacing everything. 2) Save. 3) Deploy › New deployment (not “Manage”) › Web app · Me · Anyone › Deploy. 4) Paste the NEW URL here and Save. 5) Test again.',
+    "The quickest fix: copy the key you see in Apps Script (line 4, const KEY = '…', without the quotes), paste it below and tap Use this key. Then test again.",
   'voice.fix.login':
     'Deploy › Manage deployments › ✏️ › Who has access: “Anyone” (not “Anyone with a Google account”) › Deploy.',
   'voice.fix.notjson':
     "Open the check below to read it. If it says a function isn't found, save the code and publish a new version (Manage deployments › ✏️ › New version). If it asks for authorization, run the script once and accept.",
   'voice.fix.old':
-    "In Apps Script open Deploy › Manage deployments, select the most recent one (top of the list), copy its Web app URL, paste it here and tap Save. If you haven't yet: Copy script, paste it replacing everything, Save, then Deploy › New deployment.",
+    "The quickest fix: copy the key you see in Apps Script (line 4, const KEY = '…', without the quotes), paste it below and tap Use this key. Then test again.",
   'voice.flow_label': 'How it travels',
   'voice.flow_script': 'your script',
   'voice.go_account': 'Connect Google',
@@ -1746,8 +1746,10 @@ export const en = {
   'voice.hide': 'Hide',
   'voice.inbox_ready': 'Inbox created',
   'voice.instr_copied': 'Instructions copied',
+  'voice.key_from_script': 'Key from your script (line 4)',
   'voice.key_hint': "Published key starts with {deployed}; this app's starts with {mine}.",
   'voice.key_rotated': 'New key created: copy the script again and update the shortcut',
+  'voice.key_set': 'Key updated on all your devices. Test again.',
   'voice.manage': 'Manage',
   'voice.manual_check': 'To see exactly what Google answers:',
   'voice.mock_label': 'Shortcut actions',
@@ -1757,7 +1759,7 @@ export const en = {
   'voice.nothing_new': 'Nothing new in the inbox',
   'voice.open_check': 'Open the check',
   'voice.privacy':
-    'The key stays on this device and in your script; it is never synced, backed up or sent anywhere else. Texts live in your own Drive; items older than 60 days are pruned by the script.',
+    'The key only lets your own script append text to your inbox; it is shared by your devices through your workspace. Texts live in your own Drive; items older than 60 days are pruned by the script.',
   'voice.rotate_key': 'New key (update the script and shortcut)',
   'voice.s1_body': 'Saga HQ creates one small file in its Drive folder and a private key for your shortcut.',
   'voice.s1_btn': 'Create inbox',
@@ -1820,6 +1822,7 @@ export const en = {
   'voice.url_bad': 'It should look like https://script.google.com/macros/s/…/exec',
   'voice.url_label': 'Web app URL',
   'voice.url_saved': 'URL saved',
+  'voice.use_key': 'Use this key',
   'voice.working': 'Working',
   'week.bring_today': 'Move to today',
   'week.edit_capacity': 'Edit hours and goal',

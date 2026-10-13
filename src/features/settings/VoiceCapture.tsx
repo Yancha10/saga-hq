@@ -14,7 +14,7 @@ import {
   Sparkles,
   Wand2,
 } from 'lucide-react';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { useApp, useLive, useSession } from '../../app/context';
 import { toast } from '../../app/status';
 import {
@@ -25,6 +25,7 @@ import {
   readInbox,
 } from '../../capture/voiceInbox';
 import { getMeta, setMeta } from '../../data/db';
+import { update } from '../../data/store';
 import { logger } from '../../diagnostics/logger';
 import { t, useT } from '../../i18n';
 import { errorText } from '../../i18n/render';
@@ -116,8 +117,15 @@ export function VoiceCaptureSec() {
   const [urlDraft, setUrlDraft] = useState('');
   const [diag, setDiag] = useState<Diag | null>(null);
   const [hint, setHint] = useState<string | null>(null);
+  const [keyDraft, setKeyDraft] = useState('');
   const fileId = ws?.voiceInboxFileId;
-  const key = meta.key;
+  // The key is shared by all the user's devices (workspace); older setups kept it on one device only.
+  const key = ws?.voiceKey ?? meta.key;
+  const setKey = (k: string) =>
+    update(s, 'workspace', 'workspace', { voiceKey: k }, { label: 'h.voiceSetup', history: false });
+  useEffect(() => {
+    if (ws && !ws.voiceKey && meta.key) void setKey(meta.key);
+  }, [ws?.voiceKey, meta.key]);
   const save = (patch: VoiceMeta) => setMeta(s.db, META, { ...meta, ...patch });
 
   const createInbox = async () => {
@@ -126,7 +134,7 @@ export function VoiceCaptureSec() {
     try {
       const st = await runner.engine.ensureLayout();
       await ensureInbox(s, runner.drive, st.wsFolderId!);
-      if (!meta.key) await save({ key: newCaptureKey() });
+      if (!key) await setKey(newCaptureKey());
       toast(t('voice.inbox_ready'));
     } catch (e) {
       logger.warn('voice', 'inbox setup failed', e);
@@ -347,6 +355,38 @@ export function VoiceCaptureSec() {
               <span>{t('voice.key_hint', { deployed: `${hint}…`, mine: `${key?.slice(0, 4)}…` })}</span>
             )}
             <span>{t(`voice.fix.${diag}`)}</span>
+            {(diag === 'key' || diag === 'old') && (
+              <form
+                className="key-fix"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const v = keyDraft.trim().replace(/^['"]|['"];?$/g, '');
+                  if (!/^[\w-]{8,80}$/.test(v)) return;
+                  void setKey(v).then(() => {
+                    setKeyDraft('');
+                    toast(t('voice.key_set'));
+                  });
+                }}
+              >
+                <label className="lbl" htmlFor="vkeyfix">
+                  {t('voice.key_from_script')}
+                </label>
+                <div className="hstack">
+                  <input
+                    id="vkeyfix"
+                    className="input mono"
+                    value={keyDraft}
+                    autoComplete="off"
+                    spellCheck={false}
+                    placeholder="0h70…"
+                    onChange={(e) => setKeyDraft(e.target.value)}
+                  />
+                  <Button type="submit" size="sm" disabled={!keyDraft.trim()}>
+                    {t('voice.use_key')}
+                  </Button>
+                </div>
+              </form>
+            )}
             {meta.url && (
               <span className="meta">{t('voice.testing_url', { tail: `…${meta.url.slice(-22)}` })}</span>
             )}
@@ -464,7 +504,7 @@ export function VoiceCaptureSec() {
             size="sm"
             variant="ghost"
             onClick={() =>
-              void save({ key: newCaptureKey(), verifiedAt: undefined }).then(() =>
+              void Promise.all([setKey(newCaptureKey()), save({ verifiedAt: undefined })]).then(() =>
                 toast(t('voice.key_rotated')),
               )
             }

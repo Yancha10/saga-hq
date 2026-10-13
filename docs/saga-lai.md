@@ -50,6 +50,7 @@ appends to an inbox JSON file that Saga HQ created in its Drive folder → Saga 
 - anything else waits in the Inbox with a suggestion. Today shows "Arrivals" with an undo per item.
 
 The app never rewrites the inbox file (no race with the script); records use ids derived from the
-item id, so several devices converge without duplicates. The capture key lives only in this device's
-local meta and in the user's script; it is never synced or backed up. The script prunes items older
+item id, so several devices converge without duplicates. The capture key (it only allows the user's own script to append to
+the inbox) is shared by the user's devices through the workspace; the settings page can adopt the
+key shown in the script if they ever diverge. The script prunes items older
 than 60 days. The app keeps only the `drive.file` scope.

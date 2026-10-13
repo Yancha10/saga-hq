@@ -4312,3 +4312,14 @@ fieldset.box legend {
   gap: 4px;
   align-self: stretch;
 }
+.key-fix {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-self: stretch;
+  margin-top: 6px;
+}
+.key-fix .input {
+  flex: 1;
+  min-width: 0;
+}
