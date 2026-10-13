@@ -1,7 +1,7 @@
 import { Link, useNavigate } from '@tanstack/react-router';
 import { CheckCircle2, Pin, PinOff, Sparkles } from 'lucide-react';
 import { useState } from 'react';
-import { useApp, useLive, useSession } from '../../app/context';
+import { useApp, useIsPhone, useLive, useSession } from '../../app/context';
 import { toast } from '../../app/status';
 import { logSnapshot, togglePin } from '../../data/domain';
 import { fmt, t, useT } from '../../i18n';
@@ -143,6 +143,7 @@ export function TodayPage() {
   const { openCapture, toggleSecretary } = useApp();
   const navigate = useNavigate();
   const now = useNow();
+  const phone = useIsPhone();
   const m = useToday(now);
   const ws = useLive((ss) => ss.db.workspace.get('workspace'), [], undefined);
   const [logFor, setLogFor] = useState<ResultsDue | null>(null);
@@ -196,6 +197,32 @@ export function TodayPage() {
           {t('today.clear_body')}
         </Empty>
       )}
+      {phone && (
+        <nav className="stat-tiles" aria-label={t('today.overview')}>
+          <button
+            type="button"
+            className={`stat-tile ${m.attention.length ? 'hot' : ''}`}
+            onClick={() =>
+              document.getElementById('attention')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            }
+          >
+            <span className="stat-n num">{m.attention.length}</span>
+            <span className="stat-l">{t('today.attention')}</span>
+          </button>
+          <Link to="/calendar" className="stat-tile">
+            <span className="stat-n num">{m.schedule.length}</span>
+            <span className="stat-l">{t('today.schedule')}</span>
+          </Link>
+          <Link to="/inbox" className={`stat-tile ${m.inboxCount ? 'accent' : ''}`}>
+            <span className="stat-n num">{m.inboxCount}</span>
+            <span className="stat-l">{t('nav.inbox')}</span>
+          </Link>
+          <Link to="/insights" className="stat-tile">
+            <span className="stat-n num">{m.resultsDue.length}</span>
+            <span className="stat-l">{t('today.results_to_log')}</span>
+          </Link>
+        </nav>
+      )}
       <div className="today-grid">
         <div>
           <Section
@@ -214,7 +241,7 @@ export function TodayPage() {
             )}
           </Section>
 
-          <Section title={t('today.attention')} count={m.attention.length} id="attention">
+          <Section title={t('today.attention')} count={m.attention.length} id="attention" fold="open">
             {m.attention.length ? (
               <div className="list">
                 {attention.map((a) => {
@@ -261,7 +288,7 @@ export function TodayPage() {
           </Section>
 
           {m.quickWins.length > 0 && (
-            <Section title={t('today.quick_wins')} id="wins">
+            <Section title={t('today.quick_wins')} id="wins" fold="closed">
               <div className="list">
                 {m.quickWins.map((c) => (
                   <Link
@@ -290,6 +317,7 @@ export function TodayPage() {
             title={t('today.schedule')}
             count={m.schedule.length}
             id="schedule"
+            fold="closed"
             action={
               <Link to="/calendar" className="meta">
                 {t('today.calendar_link')}
@@ -342,7 +370,7 @@ export function TodayPage() {
           </Section>
 
           {m.resultsDue.length > 0 && (
-            <Section title={t('today.results_to_log')} count={m.resultsDue.length} id="results">
+            <Section title={t('today.results_to_log')} count={m.resultsDue.length} id="results" fold="closed">
               <div className="list">
                 {m.resultsDue.slice(0, CAP).map((r) => (
                   <ResultsRow key={r.publicationId + r.checkpoint} r={r} onLog={() => setLogFor(r)} />
@@ -352,7 +380,7 @@ export function TodayPage() {
           )}
 
           {(m.gaps.length > 0 || m.suggestions.length > 0) && (
-            <Section title={t('today.signals')} id="signals">
+            <Section title={t('today.signals')} id="signals" fold="closed">
               <div className="list">
                 {m.gaps.slice(0, 4).map((g) => (
                   <Link key={`${g.platform}:${g.day ?? g.weekStart}`} to="/calendar" className="row">
@@ -387,7 +415,7 @@ export function TodayPage() {
           )}
 
           {m.inboxCount > 0 && (
-            <div className="list" style={{ marginBottom: 24 }}>
+            <div className="list hide-mobile" style={{ marginBottom: 24 }}>
               <Link to="/inbox" className="row">
                 <div className="grow">
                   <div className="title">{t('today.inbox_count', { count: m.inboxCount })}</div>
@@ -402,7 +430,7 @@ export function TodayPage() {
             </div>
           )}
 
-          <Section title={t('today.daily_brief')} id="brief">
+          <Section title={t('today.daily_brief')} id="brief" fold="closed">
             <div className="box">
               <div className="ai-label">{t('today.facts')}</div>
               {m.facts.length ? (

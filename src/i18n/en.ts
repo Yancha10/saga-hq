@@ -1296,6 +1296,7 @@ export const en = {
   'today.next_publication': 'Next publication:',
   'today.no_open': 'No open items.',
   'today.on_track': 'Everything’s on track',
+  'today.overview': 'Today at a glance',
   'today.pin_up_to': 'pin up to 3',
   'today.plan_content': 'Plan content',
   'today.publish': 'Publish',

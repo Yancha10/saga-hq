@@ -1,4 +1,20 @@
 import { useNavigate, useSearch } from '@tanstack/react-router';
+import {
+  Bot,
+  ChevronRight,
+  Cloud,
+  DatabaseBackup,
+  HardDrive,
+  History,
+  Info,
+  Keyboard,
+  Languages,
+  type LucideIcon,
+  Send,
+  SlidersHorizontal,
+  Stethoscope,
+  Trash2,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { copyWorkspaceInto, removeLocalData } from '../../account/attach';
 import { signIn, signOutGoogle } from '../../account/google';
@@ -22,7 +38,7 @@ import {
   secretHints,
 } from '../../ai/secrets';
 import { signInAndOpen, switchWorkspace } from '../../app/App';
-import { useApp, useLive, useSession, useStore } from '../../app/context';
+import { useApp, useIsPhone, useLive, useSession, useStore } from '../../app/context';
 import { requestPersistence } from '../../app/pwa';
 import { toast } from '../../app/status';
 import { env, googleConfigured } from '../../config/env';
@@ -56,6 +72,27 @@ const SECTIONS = [
   'about',
 ] as const;
 type Sec = (typeof SECTIONS)[number];
+const SEC_ICON: Record<Sec, LucideIcon> = {
+  workspace: SlidersHorizontal,
+  language: Languages,
+  account: Cloud,
+  storage: HardDrive,
+  backup: DatabaseBackup,
+  recovery: History,
+  ai: Bot,
+  integrations: Send,
+  trash: Trash2,
+  diagnostics: Stethoscope,
+  shortcuts: Keyboard,
+  about: Info,
+};
+/** Phone menu groups, iOS Settings style. Keyboard shortcuts are desktop-only. */
+const PHONE_GROUPS: Sec[][] = [
+  ['account', 'workspace', 'language'],
+  ['ai', 'integrations'],
+  ['backup', 'recovery', 'storage', 'trash'],
+  ['diagnostics', 'about'],
+];
 
 const mb = (n: number | undefined) => fmt.bytes(n);
 /** “12 ideas, 3 tasks” — table names rendered as localized plural nouns. */
@@ -69,12 +106,40 @@ export function SettingsPage() {
   useT();
   const search = useSearch({ strict: false }) as { section?: Sec };
   const navigate = useNavigate();
-  const sec: Sec = search.section ?? 'workspace';
+  const phone = useIsPhone();
+  const sec: Sec | null = search.section ?? (phone ? null : 'workspace');
+  if (phone && !sec)
+    return (
+      <div className="page narrow">
+        <PageHeader title={t('nav.settings')} />
+        {PHONE_GROUPS.map((group) => (
+          <nav key={group.join()} className="list settings-menu" aria-label={t('settings.sections')}>
+            {group.map((k) => {
+              const Icon = SEC_ICON[k];
+              return (
+                <button
+                  key={k}
+                  type="button"
+                  className="row"
+                  onClick={() => void navigate({ to: '/settings', search: { section: k } })}
+                >
+                  <span className={`menu-icon mi-${k}`}>
+                    <Icon size={17} aria-hidden />
+                  </span>
+                  <span className="grow title">{t(`settings.sec.${k}`)}</span>
+                  <ChevronRight size={17} className="chev-r" aria-hidden />
+                </button>
+              );
+            })}
+          </nav>
+        ))}
+      </div>
+    );
   return (
     <div className="page">
-      <PageHeader title={t('nav.settings')} />
+      <PageHeader title={phone && sec ? t(`settings.sec.${sec}`) : t('nav.settings')} back={phone} />
       <div className="settings-layout">
-        <nav className="list settings-nav" aria-label={t('settings.sections')}>
+        <nav className="list settings-nav hide-mobile" aria-label={t('settings.sections')}>
           {SECTIONS.map((k) => (
             <button
               key={k}
@@ -166,7 +231,7 @@ function WorkspaceSec() {
             </label>
           ))}
         </div>
-        <p className="meta">{t('settings.cadence_note')}</p>
+        <p className="meta explain">{t('settings.cadence_note')}</p>
       </Section>
       <Section title={t('settings.templates')}>
         <div className="list">
@@ -278,7 +343,7 @@ function AccountSec() {
                   : t('settings.drive_used', { used: mb(st.quota.usage) })}
               </div>
             )}
-            <p className="meta">{t('settings.reconnect_note')}</p>
+            <p className="meta explain">{t('settings.reconnect_note')}</p>
           </div>
         ) : (
           <div className="box">
@@ -292,7 +357,7 @@ function AccountSec() {
             ) : (
               <span className="meta">{t('auth.error.AUTH_NOT_CONFIGURED')}</span>
             )}
-            <p className="meta">{t('settings.connect_note')}</p>
+            <p className="meta explain">{t('settings.connect_note')}</p>
           </div>
         )}
       </Section>
@@ -347,7 +412,7 @@ function AccountSec() {
             {t('settings.new_local')}
           </Button>
         </div>
-        <p className="meta">{t('settings.switch_note')}</p>
+        <p className="meta explain">{t('settings.switch_note')}</p>
       </Section>
       <Sheet
         open={signOut}
@@ -450,7 +515,7 @@ function StorageSec() {
               {t('settings.ask_persist')}
             </Button>
           )}
-          <div className="meta">{t('settings.ios_note')}</div>
+          <div className="meta explain">{t('settings.ios_note')}</div>
         </div>
       </Section>
       <Section title={t('settings.media')}>
@@ -474,7 +539,7 @@ function StorageSec() {
               onBlur={() => void setMeta(s.db, 'mediaCacheLimit', Math.max(100, limit) * 1024 ** 2)}
             />
           </label>
-          <div className="meta">{t('settings.evict_note')}</div>
+          <div className="meta explain">{t('settings.evict_note')}</div>
         </div>
       </Section>
     </>
@@ -531,7 +596,7 @@ function BackupSec() {
               {t('settings.csv_analytics')}
             </Button>
           </div>
-          <p className="meta">{t('settings.weekly_backup')}</p>
+          <p className="meta explain">{t('settings.weekly_backup')}</p>
         </div>
       </Section>
       <Section title={t('settings.restore')}>
@@ -616,7 +681,7 @@ function RecoverySec() {
   const [target, setTarget] = useState<string | null>(null);
   return (
     <Section title={t('settings.recovery_title')}>
-      <p className="meta">{t('settings.recovery_desc')}</p>
+      <p className="meta explain">{t('settings.recovery_desc')}</p>
       <div className="list">
         {points.map((p) => (
           <div key={p.id} className="row static">
@@ -842,7 +907,7 @@ function IntegrationsSec() {
             onBlur={(e) => void setMeta(s.db, 'studioUrl', e.target.value.trim())}
           />
         </div>
-        <p className="meta">{t('settings.studio_note')}</p>
+        <p className="meta explain">{t('settings.studio_note')}</p>
         <a className="btn" href="#/studio/import" style={{ alignSelf: 'flex-start' }}>
           {t('settings.import_studio')}
         </a>

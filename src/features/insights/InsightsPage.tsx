@@ -455,7 +455,7 @@ function Learnings({
         )}
       </div>
       <div>
-        <Section title={t('insights.suggested_rules')}>
+        <Section fold="closed" title={t('insights.suggested_rules')}>
           {outliers.length ? (
             <div className="list">
               {outliers.map((o) => {

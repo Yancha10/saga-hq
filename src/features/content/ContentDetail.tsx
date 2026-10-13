@@ -29,6 +29,7 @@ import {
   ConceptSection,
   EditSection,
   GenerateSection,
+  openSheetSection,
   PackageSection,
   PublishSection,
   ReferencesSection,
@@ -108,7 +109,7 @@ export function ContentDetail() {
   const blockers = bundle.tasks.filter((x) => x.isBlocker && x.status !== 'done');
 
   const quickActions = (
-    <div className="hstack" style={{ marginBottom: 12, gap: 6 }}>
+    <div className="hstack filters" style={{ marginBottom: 12, gap: 6 }}>
       <Button
         size="sm"
         onClick={() =>
@@ -123,12 +124,12 @@ export function ContentDetail() {
       >
         <CheckCircle2 size={14} /> {t('content.quick.ready')}
       </Button>
-      <a className="btn sm" href="#sec-package">
+      <Button size="sm" onClick={() => openSheetSection('package')}>
         <Type size={14} /> {t('field.caption')}
-      </a>
-      <a className="btn sm" href="#sec-package">
+      </Button>
+      <Button size="sm" onClick={() => openSheetSection('package')}>
         <ImagePlus size={14} /> {t('content.quick.cover')}
-      </a>
+      </Button>
       {c._nextPublishAt && (
         <Button
           size="sm"
@@ -143,12 +144,12 @@ export function ContentDetail() {
           <ArrowRight size={14} /> {t('content.quick.tomorrow')}
         </Button>
       )}
-      <a className="btn sm" href="#sec-references">
+      <Button size="sm" onClick={() => openSheetSection('references')}>
         <Link2 size={14} /> {t('triage.reference')}
-      </a>
-      <a className="btn sm" href="#tasks">
+      </Button>
+      <Button size="sm" onClick={() => openSheetSection('tasks', 'tasks')}>
         <ListPlus size={14} /> {t('task.kind.task')}
-      </a>
+      </Button>
       <Button
         size="sm"
         onClick={() => toggleSecretary({ intent: 'producer', focus: { entity: 'content', id: c.id } })}
@@ -265,8 +266,10 @@ export function ContentDetail() {
           <QuickTask parent={{ contentId: c.id, projectId: c.projectId }} />
         </div>
       </div>
-      <div className="box">
-        <h4>{t('content.attributes')}</h4>
+      <details className="box fold-box" open={!phone}>
+        <summary>
+          <h4>{t('content.attributes')}</h4>
+        </summary>
         <div className="form-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
           <div className="field">
             <label className="lbl" htmlFor="ahook">
@@ -367,7 +370,7 @@ export function ContentDetail() {
           <span className="lbl">{t('common.tags')}</span>
           <TagEditor value={c.tags} onChange={(v) => void update(s, 'content', c.id, { tags: v })} />
         </div>
-      </div>
+      </details>
       <details className="box">
         <summary className="lbl">{t('common.history')}</summary>
         <HistoryList recordId={c.id} />
@@ -429,14 +432,27 @@ export function ContentDetail() {
           {sections.map((sec) => {
             const done = sectionComplete(sec, derivIn);
             return (
-              <a key={sec} href={`#sec-${sec}`}>
+              <a
+                key={sec}
+                href={`#sec-${sec}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  openSheetSection(sec);
+                }}
+              >
                 <span className={`sec-dot ${done ? 'done' : c._stage === sec ? 'part' : ''}`} aria-hidden />
                 {t(`section.${sec}`)}
                 <span className="sr-only">{done ? `(${t('common.done_lower')})` : ''}</span>
               </a>
             );
           })}
-          <a href="#sec-results">
+          <a
+            href="#sec-results"
+            onClick={(e) => {
+              e.preventDefault();
+              openSheetSection('results');
+            }}
+          >
             <span className="sec-dot" aria-hidden />
             {t('projects.tab.results')}
           </a>

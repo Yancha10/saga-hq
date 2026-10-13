@@ -164,11 +164,12 @@ export function IdeaDetail() {
               rows={2}
             />
           </div>
-          <Section title={t('section.references')}>
+          <Section fold="closed" title={t('section.references')}>
             <References fromType="idea" fromId={idea.id} projectId={idea.projectId} />
           </Section>
           <Section
             title={t('ideas.variants')}
+            fold="closed"
             count={variants.length}
             action={
               <Button size="sm" onClick={() => setVariantOpen(true)}>
@@ -195,7 +196,7 @@ export function IdeaDetail() {
               <div className="meta">{t('ideas.variants_hint')}</div>
             )}
           </Section>
-          <Section title={t('common.notes')}>
+          <Section fold="closed" title={t('common.notes')}>
             <AutoText
               multiline
               value={idea.notes}

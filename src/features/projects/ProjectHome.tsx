@@ -200,7 +200,7 @@ export function ProjectHome() {
       {tab === 'overview' && (
         <div className="grid2">
           <div>
-            <Section title={t('projects.goal')}>
+            <Section fold="open" title={t('projects.goal')}>
               <AutoText
                 value={p.goal}
                 onSave={(v) => up({ goal: v || null }, 'goal')}
@@ -208,7 +208,7 @@ export function ProjectHome() {
                 placeholder={t('projects.goal_q')}
               />
             </Section>
-            <Section title={t('projects.next_action')}>
+            <Section fold="open" title={t('projects.next_action')}>
               {next ? (
                 <Link
                   to={next.ref.entity === 'content' ? `/content/${next.ref.id}` : '/tasks'}
@@ -223,7 +223,7 @@ export function ProjectHome() {
                 <Empty compact>{t('projects.no_dated')}</Empty>
               )}
             </Section>
-            <Section title={t('projects.blockers')} count={blocked.length}>
+            <Section fold="open" title={t('projects.blockers')} count={blocked.length}>
               {blocked.length ? (
                 <div className="list">
                   {blocked.map((c) => (
@@ -245,7 +245,7 @@ export function ProjectHome() {
                 <div className="meta">{t('projects.nothing_blocked')}</div>
               )}
             </Section>
-            <Section title={t('projects.pipeline')}>
+            <Section fold="closed" title={t('projects.pipeline')}>
               <div className="chips">
                 {pipeline.map((x) => (
                   <span key={x.st} className="tag num">
@@ -256,6 +256,7 @@ export function ProjectHome() {
             </Section>
             <Section
               title={t('projects.active_content')}
+              fold="open"
               count={activeContent.length}
               action={
                 <Button
@@ -279,7 +280,7 @@ export function ProjectHome() {
             </Section>
           </div>
           <div>
-            <Section title={t('projects.upcoming')} count={upcoming.length}>
+            <Section fold="closed" title={t('projects.upcoming')} count={upcoming.length}>
               {upcoming.length ? (
                 <div className="list">
                   {upcoming.slice(0, 8).map((u) => (
@@ -293,7 +294,7 @@ export function ProjectHome() {
                 <div className="meta">{t('projects.upcoming_none')}</div>
               )}
             </Section>
-            <Section title={t('projects.top_ideas')}>
+            <Section fold="closed" title={t('projects.top_ideas')}>
               {d.ideas.filter((i) => i.status === 'shortlisted').length ? (
                 <div className="list">
                   {d.ideas
@@ -313,7 +314,7 @@ export function ProjectHome() {
                 </div>
               )}
             </Section>
-            <Section title={t('projects.latest_results')}>
+            <Section fold="closed" title={t('projects.latest_results')}>
               {results.length ? (
                 <div className="list">
                   {results.map((r) => (
@@ -334,7 +335,7 @@ export function ProjectHome() {
                 <div className="meta">{t('projects.no_published')}</div>
               )}
             </Section>
-            <Section title={t('projects.learnings')}>
+            <Section fold="closed" title={t('projects.learnings')}>
               {d.learnings.length ? (
                 d.learnings.map((l) => (
                   <div key={l.id} className="meta">
@@ -345,7 +346,7 @@ export function ProjectHome() {
                 <div className="meta">{t('common.none_yet')}</div>
               )}
             </Section>
-            <Section title={t('projects.research')}>
+            <Section fold="closed" title={t('projects.research')}>
               {d.library.slice(0, 5).map((r) => (
                 <div key={r.id}>
                   <Link to="/library/$id" params={{ id: r.id }} className="meta">
@@ -355,7 +356,7 @@ export function ProjectHome() {
               ))}
               {!d.library.length && <div className="meta">{t('common.none_yet')}</div>}
             </Section>
-            <Section title={t('nav.settings')}>
+            <Section fold="closed" title={t('nav.settings')}>
               <div className="form-grid">
                 <div className="field">
                   <label className="lbl" htmlFor="pst">

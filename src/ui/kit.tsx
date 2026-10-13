@@ -1,6 +1,7 @@
-import { X } from 'lucide-react';
+import { ChevronDown, X } from 'lucide-react';
 import { type ButtonHTMLAttributes, type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { Dialog, Heading, Modal, ModalOverlay } from 'react-aria-components';
+import { useIsPhone } from '../app/context';
 import { markDirty } from '../app/status';
 import { t, useT } from '../i18n';
 
@@ -224,30 +225,55 @@ export function Select<T extends string>({
   );
 }
 
+/**
+ * A titled block. On phones, `fold` makes it a tap-to-expand accordion ('closed' starts folded) so long
+ * screens fit in one or two thumbs of scrolling; on larger screens it always renders open.
+ */
 export function Section({
   title,
   count,
   action,
   children,
   id,
+  fold,
 }: {
   title: ReactNode;
   count?: number;
   action?: ReactNode;
   children: ReactNode;
   id?: string;
+  fold?: 'open' | 'closed';
 }) {
+  const phone = useIsPhone();
+  const [open, setOpen] = useState(fold !== 'closed');
+  const folding = phone && !!fold;
+  const shown = !folding || open;
+  const heading = (
+    <h4 id={id}>
+      {title}
+      {count !== undefined && count > 0 && <span className="num"> · {count}</span>}
+    </h4>
+  );
   return (
-    <section className="section" aria-labelledby={id}>
+    <section className={`section ${folding ? 'foldable' : ''} ${shown ? '' : 'folded'}`} aria-labelledby={id}>
       <div className="section-head">
-        <h4 id={id}>
-          {title}
-          {count !== undefined && count > 0 && <span className="num"> · {count}</span>}
-        </h4>
+        {folding ? (
+          <button
+            type="button"
+            className="fold-toggle"
+            aria-expanded={open}
+            onClick={() => setOpen((o) => !o)}
+          >
+            {heading}
+            <ChevronDown size={16} className="chev" aria-hidden />
+          </button>
+        ) : (
+          heading
+        )}
         <span className="spacer" />
-        {action}
+        {shown && action}
       </div>
-      {children}
+      {shown && children}
     </section>
   );
 }

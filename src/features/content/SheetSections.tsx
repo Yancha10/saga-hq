@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router';
-import { Check, Clipboard, Download, Plus, Send, Trash2, Upload } from 'lucide-react';
-import { type ReactNode, useRef, useState } from 'react';
-import { useLive, useSession } from '../../app/context';
+import { Check, ChevronDown, Clipboard, Download, Plus, Send, Trash2, Upload } from 'lucide-react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { useIsPhone, useLive, useSession } from '../../app/context';
 import { toast } from '../../app/status';
 import { ulid } from '../../core/ulid';
 import { safeHttpUrl } from '../../core/url';
@@ -28,6 +28,47 @@ import { StudioHandoffSheet } from '../studio/StudioHandoffSheet';
 import type { Bundle } from './ContentDetail';
 
 type Edit = (patch: Partial<Content>, key?: string) => Promise<void>;
+type SecKey = SheetSection | 'results';
+
+/** Phone accordion: only the current stage starts open; choices are remembered for the session. */
+const foldMemory = new Map<string, boolean>();
+const OPEN_EVENT = 'hq:open-section';
+export function openSheetSection(sec: string, anchor = `sec-${sec}`): void {
+  window.dispatchEvent(new CustomEvent(OPEN_EVENT, { detail: sec }));
+  setTimeout(
+    () => document.getElementById(anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+    60,
+  );
+}
+type Fold = { closed: boolean; open: boolean; phone: boolean; toggle: () => void };
+function useFold(b: Bundle, sec: SecKey): Fold {
+  const phone = useIsPhone();
+  const key = `${b.content.id}:${sec}`;
+  const c = b.content;
+  const byDefault =
+    sec === 'results' ? c.status === 'published' || c.status === 'reviewed' : (c._stage ?? 'concept') === sec;
+  const [open, setOpen] = useState(() => foldMemory.get(key) ?? byDefault);
+  useEffect(() => {
+    const on = (e: Event) => {
+      if ((e as CustomEvent).detail === sec) {
+        foldMemory.set(key, true);
+        setOpen(true);
+      }
+    };
+    window.addEventListener(OPEN_EVENT, on);
+    return () => window.removeEventListener(OPEN_EVENT, on);
+  }, [key, sec]);
+  return {
+    open,
+    phone,
+    closed: phone && !open,
+    toggle: () =>
+      setOpen((o) => {
+        foldMemory.set(key, !o);
+        return !o;
+      }),
+  };
+}
 
 function SecHead({
   sec,
@@ -35,28 +76,42 @@ function SecHead({
   done,
   children,
   title,
+  fold,
 }: {
   sec: SheetSection | 'results';
   b: Bundle;
   done?: boolean;
   children?: ReactNode;
   title?: string;
+  fold: Fold;
 }) {
   useT();
   const s = useSession();
   const c = b.content;
   const manual = sec !== 'results' && !!c.sectionDone?.[sec];
+  const heading = (
+    <>
+      {sec !== 'results' && (
+        <span className={`sec-dot ${done ? 'done' : c._stage === sec ? 'part' : ''}`} aria-hidden />
+      )}
+      {title ?? t(`section.${sec}`)}
+      {sec !== 'results' && done && <span className="sr-only"> ({t('common.complete')})</span>}
+    </>
+  );
   return (
     <header>
-      <h3>
-        {sec !== 'results' && (
-          <span className={`sec-dot ${done ? 'done' : c._stage === sec ? 'part' : ''}`} aria-hidden />
-        )}
-        {title ?? t(`section.${sec}`)}
-        {sec !== 'results' && done && <span className="sr-only"> ({t('common.complete')})</span>}
-      </h3>
-      {children}
-      {sec !== 'results' && (
+      {fold.phone ? (
+        <h3>
+          <button type="button" className="fold-toggle" aria-expanded={fold.open} onClick={fold.toggle}>
+            {heading}
+            <ChevronDown size={17} className="chev" aria-hidden />
+          </button>
+        </h3>
+      ) : (
+        <h3>{heading}</h3>
+      )}
+      {!fold.closed && children}
+      {!fold.closed && sec !== 'results' && (
         <Button
           size="sm"
           variant="ghost"
@@ -74,11 +129,16 @@ function SecHead({
 
 export function ConceptSection({ b, edit, done }: { b: Bundle; edit: Edit; done: boolean }) {
   useT();
+  const fold = useFold(b, 'concept');
   const c = b.content;
   const words = (c.script ?? '').trim().split(/\s+/).filter(Boolean).length;
   return (
-    <section className="sheet-sec" id="sec-concept" aria-label={t('section.concept')}>
-      <SecHead sec="concept" b={b} done={done} />
+    <section
+      className={`sheet-sec ${fold.closed ? 'closed' : ''}`}
+      id="sec-concept"
+      aria-label={t('section.concept')}
+    >
+      <SecHead fold={fold} sec="concept" b={b} done={done} />
       <div className="stack">
         <div className="field">
           <span className="lbl">{t('field.hook')}</span>
@@ -137,9 +197,14 @@ export function ConceptSection({ b, edit, done }: { b: Bundle; edit: Edit; done:
 
 export function ReferencesSection({ b, done }: { b: Bundle; done: boolean }) {
   useT();
+  const fold = useFold(b, 'references');
   return (
-    <section className="sheet-sec" id="sec-references" aria-label={t('section.references')}>
-      <SecHead sec="references" b={b} done={done} />
+    <section
+      className={`sheet-sec ${fold.closed ? 'closed' : ''}`}
+      id="sec-references"
+      aria-label={t('section.references')}
+    >
+      <SecHead fold={fold} sec="references" b={b} done={done} />
       <References fromType="content" fromId={b.content.id} projectId={b.content.projectId} />
     </section>
   );
@@ -147,6 +212,7 @@ export function ReferencesSection({ b, done }: { b: Bundle; done: boolean }) {
 
 export function GenerateSection({ b, edit, done }: { b: Bundle; edit: Edit; done: boolean }) {
   useT();
+  const fold = useFold(b, 'generate');
   const s = useSession();
   const c = b.content;
   const shots = (c.shots ?? []).filter((x) => !x.deleted).sort((a, x) => a.order - x.order);
@@ -171,8 +237,12 @@ export function GenerateSection({ b, edit, done }: { b: Bundle; edit: Edit; done
       ],
     });
   return (
-    <section className="sheet-sec" id="sec-generate" aria-label={t('section.generate')}>
-      <SecHead sec="generate" b={b} done={done}>
+    <section
+      className={`sheet-sec ${fold.closed ? 'closed' : ''}`}
+      id="sec-generate"
+      aria-label={t('section.generate')}
+    >
+      <SecHead fold={fold} sec="generate" b={b} done={done}>
         <Button size="sm" onClick={() => setHandoff('content')}>
           <Send size={13} /> {t('studio.open_in')}
         </Button>
@@ -337,11 +407,16 @@ function UploadButton({
 
 export function EditSection({ b, edit, done }: { b: Bundle; edit: Edit; done: boolean }) {
   useT();
+  const fold = useFold(b, 'edit');
   const s = useSession();
   const c = b.content;
   return (
-    <section className="sheet-sec" id="sec-edit" aria-label={t('section.edit')}>
-      <SecHead sec="edit" b={b} done={done} />
+    <section
+      className={`sheet-sec ${fold.closed ? 'closed' : ''}`}
+      id="sec-edit"
+      aria-label={t('section.edit')}
+    >
+      <SecHead fold={fold} sec="edit" b={b} done={done} />
       <div className="stack">
         <div className="field">
           <span className="lbl">{t('sheet.final_export')}</span>
@@ -406,6 +481,7 @@ const CAPTION_LIMIT: Partial<Record<Platform, number>> = {
 
 export function PackageSection({ b, edit, done }: { b: Bundle; edit: Edit; done: boolean }) {
   useT();
+  const fold = useFold(b, 'package');
   const s = useSession();
   const c = b.content;
   const len =
@@ -414,8 +490,12 @@ export function PackageSection({ b, edit, done }: { b: Bundle; edit: Edit; done:
     .filter(Boolean)
     .join('\n\n');
   return (
-    <section className="sheet-sec" id="sec-package" aria-label={t('section.package')}>
-      <SecHead sec="package" b={b} done={done} />
+    <section
+      className={`sheet-sec ${fold.closed ? 'closed' : ''}`}
+      id="sec-package"
+      aria-label={t('section.package')}
+    >
+      <SecHead fold={fold} sec="package" b={b} done={done} />
       <div className="grid2" style={{ gap: 16 }}>
         <div className="stack">
           <div className="field">
@@ -587,12 +667,17 @@ function PubRow({ b, p }: { b: Bundle; p: Publication }) {
 
 export function PublishSection({ b, done }: { b: Bundle; done: boolean }) {
   useT();
+  const fold = useFold(b, 'publish');
   const s = useSession();
   const c = b.content;
   const missingPlatforms = c.platforms.filter((p) => !b.publications.some((x) => x.platform === p));
   return (
-    <section className="sheet-sec" id="sec-publish" aria-label={t('section.publish')}>
-      <SecHead sec="publish" b={b} done={done} />
+    <section
+      className={`sheet-sec ${fold.closed ? 'closed' : ''}`}
+      id="sec-publish"
+      aria-label={t('section.publish')}
+    >
+      <SecHead fold={fold} sec="publish" b={b} done={done} />
       <div className="stack">
         {b.publications.length > 0 && (
           <div className="list">
@@ -621,6 +706,7 @@ export function PublishSection({ b, done }: { b: Bundle; done: boolean }) {
 
 export function ResultsSection({ b }: { b: Bundle }) {
   useT();
+  const fold = useFold(b, 'results');
   const s = useSession();
   const c = b.content;
   const published = b.publications.filter((p) => p.status === 'published');
@@ -656,8 +742,12 @@ export function ResultsSection({ b }: { b: Bundle }) {
     [],
   );
   return (
-    <section className="sheet-sec" id="sec-results" aria-label={t('sheet.results_learning')}>
-      <SecHead sec="results" b={b} title={t('sheet.results_learning')}>
+    <section
+      className={`sheet-sec ${fold.closed ? 'closed' : ''}`}
+      id="sec-results"
+      aria-label={t('sheet.results_learning')}
+    >
+      <SecHead fold={fold} sec="results" b={b} title={t('sheet.results_learning')}>
         <Button size="sm" variant="ghost" onClick={() => setLearnOpen(true)}>
           {t('sheet.write_learning')}
         </Button>

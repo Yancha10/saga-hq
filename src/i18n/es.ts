@@ -1320,6 +1320,7 @@ export const es: Record<MessageKey, string> = {
   'today.next_publication': 'Próxima publicación:',
   'today.no_open': 'No hay elementos abiertos.',
   'today.on_track': 'Todo va según lo previsto',
+  'today.overview': 'Hoy de un vistazo',
   'today.pin_up_to': 'fija hasta 3',
   'today.plan_content': 'Planificar contenido',
   'today.publish': 'Publicar',

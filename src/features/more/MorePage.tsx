@@ -40,17 +40,21 @@ export function MorePage() {
   return (
     <div className="page narrow">
       <PageHeader title={t('nav.more')} />
-      <div className="list">
+      <div className="tile-grid">
         {items.map((i) => (
-          <Link key={i.to} to={i.to} className="row">
-            <i.icon size={19} aria-hidden />
-            <div className="grow title">{i.label}</div>
-            {i.count ? <span className="pill accent">{fmt.num(i.count)}</span> : null}
+          <Link key={i.to} to={i.to} className="tile">
+            <span className="tile-icon">
+              <i.icon size={21} aria-hidden />
+            </span>
+            <span className="tile-label">{i.label}</span>
+            {i.count ? <span className="pill accent tile-count">{fmt.num(i.count)}</span> : null}
           </Link>
         ))}
-        <button type="button" className="row" onClick={() => toggleSecretary()}>
-          <Sparkles size={19} aria-hidden />
-          <div className="grow title">{t('nav.secretary')}</div>
+        <button type="button" className="tile" onClick={() => toggleSecretary()}>
+          <span className="tile-icon">
+            <Sparkles size={21} aria-hidden />
+          </span>
+          <span className="tile-label">{t('nav.secretary')}</span>
         </button>
       </div>
     </div>
