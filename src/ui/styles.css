@@ -1353,9 +1353,6 @@ p {
 }
 
 /* ---------- Dialogs / sheets ---------- */
-.modal-overlay[data-entering] {
-  animation: fade 0.18s var(--ease);
-}
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -1367,9 +1364,6 @@ p {
   place-items: start center;
   padding: 9vh var(--s4) var(--s4);
   overflow-y: auto;
-}
-.modal[data-entering] {
-  animation: rise 0.25s var(--ease);
 }
 .modal {
   background: var(--surface-1);
@@ -1421,10 +1415,6 @@ p {
     overflow-y: auto;
     overscroll-behavior: contain;
     padding-bottom: var(--safe-b);
-  }
-  .modal[data-entering],
-  .modal.wide[data-entering] {
-    animation: sheet-up 0.32s var(--ease);
   }
   .modal::before {
     content: "";
@@ -1514,9 +1504,6 @@ p {
     border-radius: 22px;
     border-bottom: 1px solid var(--line-strong);
     max-height: calc(100dvh - var(--safe-t) - 24px);
-  }
-  .modal.palette[data-entering] {
-    animation: rise 0.25s var(--ease);
   }
   .modal.palette::before {
     display: none;
@@ -2263,9 +2250,6 @@ pre.json {
     opacity: 0.35;
   }
 }
-.menu-pop[data-entering] {
-  animation: rise 0.16s var(--ease);
-}
 .menu-pop {
   background: color-mix(in srgb, var(--surface-2) 92%, transparent);
   backdrop-filter: saturate(180%) blur(20px);
@@ -2636,4 +2620,11 @@ details.fold-box[open] > summary::after {
 .chev-r {
   color: var(--text-3);
   flex: none;
+}
+
+/* Entry motion lives on the dialog/menu CONTENT, never on the react-aria overlay elements:
+   their exit logic waits for the overlay's own animations, which could stall a close. */
+.modal > [role="dialog"],
+.menu-pop > .menu {
+  animation: rise 0.22s var(--ease);
 }
