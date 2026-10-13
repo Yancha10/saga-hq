@@ -1634,7 +1634,13 @@ p {
   flex-direction: column;
   gap: 2px;
 }
-.sheet-rail a {
+.sheet-rail a,
+.sheet-rail button {
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -1644,7 +1650,8 @@ p {
   font-size: var(--fs-s);
   font-weight: 540;
 }
-.sheet-rail a:hover {
+.sheet-rail a:hover,
+.sheet-rail button:hover {
   background: var(--hover);
   color: var(--text);
 }

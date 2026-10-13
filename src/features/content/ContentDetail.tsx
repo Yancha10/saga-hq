@@ -432,30 +432,17 @@ export function ContentDetail() {
           {sections.map((sec) => {
             const done = sectionComplete(sec, derivIn);
             return (
-              <a
-                key={sec}
-                href={`#sec-${sec}`}
-                onClick={(e) => {
-                  e.preventDefault();
-                  openSheetSection(sec);
-                }}
-              >
+              <button key={sec} type="button" onClick={() => openSheetSection(sec)}>
                 <span className={`sec-dot ${done ? 'done' : c._stage === sec ? 'part' : ''}`} aria-hidden />
                 {t(`section.${sec}`)}
                 <span className="sr-only">{done ? `(${t('common.done_lower')})` : ''}</span>
-              </a>
+              </button>
             );
           })}
-          <a
-            href="#sec-results"
-            onClick={(e) => {
-              e.preventDefault();
-              openSheetSection('results');
-            }}
-          >
+          <button type="button" onClick={() => openSheetSection('results')}>
             <span className="sec-dot" aria-hidden />
             {t('projects.tab.results')}
-          </a>
+          </button>
         </nav>
         <div>
           <AutoText
