@@ -1787,6 +1787,8 @@ export const es: Record<MessageKey, string> = {
   'voice.open_check': 'Abrir comprobación',
   'voice.privacy':
     'La clave solo permite que tu propio script añada texto a tu buzón; se comparte entre tus dispositivos a través de tu espacio. Los textos viven en tu propio Drive; el script borra los de más de 60 días.',
+  'voice.report': 'Copiar informe (para soporte)',
+  'voice.report_copied': 'Informe copiado: pégalo en el chat',
   'voice.rotate_key': 'Nueva clave (actualiza el script y el atajo)',
   'voice.s1_body':
     'Saga HQ crea un archivo pequeño en su carpeta de Drive y una clave privada para tu atajo.',

@@ -237,3 +237,13 @@ describe('Apps Script (run against a simulated Google runtime)', () => {
     expect(read().items).toHaveLength(1);
   });
 });
+
+describe('Content-Security-Policy', () => {
+  it('lets the app reach the user’s Apps Script (and its redirect host)', async () => {
+    const { readFileSync } = await import('node:fs');
+    const cfg = readFileSync(`${process.cwd()}/vite.config.ts`, 'utf8');
+    const connect = cfg.match(/connect-src[^"]*/)?.[0] ?? '';
+    expect(connect).toContain('https://script.google.com');
+    expect(connect).toContain('https://script.googleusercontent.com');
+  });
+});

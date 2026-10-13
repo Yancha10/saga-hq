@@ -15,7 +15,7 @@ function cspPlugin(): Plugin {
     "img-src 'self' data: blob: https:",
     "media-src 'self' blob:",
     "font-src 'self'",
-    "connect-src 'self' https://www.googleapis.com https://openidconnect.googleapis.com https://oauth2.googleapis.com https://accounts.google.com https://api.openai.com https://api.anthropic.com",
+    "connect-src 'self' https://www.googleapis.com https://openidconnect.googleapis.com https://oauth2.googleapis.com https://accounts.google.com https://api.openai.com https://api.anthropic.com https://script.google.com https://script.googleusercontent.com",
     'frame-src https://accounts.google.com',
     "worker-src 'self' blob:",
     "manifest-src 'self'",
@@ -37,6 +37,7 @@ export default defineConfig(({ mode }) => {
   const base = env.VITE_BASE_PATH || './';
   return {
     base,
+    define: { __BUILD__: JSON.stringify(new Date().toISOString().slice(0, 16)) },
     plugins: [
       react(),
       cspPlugin(),

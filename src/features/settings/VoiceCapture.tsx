@@ -119,6 +119,7 @@ export function VoiceCaptureSec() {
   const [diag, setDiag] = useState<Diag | null>(null);
   const [hint, setHint] = useState<string | null>(null);
   const [keyDraft, setKeyDraft] = useState('');
+  const [reportText, setReportText] = useState<string | null>(null);
   const fileId = ws?.voiceInboxFileId;
   // The key is shared by all the user's devices (workspace); older setups kept it on one device only.
   const key = ws?.voiceKey ?? meta.key;
@@ -230,6 +231,41 @@ export function VoiceCaptureSec() {
       await save({ verifiedAt: new Date().toISOString() });
       toast(adopted ? t('voice.test_ok_adopted') : t('voice.test_ok'));
     } else logger.warn('voice', `connection test: ${d}`);
+    setBusy(null);
+  };
+
+  /** Plain-text report with the real answers (key shown only as its first 4 characters). */
+  const report = async () => {
+    if (!runner) return;
+    setBusy('report');
+    const lines: string[] = [
+      `Saga HQ build: ${typeof __BUILD__ === 'string' ? __BUILD__ : 'dev'}`,
+      `URL: ${meta.url ?? '—'}`,
+      `Clave app: ${key ? `${key.slice(0, 4)}… (${key.length})` : '—'} · ${ws?.voiceKey ? 'espacio' : 'local'}`,
+      `Buzón: ${fileId ?? '—'}`,
+    ];
+    const probe = async (label: string, k: string) => {
+      if (!meta.url) return;
+      try {
+        const res = await fetch(meta.url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ key: k, text: 'saga-report', source: 'test' }),
+        });
+        lines.push(`${label}: HTTP ${res.status} · ${(await res.text()).slice(0, 160).replace(/\s+/g, ' ')}`);
+      } catch (e) {
+        lines.push(`${label}: ${(e as Error).name} ${(e as Error).message}`.slice(0, 200));
+      }
+    };
+    if (key) await probe('POST clave app', key);
+    await probe('POST clave oculta', MASKED_KEY);
+    if (fileId)
+      await readInbox(runner.drive, fileId)
+        .then((items) => lines.push(`Drive: ${items.length} elementos · último ${items.at(-1)?.at ?? '—'}`))
+        .catch((e) => lines.push(`Drive: ${(e as Error).message}`.slice(0, 160)));
+    const text = lines.join('\n');
+    setReportText(text);
+    await copy(text, t('voice.report_copied'));
     setBusy(null);
   };
 
@@ -418,6 +454,10 @@ export function VoiceCaptureSec() {
             {t('voice.test_ok')}
           </div>
         )}
+        <Button size="sm" variant="ghost" disabled={busy === 'report'} onClick={() => void report()}>
+          <ClipboardCopy size={14} aria-hidden /> {t('voice.report')}
+        </Button>
+        {reportText && <pre className="voice-report">{reportText}</pre>}
         {meta.url && key && (
           <p className="meta">
             {t('voice.manual_check')}{' '}

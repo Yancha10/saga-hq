@@ -1760,6 +1760,8 @@ export const en = {
   'voice.open_check': 'Open the check',
   'voice.privacy':
     'The key only lets your own script append text to your inbox; it is shared by your devices through your workspace. Texts live in your own Drive; items older than 60 days are pruned by the script.',
+  'voice.report': 'Copy report (for support)',
+  'voice.report_copied': 'Report copied: paste it in the chat',
   'voice.rotate_key': 'New key (update the script and shortcut)',
   'voice.s1_body': 'Saga HQ creates one small file in its Drive folder and a private key for your shortcut.',
   'voice.s1_btn': 'Create inbox',
