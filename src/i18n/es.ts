@@ -1846,6 +1846,8 @@ export const es: Record<MessageKey, string> = {
   'voice.test_fail':
     'No ha llegado. Revisa el acceso de la implementación («Cualquier usuario»), la URL y que pegaste el último script.',
   'voice.test_ok': 'Funciona: tu script escribe en el buzón',
+  'voice.test_ok_adopted':
+    'Funciona. Tu script publicado usa la clave oculta (••••••••); Saga HQ ya la usa también: cópiala en el atajo desde el paso 4.',
   'voice.testing': 'Probando…',
   'voice.testing_url': 'Probando la URL que termina en {tail}',
   'voice.url_bad': 'Debería ser como https://script.google.com/macros/s/…/exec',

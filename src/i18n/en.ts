@@ -1817,6 +1817,8 @@ export const en = {
   'voice.test_fail':
     "It didn't arrive. Check the deployment access (“Anyone”), the URL and that you pasted the latest script.",
   'voice.test_ok': 'It works: your script writes to the inbox',
+  'voice.test_ok_adopted':
+    'It works. Your published script uses the hidden key (••••••••); Saga HQ now uses it too — copy it into the shortcut from step 4.',
   'voice.testing': 'Testing…',
   'voice.testing_url': 'Testing the URL that ends in {tail}',
   'voice.url_bad': 'It should look like https://script.google.com/macros/s/…/exec',

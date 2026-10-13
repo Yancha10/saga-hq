@@ -37,6 +37,7 @@ interface VoiceMeta {
   verifiedAt?: string;
 }
 const META = 'voiceCapture';
+const MASKED_KEY = '••••••••';
 type Diag = 'ok' | 'key' | 'old' | 'drive' | 'login' | 'notjson' | 'blocked';
 const URL_RE = /^https:\/\/script\.google\.com\/(a\/macros\/[^/]+|macros)\/s\/[\w-]+\/exec$/;
 
@@ -182,6 +183,26 @@ export function VoiceCaptureSec() {
         body,
       }).catch(() => undefined);
     }
+    // Early versions of this page showed the key masked as •••••••• in the script preview; a script
+    // copied from there was published with that literal key. Detect it and adopt it so it just works.
+    let adopted = false;
+    if (reply === 'json-key' || reply === 'json-old') {
+      try {
+        const res = await fetch(meta.url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ key: MASKED_KEY, text: nonce, source: 'test' }),
+        });
+        const j = JSON.parse(await res.text()) as { ok?: boolean };
+        if (j.ok) {
+          await setKey(MASKED_KEY);
+          adopted = true;
+          reply = 'json-ok';
+        }
+      } catch {
+        /* keep the original diagnosis */
+      }
+    }
     let arrived = false;
     if (reply === 'json-ok' || reply === 'unreadable') {
       for (let i = 0; i < 8 && !arrived; i++) {
@@ -207,7 +228,7 @@ export function VoiceCaptureSec() {
     setDiag(d);
     if (d === 'ok') {
       await save({ verifiedAt: new Date().toISOString() });
-      toast(t('voice.test_ok'));
+      toast(adopted ? t('voice.test_ok_adopted') : t('voice.test_ok'));
     } else logger.warn('voice', `connection test: ${d}`);
     setBusy(null);
   };
