@@ -68,6 +68,7 @@ export function mergeRecord(local: Rec | undefined, remoteIn: Rec, tombstone?: T
       if (!deepEqual(merged, local.shots)) changed = true;
       out.shots = merged;
       if (remoteWins) {
+        changed = true;
         fieldRevs[k] = rr;
         if (remote.fieldPrev?.[k]) fieldPrev[k] = remote.fieldPrev[k];
       }
@@ -82,7 +83,7 @@ export function mergeRecord(local: Rec | undefined, remoteIn: Rec, tombstone?: T
       );
     }
     if (remoteWins) {
-      if (!deepEqual(out[k], remote[k])) changed = true;
+      changed = true; // value and/or field revision changes — must be persisted for convergence
       out[k] = remote[k] ?? null;
       fieldRevs[k] = rr;
       if (remote.fieldPrev?.[k]) fieldPrev[k] = remote.fieldPrev[k];

@@ -115,6 +115,7 @@ describe('Drive journal sync', () => {
     const i = await create(a.s, 'ideas', { title: 'keep me', status: 'new' });
     await sync(a, b);
     await purgeNow(a.s, 'ideas', i.id); // permanent delete → tombstone
+    await new Promise((r) => setTimeout(r, 5)); // B's edit is strictly later in HLC order
     await update(b.s, 'ideas', i.id, { hook: 'edited after' }); // concurrent, newer
     await sync(a, b);
     const ra = await a.s.db.ideas.get(i.id);
@@ -302,7 +303,7 @@ describe('Drive journal sync', () => {
         }
         for (const d of ds) d.s.close();
       }),
-      { numRuns: 25 },
+      { numRuns: 60 },
     );
   });
 });
