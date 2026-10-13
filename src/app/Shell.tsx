@@ -265,6 +265,7 @@ export function Shell({ children }: { children: ReactNode }) {
           <SecretaryPanel
             focus={secretary.focus}
             initialIntent={secretary.intent}
+            initialQuestion={secretary.question}
             onClose={() => secretaryState.set({ open: false })}
           />
         </aside>

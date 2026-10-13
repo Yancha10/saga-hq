@@ -370,7 +370,7 @@ export function ContentDetail() {
     <div className="page" style={{ maxWidth: 1440 }}>
       <PageHeader
         back
-        title={c.title || 'Content'}
+        title="Production sheet"
         sub={
           c.ideaId ? (
             <>

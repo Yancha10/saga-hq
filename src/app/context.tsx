@@ -17,6 +17,7 @@ export interface AppCtx {
   toggleSecretary: (opts?: {
     focus?: { entity: 'content' | 'idea' | 'project'; id: string };
     intent?: string;
+    question?: string;
   }) => void;
   secretaryOpen: boolean;
 }

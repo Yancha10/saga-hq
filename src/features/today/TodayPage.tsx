@@ -374,19 +374,21 @@ export function TodayPage() {
           )}
 
           {t.inboxCount > 0 && (
-            <Link to="/inbox" className="row list" style={{ marginBottom: 24 }}>
-              <div className="grow">
-                <div className="title">
-                  {t.inboxCount} capture{t.inboxCount > 1 ? 's' : ''} to triage
+            <div className="list" style={{ marginBottom: 24 }}>
+              <Link to="/inbox" className="row">
+                <div className="grow">
+                  <div className="title">
+                    {t.inboxCount} capture{t.inboxCount > 1 ? 's' : ''} to triage
+                  </div>
+                  <div className="sub">
+                    {t.inboxOldDays > 0
+                      ? `oldest ${t.inboxOldDays} day${t.inboxOldDays > 1 ? 's' : ''}`
+                      : 'from today'}
+                  </div>
                 </div>
-                <div className="sub">
-                  {t.inboxOldDays > 0
-                    ? `oldest ${t.inboxOldDays} day${t.inboxOldDays > 1 ? 's' : ''}`
-                    : 'from today'}
-                </div>
-              </div>
-              <span className="meta">Triage →</span>
-            </Link>
+                <span className="meta">Triage →</span>
+              </Link>
+            </div>
           )}
 
           <Section title="Daily brief" id="brief">

@@ -3,6 +3,7 @@ import { sha256Hex } from '../core/crypto';
 import type { MediaMeta } from '../data/schema';
 import { create, update } from '../data/store';
 import { logger } from '../diagnostics/logger';
+import type { DriveApi } from '../sync/driveApi';
 
 export const MAX_LOCAL_VIDEO_BYTES = 100 * 1024 * 1024;
 export const AUTO_UPLOAD_MAX_BYTES = 20 * 1024 * 1024;
@@ -116,12 +117,27 @@ export async function mediaUrl(
   s: Session,
   id: string,
   prefer: 'thumb' | 'full' = 'thumb',
+  drive?: DriveApi | null,
 ): Promise<string | null> {
   const cacheKey = `${s.generation}:${id}:${prefer}`;
   const hit = urlCache.get(cacheKey);
   if (hit) return hit;
   let row = await s.db.mediaBlobs.get([id, prefer]);
   if (!row && prefer === 'thumb') row = await s.db.mediaBlobs.get([id, 'full']);
+  if (!row && drive) {
+    // Synced from another device or evicted from the cache: fetch the original from the user's Drive.
+    const meta = await s.db.media.get(id);
+    if (meta?.driveFileId) {
+      try {
+        const blob = await drive.downloadBlob(meta.driveFileId, s.signal);
+        s.assertLive();
+        await storeDownloaded(s, id, blob);
+        row = await s.db.mediaBlobs.get([id, 'full']);
+      } catch (e) {
+        logger.warn('media', 'download from Drive failed', e);
+      }
+    }
+  }
   if (!row) return null;
   s.assertLive();
   void s.db.mediaBlobs.update([row.id, row.kind], { lastUsedAt: Date.now() });

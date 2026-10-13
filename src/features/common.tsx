@@ -603,15 +603,16 @@ export function MediaThumb({
   className?: string;
 }) {
   const s = useSession();
+  const { runner } = useApp();
   const [src, setSrc] = useState<string | null>(null);
   useEffect(() => {
     let alive = true;
-    if (mediaId) void mediaUrl(s, mediaId).then((u) => alive && setSrc(u));
+    if (mediaId) void mediaUrl(s, mediaId, 'thumb', runner?.drive).then((u) => alive && setSrc(u));
     else setSrc(safeHttpUrl(url ?? null));
     return () => {
       alive = false;
     };
-  }, [mediaId, url, s]);
+  }, [mediaId, url, s, runner]);
   if (!src)
     return (
       <span

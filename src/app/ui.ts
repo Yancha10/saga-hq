@@ -10,4 +10,5 @@ export const secretaryState = createStore<{
   open: boolean;
   focus?: { entity: 'content' | 'idea' | 'project'; id: string };
   intent?: string;
+  question?: string;
 }>({ open: false });

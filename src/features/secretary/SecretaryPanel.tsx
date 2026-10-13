@@ -47,10 +47,12 @@ const QUICK: { intent: Intent; label: string; q: string }[] = [
 export function SecretaryPanel({
   focus,
   initialIntent,
+  initialQuestion,
   onClose,
 }: {
   focus?: { entity: 'content' | 'idea' | 'project'; id: string };
   initialIntent?: string;
+  initialQuestion?: string;
   onClose: () => void;
 }) {
   const s = useSession();
@@ -60,7 +62,7 @@ export function SecretaryPanel({
     (initialIntent as Intent) ??
       (focus?.entity === 'content' ? 'producer' : focus?.entity === 'idea' ? 'creative' : 'brief'),
   );
-  const [q, setQ] = useState('');
+  const [q, setQ] = useState(initialQuestion ?? '');
   const [pack, setPack] = useState<ContextPack | null>(null);
   const [showJson, setShowJson] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -76,7 +78,8 @@ export function SecretaryPanel({
   }, [s]);
   useEffect(() => {
     if (initialIntent) setIntent(initialIntent as Intent);
-  }, [initialIntent]);
+    if (initialQuestion) setQ(initialQuestion);
+  }, [initialIntent, initialQuestion]);
   // Deterministic facts are always available (no AI needed).
   useEffect(() => {
     let alive = true;

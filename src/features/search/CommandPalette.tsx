@@ -163,7 +163,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
         hint: '⌘J',
         run: () => {
           onClose();
-          toggleSecretary({ intent: q ? 'ask' : 'brief' });
+          toggleSecretary(q ? { intent: 'ask', question: q } : { intent: 'brief' });
         },
       },
       {

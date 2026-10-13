@@ -10,6 +10,7 @@ import type {
   Task,
   Workspace,
 } from '../data/schema';
+import { PLATFORM_LABEL } from '../data/schema';
 import { findOutliers, type Outlier } from './analytics';
 import { cadenceGaps, type Gap } from './cadence';
 import { type Candidate, scoreCandidates } from './priority';
@@ -187,7 +188,7 @@ export function buildToday(d: TodayData): TodayModel {
         id: c.id,
         entity: 'content',
         title: c.title,
-        detail: reasons.join(' · ') || 'blocked',
+        detail: reasons.join(' · ') || 'flagged as blocked',
       });
     }
   }
@@ -202,7 +203,7 @@ export function buildToday(d: TodayData): TodayModel {
         id: c.id,
         entity: 'content',
         title: c.title,
-        detail: `was scheduled ${new Date(t).toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' })} on ${p.platform} — published?`,
+        detail: `was scheduled ${new Date(t).toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' })} on ${PLATFORM_LABEL[p.platform]} — published?`,
       });
     else if (t - now < 2 * DAY) {
       const missing = (c._missing ?? []).filter((m) => m !== 'publishDate');

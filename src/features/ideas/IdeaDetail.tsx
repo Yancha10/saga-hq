@@ -78,7 +78,7 @@ export function IdeaDetail() {
     <div className="page narrow" style={{ maxWidth: 1180 }}>
       <PageHeader
         back
-        title={idea.title || 'Idea'}
+        title="Idea"
         sub={
           parent ? (
             <>
