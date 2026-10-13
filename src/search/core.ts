@@ -8,7 +8,9 @@ export type SearchType =
   | 'tasks'
   | 'library'
   | 'learnings'
-  | 'events';
+  | 'events'
+  | 'chapters'
+  | 'radar';
 export const SEARCH_TABLES: SearchType[] = [
   'projects',
   'ideas',
@@ -18,6 +20,8 @@ export const SEARCH_TABLES: SearchType[] = [
   'library',
   'learnings',
   'events',
+  'chapters',
+  'radar',
 ];
 
 export interface SearchDoc {
@@ -66,7 +70,18 @@ export function toDoc(type: SearchType, r: Record<string, unknown>): SearchDoc |
       break;
     case 'content':
       title = s(r.title);
-      body = [r.hook, r.concept, r.script, r.caption, r.coverText, r.hashtags, r.productionNotes]
+      body = [
+        r.hook,
+        r.concept,
+        r.script,
+        r.caption,
+        r.coverText,
+        r.hashtags,
+        r.productionNotes,
+        r.pillar,
+        r.dmKeyword,
+        r.externalId,
+      ]
         .map(s)
         .join('\n');
       break;
@@ -85,6 +100,14 @@ export function toDoc(type: SearchType, r: Record<string, unknown>): SearchDoc |
     case 'events':
       title = s(r.title);
       body = s(r.notes);
+      break;
+    case 'chapters':
+      title = s(r.title);
+      body = [r.body, r.context].map(s).join('\n');
+      break;
+    case 'radar':
+      title = s(r.title);
+      body = [r.angle, r.notes, r.category, r.periodText, r.decision].map(s).join('\n');
       break;
   }
   return {
@@ -127,6 +150,9 @@ const TYPE_ALIASES: Record<string, SearchType> = {
   inbox: 'captures',
   capture: 'captures',
   event: 'events',
+  chapter: 'chapters',
+  bible: 'chapters',
+  radar: 'radar',
   // Spanish aliases — accepted regardless of UI language (search is language-independent).
   proyecto: 'projects',
   proyectos: 'projects',
@@ -143,9 +169,13 @@ const TYPE_ALIASES: Record<string, SearchType> = {
   bandeja: 'captures',
   captura: 'captures',
   evento: 'events',
+  capitulo: 'chapters',
+  capítulo: 'chapters',
+  biblia: 'chapters',
 };
 const STATUS_ALIASES: Record<string, string> = {
   planificado: 'planned',
+  guion: 'script',
   produccion: 'producing',
   producción: 'producing',
   listo: 'ready',

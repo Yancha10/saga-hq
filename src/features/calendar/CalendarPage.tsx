@@ -22,6 +22,7 @@ import {
 import { Button, IconButton, Sheet, Tabs } from '../../ui/kit';
 import { PageHeader } from '../../ui/PageHeader';
 import { contentTitle, ProjectSelect } from '../common';
+import { IcsButton } from '../week/WeekPage';
 
 type View = 'agenda' | 'week' | 'month';
 interface Item {
@@ -227,14 +228,17 @@ export function CalendarPage() {
         title={t('nav.calendar')}
         sub={t('calendar.sub')}
         actions={
-          <Button
-            variant="primary"
-            onClick={() =>
-              setNewEvent({ startAt: new Date(Math.max(Date.now(), range.start)).toISOString() })
-            }
-          >
-            <Plus size={15} /> {t('calendar.add_block')}
-          </Button>
+          <>
+            <IcsButton />
+            <Button
+              variant="primary"
+              onClick={() =>
+                setNewEvent({ startAt: new Date(Math.max(Date.now(), range.start)).toISOString() })
+              }
+            >
+              <Plus size={15} /> {t('calendar.add_block')}
+            </Button>
+          </>
         }
       />
       <div className="hstack filters" style={{ marginBottom: 12 }}>

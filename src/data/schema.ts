@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 /** Current local schema version. Bump with a migration in migrations.ts. */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export const PLATFORMS = ['instagram', 'tiktok', 'youtube', 'youtube_shorts', 'x', 'other'] as const;
 export type Platform = (typeof PLATFORMS)[number];
@@ -71,6 +71,9 @@ export const formatTemplateSchema = z.object({
 });
 export type FormatTemplate = z.infer<typeof formatTemplateSchema>;
 
+export const checkItemSchema = z.object({ id: z.string().max(40), text: z.string().max(500) });
+export type CheckItem = z.infer<typeof checkItemSchema>;
+
 export const focusRefSchema = z.object({
   entity: z.enum(['content', 'task', 'idea', 'project']),
   id: z.string(),
@@ -86,7 +89,16 @@ export const workspaceSchema = z.looseObject({
   focus: z.array(focusRefSchema).max(3),
   onboardedAt: opt(iso),
   scoringEnabled: z.boolean().optional(),
+  // Saga Lai preferences (all optional; defaults live in defaults.ts)
+  timezone: opt(z.string().max(80)),
+  weeklyHours: opt(z.number().min(0).max(168)),
+  weeklyGoal: opt(z.number().min(0).max(100)),
+  ownerName: opt(z.string().max(120)),
+  checklist: z.array(checkItemSchema).max(60).optional(),
+  checklistVersion: opt(z.number().int().min(0)),
 });
+
+export const PROJECT_KINDS = ['project', 'series', 'campaign', 'season'] as const;
 
 export const projectSchema = z.looseObject({
   ...base,
@@ -99,6 +111,14 @@ export const projectSchema = z.looseObject({
   isFocus: z.boolean(),
   color: z.number().int().min(1).max(8),
   platforms: platforms.optional(),
+  kind: z.enum(PROJECT_KINDS).nullish(),
+  parentId: opt(z.string()),
+  audience: opt(z.string().max(2000)),
+  owner: opt(z.string().max(120)),
+  priority,
+  budget: opt(z.string().max(500)),
+  continuity: opt(z.string().max(50000)),
+  externalId: opt(z.string().max(120)),
 });
 
 const score = z.object({
@@ -127,6 +147,16 @@ export const ideaSchema = z.looseObject({
   scores: z.record(z.string(), score).optional(),
   notes: opt(z.string().max(50000)),
   tags,
+  situation: opt(z.string().max(5000)),
+  tension: opt(z.string().max(5000)),
+  twist: opt(z.string().max(5000)),
+  payoff: opt(z.string().max(5000)),
+  pillar: opt(z.string().max(120)),
+  durationSec: opt(z.number().min(0).max(36000)),
+  difficulty: z.enum(['low', 'med', 'high']).nullish(),
+  favorite: z.boolean().optional(),
+  emergency: z.boolean().optional(),
+  externalId: opt(z.string().max(120)),
 });
 
 export const captureSchema = z.looseObject({
@@ -162,6 +192,14 @@ export const shotSchema = z.object({
   referenceIds: z.array(z.string()).max(50),
   selectedOutput: opt(z.string().max(4000)),
   status: z.enum(['todo', 'generating', 'selected', 'final']),
+  camera: opt(z.string().max(500)),
+  framing: opt(z.string().max(500)),
+  movement: opt(z.string().max(500)),
+  light: opt(z.string().max(500)),
+  sound: opt(z.string().max(1000)),
+  character: opt(z.string().max(500)),
+  continuityObject: opt(z.string().max(500)),
+  timeLabel: opt(z.string().max(60)),
   rev: z.string(),
   deleted: z.boolean().optional(),
 });
@@ -169,6 +207,7 @@ export type Shot = z.infer<typeof shotSchema>;
 
 export const CONTENT_STATUSES = [
   'planned',
+  'script',
   'producing',
   'ready',
   'scheduled',
@@ -176,6 +215,19 @@ export const CONTENT_STATUSES = [
   'reviewed',
 ] as const;
 export type ContentStatus = (typeof CONTENT_STATUSES)[number];
+
+export const VARIANT_FIELDS = ['hook', 'script', 'ending', 'caption', 'prompt', 'cover'] as const;
+export type VariantField = (typeof VARIANT_FIELDS)[number];
+export const variantSchema = z.object({
+  id: z.string(),
+  field: z.enum(VARIANT_FIELDS),
+  text: z.string().max(100000),
+  by: z.enum(['user', 'ai', 'import']),
+  label: opt(z.string().max(120)),
+  at: iso,
+  approved: z.boolean().optional(),
+});
+export type Variant = z.infer<typeof variantSchema>;
 
 export const contentSchema = z.looseObject({
   ...base,
@@ -217,6 +269,26 @@ export const contentSchema = z.looseObject({
     .optional(),
   reviewedAt: opt(iso),
   tags,
+  // Saga Lai piece fields
+  externalId: opt(z.string().max(120)),
+  pillar: opt(z.string().max(120)),
+  dmKeyword: opt(z.string().max(120)),
+  dmDelivery: opt(z.string().max(10000)),
+  cta: opt(z.string().max(2000)),
+  prompt: opt(z.string().max(100000)),
+  notes: opt(z.string().max(50000)),
+  durationTargetSec: opt(z.number().min(0).max(36000)),
+  original: z
+    .object({ text: z.string().max(200000), sourceLabel: opt(z.string().max(300)), importedAt: iso })
+    .nullish(),
+  artDirection: opt(z.string().max(20000)),
+  soundDirection: opt(z.string().max(20000)),
+  continuityNotes: opt(z.string().max(20000)),
+  stories: opt(z.string().max(20000)),
+  pinnedComment: opt(z.string().max(5000)),
+  variants: z.array(variantSchema).max(200).optional(),
+  checks: z.record(z.string(), z.boolean()).optional(),
+  checklistVersion: opt(z.number().int().min(0)),
   // Derived (recomputed locally on write; never trusted from remote/imports)
   _readyPct: z.number().optional(),
   _missing: z.array(z.string()).optional(),
@@ -267,6 +339,14 @@ export const taskSchema = z.looseObject({
   resolution: opt(z.string().max(5000)),
   doneAt: opt(iso),
   notes: opt(z.string().max(20000)),
+  category: opt(z.string().max(120)),
+  checklist: z
+    .array(z.object({ id: z.string(), text: z.string().max(500), done: z.boolean() }))
+    .max(100)
+    .optional(),
+  dependsOn: z.array(z.string()).max(50).optional(),
+  assignee: opt(z.string().max(120)),
+  externalId: opt(z.string().max(120)),
 });
 
 export const eventSchema = z.looseObject({
@@ -359,7 +439,16 @@ export const learningSchema = z.looseObject({
   tags,
 });
 
-export const LINK_TYPES = ['references', 'inspired', 'evidence', 'influenced', 'related'] as const;
+export const LINK_TYPES = [
+  'references',
+  'inspired',
+  'evidence',
+  'influenced',
+  'related',
+  'continuity',
+  'dependency',
+  'reuse',
+] as const;
 export const linkSchema = z.looseObject({
   ...base,
   fromType: z.string(),
@@ -368,6 +457,72 @@ export const linkSchema = z.looseObject({
   toId: z.string(),
   type: z.enum(LINK_TYPES),
   note: opt(z.string().max(1000)),
+});
+
+export const CHAPTER_STATUSES = ['current', 'proposed', 'historical', 'to_check'] as const;
+/** Saga Bible chapter: canon, rules and world notes. `originalBody` keeps the imported text untouched. */
+export const chapterSchema = z.looseObject({
+  ...base,
+  title: z.string().max(300),
+  number: opt(z.string().max(30)),
+  order: z.number(),
+  body: opt(z.string().max(500000)),
+  originalBody: opt(z.string().max(500000)),
+  status: z.enum(CHAPTER_STATUSES),
+  context: opt(z.string().max(5000)),
+  externalId: opt(z.string().max(120)),
+  tags,
+});
+
+export const RADAR_PRECISIONS = [
+  'day',
+  'range',
+  'multiple',
+  'month',
+  'season',
+  'year',
+  'recurring',
+  'unknown',
+] as const;
+export const RADAR_VERIFICATION = ['unverified', 'verified', 'discarded'] as const;
+/** Cultural radar: dated events worth riding. Dates are always marked with their real precision. */
+export const radarSchema = z.looseObject({
+  ...base,
+  title: z.string().max(500),
+  category: opt(z.string().max(120)),
+  periodText: opt(z.string().max(300)),
+  startDate: opt(z.string().max(10)),
+  endDate: opt(z.string().max(10)),
+  precision: z.enum(RADAR_PRECISIONS),
+  sources: z.array(z.object({ label: z.string().max(300), url: z.string().max(4000) })).max(20),
+  lastCheckedAt: opt(iso),
+  verification: z.enum(RADAR_VERIFICATION),
+  angle: opt(z.string().max(5000)),
+  notes: opt(z.string().max(20000)),
+  projectId: opt(z.string()),
+  decision: opt(z.string().max(2000)),
+  nextReviewAt: opt(z.string().max(10)),
+  externalId: opt(z.string().max(120)),
+  tags,
+});
+
+export const SESSION_STATUSES = ['draft', 'applied', 'discarded'] as const;
+/** AI workshop session (Taller): what was asked, with which context, and what came back. Never holds keys. */
+export const sessionSchema = z.looseObject({
+  ...base,
+  task: z.string().max(60),
+  provider: opt(z.string().max(60)),
+  mode: z.enum(['manual', 'api']),
+  declaredSource: opt(z.string().max(200)),
+  contentId: opt(z.string()),
+  projectId: opt(z.string()),
+  contextSummary: opt(z.string().max(20000)),
+  prompt: opt(z.string().max(200000)),
+  response: opt(z.string().max(200000)),
+  status: z.enum(SESSION_STATUSES),
+  appliedTo: opt(z.string().max(200)),
+  at: iso,
+  externalId: opt(z.string().max(120)),
 });
 
 export const tombstoneSchema = z.object({
@@ -391,6 +546,9 @@ export const ENTITY_SCHEMAS = {
   media: mediaSchema,
   learnings: learningSchema,
   links: linkSchema,
+  chapters: chapterSchema,
+  radar: radarSchema,
+  sessions: sessionSchema,
 } as const;
 
 /** The ONLY tables that leave the device (sync journal, snapshots, backups, exports). */
@@ -411,6 +569,9 @@ export type MediaMeta = z.infer<typeof mediaSchema>;
 export type Learning = z.infer<typeof learningSchema>;
 export type Link = z.infer<typeof linkSchema>;
 export type Tombstone = z.infer<typeof tombstoneSchema>;
+export type Chapter = z.infer<typeof chapterSchema>;
+export type RadarItem = z.infer<typeof radarSchema>;
+export type WorkSession = z.infer<typeof sessionSchema>;
 
 export interface EntityMap {
   workspace: Workspace;
@@ -426,6 +587,9 @@ export interface EntityMap {
   media: MediaMeta;
   learnings: Learning;
   links: Link;
+  chapters: Chapter;
+  radar: RadarItem;
+  sessions: WorkSession;
 }
 export type AnyRecord = EntityMap[EntityTable];
 
@@ -457,6 +621,15 @@ export const LONG_TEXT_FIELDS = new Set([
   'text',
   'statement',
   'resolution',
+  'body',
+  'artDirection',
+  'soundDirection',
+  'continuityNotes',
+  'stories',
+  'dmDelivery',
+  'continuity',
+  'prompt',
+  'response',
 ]);
 
 export function isDerivedField(k: string): boolean {

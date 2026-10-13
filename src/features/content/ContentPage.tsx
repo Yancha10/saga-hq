@@ -118,7 +118,7 @@ export function ContentPage() {
         {c.projectId && pName.get(c.projectId) && <span className="tag">{pName.get(c.projectId)}</span>}
         <PlatformTags platforms={c.platforms} />
       </div>
-      {missingText(c) && c.status !== 'planned' && (
+      {missingText(c) && c.status !== 'planned' && c.status !== 'script' && (
         <div className="meta" style={{ fontSize: 11.5 }}>
           {missingText(c)}
         </div>

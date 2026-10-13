@@ -1,20 +1,25 @@
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router';
 import {
+  BookMarked,
   BookOpen,
   CalendarDays,
+  CalendarRange,
   Clapperboard,
   FolderKanban,
   Inbox,
   Lightbulb,
   LineChart,
   ListChecks,
+  type LucideIcon,
   Menu as MenuIcon,
   Plus,
+  Radar,
   RefreshCw,
   Search,
   Settings,
   Sparkles,
   Sun,
+  Wand2,
   X,
 } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo } from 'react';
@@ -33,16 +38,42 @@ import { banners, dismissToast, toast, toasts } from './status';
 import { captureState, paletteState, secretaryState } from './ui';
 
 /** Route identifiers stay language-neutral; only labels are translated. */
-const NAV = [
-  { to: '/', key: 'today', icon: Sun, sc: 't' },
-  { to: '/inbox', key: 'inbox', icon: Inbox, sc: 'i' },
-  { to: '/ideas', key: 'ideas', icon: Lightbulb, sc: 'd' },
-  { to: '/projects', key: 'projects', icon: FolderKanban, sc: 'p' },
-  { to: '/content', key: 'content', icon: Clapperboard, sc: 'c' },
-  { to: '/calendar', key: 'calendar', icon: CalendarDays, sc: 'a' },
-  { to: '/library', key: 'library', icon: BookOpen, sc: 'l' },
-  { to: '/insights', key: 'insights', icon: LineChart, sc: 'n' },
-] as const;
+interface NavItem {
+  to: string;
+  key: string;
+  icon: LucideIcon;
+  sc: string;
+}
+const NAV_GROUPS: { key: string; items: NavItem[] }[] = [
+  {
+    key: 'plan',
+    items: [
+      { to: '/', key: 'today', icon: Sun, sc: 't' },
+      { to: '/week', key: 'week', icon: CalendarRange, sc: 'w' },
+      { to: '/inbox', key: 'inbox', icon: Inbox, sc: 'i' },
+      { to: '/calendar', key: 'calendar', icon: CalendarDays, sc: 'a' },
+      { to: '/projects', key: 'projects', icon: FolderKanban, sc: 'p' },
+    ],
+  },
+  {
+    key: 'create',
+    items: [
+      { to: '/ideas', key: 'ideas', icon: Lightbulb, sc: 'd' },
+      { to: '/content', key: 'content', icon: Clapperboard, sc: 'c' },
+      { to: '/workshop', key: 'workshop', icon: Wand2, sc: 'o' },
+    ],
+  },
+  {
+    key: 'know',
+    items: [
+      { to: '/bible', key: 'bible', icon: BookMarked, sc: 'b' },
+      { to: '/radar', key: 'radar', icon: Radar, sc: 'r' },
+      { to: '/library', key: 'library', icon: BookOpen, sc: 'l' },
+      { to: '/insights', key: 'insights', icon: LineChart, sc: 'n' },
+    ],
+  },
+];
+const NAV = NAV_GROUPS.flatMap((g) => g.items);
 
 function SyncDot() {
   const { t, fmt } = useT();
@@ -168,19 +199,26 @@ export function Shell({ children }: { children: ReactNode }) {
           <Plus size={16} aria-hidden />
           <span className="label">{t('capture.button')}</span>
         </Button>
-        {NAV.map((n) => (
-          <Link
-            key={n.to}
-            to={n.to}
-            className={`nav-item ${isActive(n.to) ? 'active' : ''}`}
-            aria-current={isActive(n.to) ? 'page' : undefined}
-            title={t(`nav.${n.key}`)}
-          >
-            <n.icon size={17} aria-hidden />
-            <span className="label">{t(`nav.${n.key}`)}</span>
-            <span className="rail-label">{t(`nav.${n.key}`)}</span>
-            {n.to === '/inbox' && inboxCount > 0 && <span className="count">{inboxCount}</span>}
-          </Link>
+        {NAV_GROUPS.map((g) => (
+          <div key={g.key} className="nav-group" role="group" aria-label={t(`nav.group.${g.key}`)}>
+            <div className="nav-group-label" aria-hidden>
+              {t(`nav.group.${g.key}`)}
+            </div>
+            {g.items.map((n) => (
+              <Link
+                key={n.to}
+                to={n.to}
+                className={`nav-item ${isActive(n.to) ? 'active' : ''}`}
+                aria-current={isActive(n.to) ? 'page' : undefined}
+                title={t(`nav.${n.key}`)}
+              >
+                <n.icon size={17} aria-hidden />
+                <span className="label">{t(`nav.${n.key}`)}</span>
+                <span className="rail-label">{t(`nav.${n.key}`)}</span>
+                {n.to === '/inbox' && inboxCount > 0 && <span className="count">{inboxCount}</span>}
+              </Link>
+            ))}
+          </div>
         ))}
         {pinned.map((p) => (
           <Link key={p.id} to="/projects/$id" params={{ id: p.id }} className="nav-item nav-sub">
@@ -307,7 +345,20 @@ export function Shell({ children }: { children: ReactNode }) {
         <Link
           to="/more"
           aria-current={
-            isActive('/more') || isActive('/inbox') || isActive('/calendar') || isActive('/library')
+            [
+              '/more',
+              '/inbox',
+              '/calendar',
+              '/library',
+              '/week',
+              '/bible',
+              '/radar',
+              '/workshop',
+              '/insights',
+              '/projects',
+              '/settings',
+              '/tasks',
+            ].some(isActive)
               ? 'page'
               : undefined
           }

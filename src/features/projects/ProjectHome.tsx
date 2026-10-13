@@ -9,6 +9,7 @@ import {
   type Idea,
   type Learning,
   type LibraryItem,
+  PROJECT_KINDS,
   type Project,
   type Publication,
   type Snapshot,
@@ -28,6 +29,7 @@ import {
   contentTitle,
   libraryTitle,
   missingText,
+  ProjectSelect,
   QuickTask,
   RecordMenu,
   TaskRow,
@@ -156,6 +158,7 @@ export function ProjectHome() {
         back
         title={p.name}
         sub={[
+          p.kind && p.kind !== 'project' ? t(`project.kind.${p.kind}`) : '',
           t(`project.status.${p.status}`),
           p.startDate && t('projects.from', { date: fmtDay(p.startDate) }),
           p.endDate && t('projects.to', { date: fmtDay(p.endDate) }),
@@ -418,6 +421,86 @@ export function ProjectHome() {
                   onSave={(v) => up({ brief: v || null }, 'brief')}
                   ariaLabel={t('projects.brief')}
                   rows={4}
+                />
+              </div>
+              <div className="form-grid" style={{ marginTop: 8 }}>
+                <div className="field">
+                  <label className="lbl" htmlFor="pkind">
+                    {t('project.kind_label')}
+                  </label>
+                  <select
+                    id="pkind"
+                    className="select"
+                    value={p.kind ?? 'project'}
+                    onChange={(e) => void up({ kind: e.target.value as Project['kind'] })}
+                  >
+                    {PROJECT_KINDS.map((k) => (
+                      <option key={k} value={k}>
+                        {t(`project.kind.${k}`)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="field">
+                  <label className="lbl" htmlFor="pparent">
+                    {t('project.parent')}
+                  </label>
+                  <ProjectSelect
+                    id="pparent"
+                    value={p.parentId}
+                    onChange={(v) => v !== p.id && void up({ parentId: v })}
+                  />
+                </div>
+                <div className="field">
+                  <label className="lbl" htmlFor="pprio">
+                    {t('common.priority')}
+                  </label>
+                  <select
+                    id="pprio"
+                    className="select"
+                    value={p.priority ?? ''}
+                    onChange={(e) => void up({ priority: (e.target.value || null) as Project['priority'] })}
+                  >
+                    <option value="">{t('priority.none')}</option>
+                    <option value="low">{t('priority.low')}</option>
+                    <option value="med">{t('priority.med')}</option>
+                    <option value="high">{t('priority.high')}</option>
+                  </select>
+                </div>
+                <div className="field">
+                  <span className="lbl">{t('project.owner')}</span>
+                  <AutoText
+                    value={p.owner}
+                    onSave={(v) => up({ owner: v || null }, 'owner')}
+                    ariaLabel={t('project.owner')}
+                  />
+                </div>
+                <div className="field">
+                  <span className="lbl">{t('project.audience')}</span>
+                  <AutoText
+                    value={p.audience}
+                    onSave={(v) => up({ audience: v || null }, 'aud')}
+                    ariaLabel={t('project.audience')}
+                  />
+                </div>
+                <div className="field">
+                  <span className="lbl">{t('project.budget')}</span>
+                  <AutoText
+                    value={p.budget}
+                    onSave={(v) => up({ budget: v || null }, 'budget')}
+                    ariaLabel={t('project.budget')}
+                  />
+                </div>
+              </div>
+              <div className="field" style={{ marginTop: 8 }}>
+                <span className="lbl">{t('project.continuity')}</span>
+                <AutoText
+                  multiline
+                  value={p.continuity}
+                  onSave={(v) => up({ continuity: v || null }, 'cont')}
+                  ariaLabel={t('project.continuity')}
+                  placeholder={t('project.continuity_ph')}
+                  rows={3}
                 />
               </div>
             </Section>

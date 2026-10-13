@@ -29,7 +29,7 @@ export default defineConfig({
   projects: [
     {
       name: 'prod-root',
-      testMatch: /(daily|offline|essential|pwa|i18n-offline)\.spec\.ts/,
+      testMatch: /(daily|offline|essential|pwa|i18n-offline|saga)\.spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
         baseURL: 'http://localhost:4173/',

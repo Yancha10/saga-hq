@@ -1,5 +1,5 @@
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
-import { Clapperboard, GitBranch, Sparkles, Star } from 'lucide-react';
+import { Clapperboard, GitBranch, Heart, Sparkles, Star } from 'lucide-react';
 import { useState } from 'react';
 import { useApp, useLive, useSession } from '../../app/context';
 import { toast } from '../../app/status';
@@ -7,7 +7,7 @@ import { createVariant, ideaToContent } from '../../data/domain';
 import type { Idea, Platform } from '../../data/schema';
 import { update } from '../../data/store';
 import { t, useT } from '../../i18n';
-import { AutoText, Button, Empty, Pill, Section, Sheet } from '../../ui/kit';
+import { AutoText, Button, Empty, IconButton, Pill, Section, Sheet } from '../../ui/kit';
 import { PageHeader } from '../../ui/PageHeader';
 import {
   ArchivedNotice,
@@ -90,6 +90,13 @@ export function IdeaDetail() {
         }
         actions={
           <>
+            <IconButton
+              label={idea.favorite ? t('idea.unfavorite') : t('idea.favorite')}
+              aria-pressed={!!idea.favorite}
+              onClick={() => void up({ favorite: !idea.favorite })}
+            >
+              <Heart size={16} fill={idea.favorite ? 'currentColor' : 'none'} />
+            </IconButton>
             <Button
               onClick={() => void up({ status: idea.status === 'shortlisted' ? 'new' : 'shortlisted' })}
             >
@@ -164,6 +171,71 @@ export function IdeaDetail() {
               rows={2}
             />
           </div>
+          <Section fold="closed" title={t('idea.dev.title')}>
+            <p className="meta explain">{t('idea.dev.hint')}</p>
+            <div className="saga-grid">
+              {(['situation', 'tension', 'twist', 'payoff'] as const).map((k) => (
+                <div key={k} className="field">
+                  <span className="lbl">{t(`idea.dev.${k}`)}</span>
+                  <AutoText
+                    multiline
+                    value={idea[k]}
+                    onSave={(v) => up({ [k]: v || null } as Partial<Idea>, k)}
+                    ariaLabel={t(`idea.dev.${k}`)}
+                    placeholder={t(`idea.dev.${k}_ph`)}
+                    rows={2}
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="form-grid">
+              <div className="field">
+                <span className="lbl">{t('saga.pillar')}</span>
+                <AutoText
+                  value={idea.pillar}
+                  onSave={(v) => up({ pillar: v || null }, 'pillar')}
+                  ariaLabel={t('saga.pillar')}
+                />
+              </div>
+              <div className="field">
+                <label className="lbl" htmlFor="idur">
+                  {t('saga.duration_target')}
+                </label>
+                <input
+                  id="idur"
+                  type="number"
+                  min={0}
+                  className="input"
+                  value={idea.durationSec ?? ''}
+                  onChange={(e) => void up({ durationSec: e.target.value ? Number(e.target.value) : null })}
+                />
+              </div>
+              <div className="field">
+                <label className="lbl" htmlFor="idiff">
+                  {t('idea.difficulty')}
+                </label>
+                <select
+                  id="idiff"
+                  className="select"
+                  value={idea.difficulty ?? ''}
+                  onChange={(e) => void up({ difficulty: (e.target.value || null) as Idea['difficulty'] })}
+                >
+                  <option value="">—</option>
+                  <option value="low">{t('idea.diff.low')}</option>
+                  <option value="med">{t('idea.diff.med')}</option>
+                  <option value="high">{t('idea.diff.high')}</option>
+                </select>
+              </div>
+            </div>
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={!!idea.emergency}
+                onChange={(e) => void up({ emergency: e.target.checked })}
+              />{' '}
+              {t('idea.emergency_label')}
+            </label>
+          </Section>
           <Section fold="closed" title={t('section.references')}>
             <References fromType="idea" fromId={idea.id} projectId={idea.projectId} />
           </Section>

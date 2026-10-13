@@ -2,7 +2,16 @@ import type { Session } from '../app/session';
 import { displayTitleForUrl, extractUrl, parseUrl } from '../core/url';
 import { nowIso } from '../core/util';
 import { snapCheckpoint } from '../rules/analytics';
-import type { Capture, Content, ContentStatus, FocusRef, Idea, Platform, Publication } from './schema';
+import type {
+  Capture,
+  Content,
+  ContentStatus,
+  FocusRef,
+  Idea,
+  LINK_TYPES,
+  Platform,
+  Publication,
+} from './schema';
 import { create, mutate, update } from './store';
 
 // ---------- Capture & triage ----------
@@ -206,7 +215,12 @@ export async function ideaToContent(
       formatTemplateId: opts.formatTemplateId,
       platforms: opts.platforms,
       hook: idea.hook ?? null,
-      concept: idea.concept ?? idea.raw ?? null,
+      concept:
+        idea.concept ??
+        ([idea.situation, idea.tension, idea.twist, idea.payoff].filter(Boolean).join('\n\n') || idea.raw) ??
+        null,
+      ...(idea.pillar ? { pillar: idea.pillar } : {}),
+      ...(idea.durationSec ? { durationTargetSec: idea.durationSec } : {}),
       attributes: {
         ...(idea.cast?.length ? { cast: idea.cast } : {}),
         ...(idea.tone ? { tone: idea.tone } : {}),
@@ -255,8 +269,14 @@ export async function editContent(
   patch: Partial<Content>,
   coalesceKey?: string,
 ): Promise<{ autoProducing: boolean }> {
+  // Writing the script keeps a piece in Script; real production work (shots, exports…) moves it on.
+  const scriptOnly = new Set(['hook', 'concept', 'script']);
   const auto =
-    c.status === 'planned' && !patch.status && Object.keys(patch).some((k) => PRODUCTION_FIELDS.has(k));
+    !patch.status &&
+    Object.keys(patch).some(
+      (k) =>
+        PRODUCTION_FIELDS.has(k) && (c.status === 'planned' || (c.status === 'script' && !scriptOnly.has(k))),
+    );
   await update(s, 'content', c.id, auto ? { ...patch, status: 'producing' } : patch, {
     label: auto ? 'h.editContentProducing' : 'h.editContent',
     ...(coalesceKey && !auto ? { coalesceKey } : {}),
@@ -295,7 +315,7 @@ export async function schedulePublication(
         status: at ? 'scheduled' : 'planned',
         scheduledAt: at,
       });
-    if (at && ['planned', 'producing', 'ready'].includes(c.status))
+    if (at && ['planned', 'script', 'producing', 'ready'].includes(c.status))
       await m.update('content', c.id, { status: 'scheduled' });
   });
 }
@@ -413,14 +433,16 @@ export async function linkRecords(
   fromId: string,
   toType: string,
   toId: string,
-  type: 'references' | 'inspired' | 'evidence' | 'influenced' | 'related' = 'references',
+  type: (typeof LINK_TYPES)[number] = 'references',
+  note?: string,
 ): Promise<void> {
   const existing = (await s.db.links.where('fromId').equals(fromId).toArray()).find(
     (l) => l.toId === toId && l.type === type,
   );
   if (existing && !existing.deletedAt) return;
   if (existing) await update(s, 'links', existing.id, { deletedAt: null });
-  else await create(s, 'links', { fromType, fromId, toType, toId, type }, 'h.link');
+  else
+    await create(s, 'links', { fromType, fromId, toType, toId, type, ...(note ? { note } : {}) }, 'h.link');
 }
 
 export async function unlink(s: Session, linkId: string): Promise<void> {

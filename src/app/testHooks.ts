@@ -29,7 +29,7 @@ export function installTestHooks(): void {
         color: 1,
       }));
       await s.db.projects.bulkPut(projects as never);
-      const statuses = ['planned', 'producing', 'ready', 'scheduled', 'published', 'reviewed'];
+      const statuses = ['planned', 'script', 'producing', 'ready', 'scheduled', 'published', 'reviewed'];
       const ideas = Array.from({ length: n.ideas }, (_, i) => ({
         ...base(),
         id: ulid(),

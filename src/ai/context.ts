@@ -144,7 +144,10 @@ async function load(s: Session) {
     await Promise.all([
       s.db.workspace.get('workspace'),
       s.db.tasks.where('status').anyOf('todo', 'doing').toArray(),
-      s.db.content.where('status').anyOf('planned', 'producing', 'ready', 'scheduled', 'published').toArray(),
+      s.db.content
+        .where('status')
+        .anyOf('planned', 'script', 'producing', 'ready', 'scheduled', 'published')
+        .toArray(),
       s.db.projects.toArray(),
       s.db.publications.toArray(),
       s.db.snapshots.toArray(),
@@ -209,7 +212,7 @@ export async function resolveContext(
       notes.push(t('secretary.note.focused', { handle: pb.handleOf(focus.id) ?? '' }));
     }
     const active = content
-      .filter((c) => ['planned', 'producing', 'ready', 'scheduled'].includes(c.status))
+      .filter((c) => ['planned', 'script', 'producing', 'ready', 'scheduled'].includes(c.status))
       .sort((a, b) => (b._readyPct ?? 0) - (a._readyPct ?? 0));
     for (const c of active.slice(0, 20)) {
       addContent(c);

@@ -136,6 +136,10 @@ export const fmt = {
     ),
   weekdayLong: (d: string | number | Date) =>
     new Intl.DateTimeFormat(current, { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(d)),
+  monthYear: (d: string | number | Date) => {
+    const s = new Intl.DateTimeFormat(current, { month: 'long', year: 'numeric' }).format(new Date(d));
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  },
   time: (d: string | number | Date) =>
     new Intl.DateTimeFormat(current, { hour: '2-digit', minute: '2-digit' }).format(new Date(d)),
   dateTime: (d: string | number | Date) =>

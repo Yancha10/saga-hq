@@ -1,6 +1,6 @@
-import { Link, useNavigate, useParams } from '@tanstack/react-router';
+import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import { ArrowRight, CheckCircle2, ImagePlus, Link2, ListPlus, Pin, Sparkles, Type } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useApp, useIsPhone, useLive, useSession } from '../../app/context';
 import { toast } from '../../app/status';
 import { sectionComplete } from '../../data/derive';
@@ -25,6 +25,7 @@ import {
   TaskRow,
   templateName,
 } from '../common';
+import { SagaSection } from './SagaSection';
 import {
   ConceptSection,
   EditSection,
@@ -74,6 +75,11 @@ export function ContentDetail() {
   const b = useContentBundle(id);
   const [blockOpen, setBlockOpen] = useState(false);
   const [blockReason, setBlockReason] = useState('');
+  const search = useSearch({ strict: false }) as { tab?: string };
+  const loaded = !!b?.content;
+  useEffect(() => {
+    if (loaded && search.tab) openSheetSection(search.tab);
+  }, [loaded, search.tab]);
   if (b === undefined) return <div className="page" aria-busy="true" />;
   if (!b.content)
     return (
@@ -429,6 +435,10 @@ export function ContentDetail() {
       {phone && quickActions}
       <div className="sheet">
         <nav className="sheet-rail" aria-label={t('content.sheet_sections')}>
+          <button type="button" onClick={() => openSheetSection('saga')}>
+            <span className="sec-dot saga" aria-hidden />
+            {t('saga.section')}
+          </button>
           {sections.map((sec) => {
             const done = sectionComplete(sec, derivIn);
             return (
@@ -453,6 +463,7 @@ export function ContentDetail() {
             placeholder={t('common.untitled')}
           />
           {!phone && <div style={{ marginTop: 8 }}>{quickActions}</div>}
+          <SagaSection b={bundle} edit={edit} />
           {sections.includes('concept') && (
             <ConceptSection b={bundle} edit={edit} done={sectionComplete('concept', derivIn)} />
           )}

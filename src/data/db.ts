@@ -104,6 +104,9 @@ export class WorkspaceDB extends Dexie {
   media!: Table<EntityMap['media'], string>;
   learnings!: Table<EntityMap['learnings'], string>;
   links!: Table<EntityMap['links'], string>;
+  chapters!: Table<EntityMap['chapters'], string>;
+  radar!: Table<EntityMap['radar'], string>;
+  sessions!: Table<EntityMap['sessions'], string>;
   tombstones!: Table<Tombstone, string>;
   meta!: Table<MetaRow, string>;
   history!: Table<HistoryEntry, string>;
@@ -142,6 +145,15 @@ export class WorkspaceDB extends Dexie {
       cryptoKeys: 'key',
       secretary: 'id, at',
       uploads: 'id, state',
+    });
+    // v2 (Saga Lai): Bible chapters, cultural radar, AI workshop sessions. Additive only.
+    this.version(2).stores({
+      content: 'id, rev, status, projectId, ideaId, updatedAt, _nextPublishAt, externalId',
+      ideas: 'id, rev, status, projectId, parentIdeaId, updatedAt, externalId',
+      tasks: 'id, rev, status, dueAt, projectId, contentId, ideaId, externalId',
+      chapters: 'id, rev, order, status, externalId',
+      radar: 'id, rev, startDate, verification, projectId, externalId',
+      sessions: 'id, rev, at, contentId',
     });
   }
 

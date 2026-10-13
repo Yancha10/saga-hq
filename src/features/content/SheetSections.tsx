@@ -1,5 +1,17 @@
 import { Link } from '@tanstack/react-router';
-import { Check, ChevronDown, Clipboard, Download, Plus, Send, Trash2, Upload } from 'lucide-react';
+import {
+  ArrowDown,
+  ArrowUp,
+  Check,
+  ChevronDown,
+  Clipboard,
+  Copy,
+  Download,
+  Plus,
+  Send,
+  Trash2,
+  Upload,
+} from 'lucide-react';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { useIsPhone, useLive, useSession } from '../../app/context';
 import { toast } from '../../app/status';
@@ -7,6 +19,7 @@ import { ulid } from '../../core/ulid';
 import { safeHttpUrl } from '../../core/url';
 import { median } from '../../core/util';
 import { logSnapshot, markPublished, schedulePublication } from '../../data/domain';
+import { perReach, shotsDuration } from '../../data/saga';
 import {
   type Content,
   PLATFORMS,
@@ -26,6 +39,17 @@ import { LearningEditor } from '../insights/LearningEditor';
 import { MetricsForm } from '../insights/MetricsForm';
 import { StudioHandoffSheet } from '../studio/StudioHandoffSheet';
 import type { Bundle } from './ContentDetail';
+
+const SHOT_DIRECTION = [
+  'timeLabel',
+  'character',
+  'camera',
+  'framing',
+  'movement',
+  'light',
+  'sound',
+  'continuityObject',
+] as const;
 
 type Edit = (patch: Partial<Content>, key?: string) => Promise<void>;
 type SecKey = SheetSection | 'results';
@@ -222,6 +246,35 @@ export function GenerateSection({ b, edit, done }: { b: Bundle; edit: Edit; done
       { shots: (c.shots ?? []).map((x) => (x.id === id ? { ...x, ...patch, rev: s.hlc.now() } : x)) },
       `shot:${id}:${Object.keys(patch).join()}`,
     );
+  const carousel = c.formatTemplateId === 'carousel';
+  const dur = shotsDuration(c);
+  const move = (id: string, dir: -1 | 1) => {
+    const i = shots.findIndex((x) => x.id === id);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= shots.length) return;
+    const a = shots[i]!;
+    const z = shots[j]!;
+    void edit({
+      shots: (c.shots ?? []).map((x) =>
+        x.id === a.id
+          ? { ...x, order: z.order, rev: s.hlc.now() }
+          : x.id === z.id
+            ? { ...x, order: a.order, rev: s.hlc.now() }
+            : x,
+      ),
+    });
+  };
+  const duplicate = (sh: Shot) => {
+    const later = shots.filter((x) => x.order > sh.order);
+    void edit({
+      shots: [
+        ...(c.shots ?? []).map((x) =>
+          later.some((l) => l.id === x.id) ? { ...x, order: x.order + 1, rev: s.hlc.now() } : x,
+        ),
+        { ...sh, id: ulid(), order: sh.order + 1, status: 'todo', selectedOutput: null, rev: s.hlc.now() },
+      ],
+    });
+  };
   const addShot = () =>
     edit({
       shots: [
@@ -259,6 +312,17 @@ export function GenerateSection({ b, edit, done }: { b: Bundle; edit: Edit; done
             rows={2}
           />
         </div>
+        {shots.length > 0 && !carousel && (
+          <div
+            className={`duration-check ${c.durationTargetSec && dur.total > c.durationTargetSec ? 'over' : ''}`}
+          >
+            {t('saga.duration_sum', { total: fmt.num(dur.total), count: dur.shots })}
+            {c.durationTargetSec
+              ? ` · ${t('saga.duration_vs', { target: fmt.num(c.durationTargetSec) })}`
+              : ''}
+            <span className="meta"> · {t('saga.duration_note')}</span>
+          </div>
+        )}
         {shots.length === 0 ? (
           <div className="hstack">
             <span className="meta">{t('sheet.shots_hint')}</span>
@@ -271,7 +335,12 @@ export function GenerateSection({ b, edit, done }: { b: Bundle; edit: Edit; done
             {shots.map((sh, i) => (
               <div key={sh.id} className="box">
                 <div className="hstack">
-                  <strong>{t('sheet.shot_n', { n: String(i + 1).padStart(2, '0') })}</strong>
+                  <strong>
+                    {carousel
+                      ? t('saga.slide_n', { n: i + 1 })
+                      : t('sheet.shot_n', { n: String(i + 1).padStart(2, '0') })}
+                  </strong>
+                  {sh.timeLabel && !carousel && <span className="tag">{sh.timeLabel}</span>}
                   <select
                     className="select"
                     style={{ width: 130, minHeight: 28 }}
@@ -286,6 +355,29 @@ export function GenerateSection({ b, edit, done }: { b: Bundle; edit: Edit; done
                     ))}
                   </select>
                   <span className="spacer" />
+                  <IconButton
+                    label={t('saga.shot_up', { n: i + 1 })}
+                    size="sm"
+                    disabled={i === 0}
+                    onClick={() => move(sh.id, -1)}
+                  >
+                    <ArrowUp size={14} />
+                  </IconButton>
+                  <IconButton
+                    label={t('saga.shot_down', { n: i + 1 })}
+                    size="sm"
+                    disabled={i === shots.length - 1}
+                    onClick={() => move(sh.id, 1)}
+                  >
+                    <ArrowDown size={14} />
+                  </IconButton>
+                  <IconButton
+                    label={t('saga.shot_duplicate', { n: i + 1 })}
+                    size="sm"
+                    onClick={() => duplicate(sh)}
+                  >
+                    <Copy size={14} />
+                  </IconButton>
                   <Button size="sm" variant="ghost" onClick={() => setHandoff(sh)}>
                     <Send size={13} /> {t('studio.short')}
                   </Button>
@@ -320,20 +412,37 @@ export function GenerateSection({ b, edit, done }: { b: Bundle; edit: Edit; done
                       ariaLabel={t('sheet.shot_dialogue', { n: i + 1 })}
                     />
                   </div>
-                  <div className="field">
-                    <span className="lbl">{t('content.duration_s')}</span>
-                    <input
-                      type="number"
-                      min={0}
-                      className="input"
-                      value={sh.durationSec ?? ''}
-                      aria-label={t('sheet.shot_duration', { n: i + 1 })}
-                      onChange={(e) =>
-                        void setShot(sh.id, { durationSec: e.target.value ? Number(e.target.value) : null })
-                      }
-                    />
-                  </div>
+                  {!carousel && (
+                    <div className="field">
+                      <span className="lbl">{t('content.duration_s')}</span>
+                      <input
+                        type="number"
+                        min={0}
+                        className="input"
+                        value={sh.durationSec ?? ''}
+                        aria-label={t('sheet.shot_duration', { n: i + 1 })}
+                        onChange={(e) =>
+                          void setShot(sh.id, { durationSec: e.target.value ? Number(e.target.value) : null })
+                        }
+                      />
+                    </div>
+                  )}
                 </div>
+                <details className="shot-direction">
+                  <summary className="meta">{t('saga.shot_direction')}</summary>
+                  <div className="form-grid">
+                    {SHOT_DIRECTION.map((k) => (
+                      <div key={k} className="field">
+                        <span className="lbl">{t(`shot.f.${k}`)}</span>
+                        <AutoText
+                          value={(sh as Record<string, unknown>)[k] as string | null | undefined}
+                          onSave={(v) => setShot(sh.id, { [k]: v || null } as Partial<Shot>)}
+                          ariaLabel={`${t(`shot.f.${k}`)} · ${i + 1}`}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </details>
                 <div className="field">
                   <span className="lbl">{t('sheet.prompt')}</span>
                   <AutoText
@@ -787,17 +896,36 @@ export function ResultsSection({ b }: { b: Bundle }) {
                           {[...new Set(snaps.flatMap((x) => Object.keys(x.metrics)))].map((k) => (
                             <th key={k}>{t(`metric.${k}`)}</th>
                           ))}
+                          <th title={t('ratio.shares_hint')}>{t('ratio.shares')}</th>
+                          <th title={t('ratio.saves_hint')}>{t('ratio.saves')}</th>
                         </tr>
                       </thead>
                       <tbody>
                         {snaps.map((x) => (
                           <tr key={x.id}>
-                            <td>{x.checkpoint ?? `${Math.round(x.ageHours)}h`}</td>
+                            <td>
+                              {x.checkpoint ?? t('ratio.no_window')}
+                              <div className="meta">
+                                {fmt.date(x.observedAt)} · {t(`snapshot.source.${x.source}`)}
+                              </div>
+                            </td>
                             {[...new Set(snaps.flatMap((y) => Object.keys(y.metrics)))].map((k) => (
                               <td key={k} className="num">
                                 {x.metrics[k] !== undefined ? fmt.num(x.metrics[k]!) : '—'}
                               </td>
                             ))}
+                            {(['shares', 'saves'] as const).map((k) => {
+                              const r = perReach(x.metrics[k], x.metrics.reach);
+                              return (
+                                <td key={k} className="num">
+                                  {r === null ? (
+                                    <span className="meta">{t('ratio.no_data')}</span>
+                                  ) : (
+                                    `${fmt.num(r, { maximumFractionDigits: 1 })} %`
+                                  )}
+                                </td>
+                              );
+                            })}
                           </tr>
                         ))}
                       </tbody>

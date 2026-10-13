@@ -4,6 +4,7 @@ import {
   ChevronRight,
   Cloud,
   DatabaseBackup,
+  FileUp,
   HardDrive,
   History,
   Info,
@@ -55,12 +56,15 @@ import { syncStatus } from '../../sync/runner';
 import { Button, Confirm, Section, Sheet } from '../../ui/kit';
 import { PageHeader } from '../../ui/PageHeader';
 import { downloadText, PlatformPicker, templateName } from '../common';
+import { ImportPackageSec } from './ImportPackage';
 import { LanguageSelect } from './LanguageSelect';
+import { PlanningPrefs } from './PlanningPrefs';
 
 const SECTIONS = [
   'workspace',
   'language',
   'account',
+  'import',
   'storage',
   'backup',
   'recovery',
@@ -76,6 +80,7 @@ const SEC_ICON: Record<Sec, LucideIcon> = {
   workspace: SlidersHorizontal,
   language: Languages,
   account: Cloud,
+  import: FileUp,
   storage: HardDrive,
   backup: DatabaseBackup,
   recovery: History,
@@ -90,7 +95,7 @@ const SEC_ICON: Record<Sec, LucideIcon> = {
 const PHONE_GROUPS: Sec[][] = [
   ['account', 'workspace', 'language'],
   ['ai', 'integrations'],
-  ['backup', 'recovery', 'storage', 'trash'],
+  ['import', 'backup', 'recovery', 'storage', 'trash'],
   ['diagnostics', 'about'],
 ];
 
@@ -157,6 +162,7 @@ export function SettingsPage() {
           {sec === 'workspace' && <WorkspaceSec />}
           {sec === 'language' && <LanguageSec />}
           {sec === 'account' && <AccountSec />}
+          {sec === 'import' && <ImportPackageSec />}
           {sec === 'storage' && <StorageSec />}
           {sec === 'backup' && <BackupSec />}
           {sec === 'recovery' && <RecoverySec />}
@@ -257,6 +263,7 @@ function WorkspaceSec() {
           {t('settings.scoring_label')}
         </label>
       </Section>
+      <PlanningPrefs />
     </>
   );
 }

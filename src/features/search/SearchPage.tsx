@@ -17,11 +17,15 @@ const route = (h: SearchHit) =>
           ? `/library/${h.id}`
           : h.type === 'learnings'
             ? `/learnings/${h.id}`
-            : h.type === 'captures'
-              ? '/inbox'
-              : h.type === 'events'
-                ? '/calendar'
-                : '/tasks';
+            : h.type === 'chapters'
+              ? `/bible/${h.id}`
+              : h.type === 'radar'
+                ? '/radar'
+                : h.type === 'captures'
+                  ? '/inbox'
+                  : h.type === 'events'
+                    ? '/calendar'
+                    : '/tasks';
 
 export function SearchPage() {
   useT();

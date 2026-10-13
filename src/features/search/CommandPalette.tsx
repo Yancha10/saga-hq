@@ -1,19 +1,24 @@
 import { useNavigate } from '@tanstack/react-router';
 import {
+  BookMarked,
   BookOpen,
   CalendarDays,
+  CalendarRange,
   CheckSquare,
   Clapperboard,
+  FileUp,
   FolderKanban,
   Inbox,
   Lightbulb,
   LineChart,
   Moon,
   Plus,
+  Radar,
   Search,
   Settings,
   Sparkles,
   Sun,
+  Wand2,
 } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { Dialog, Modal, ModalOverlay } from 'react-aria-components';
@@ -31,7 +36,11 @@ const statusText = (type: string, st: string): string =>
         ? t(`task.status.${st}`)
         : type === 'projects'
           ? t(`project.status.${st}`)
-          : st;
+          : type === 'chapters'
+            ? t(`chapter.status.${st}`)
+            : type === 'radar'
+              ? ''
+              : st;
 
 interface Opt {
   id: string;
@@ -57,11 +66,15 @@ const routeFor = (h: SearchHit): string =>
           ? `/library/${h.id}`
           : h.type === 'learnings'
             ? `/learnings/${h.id}`
-            : h.type === 'captures'
-              ? '/inbox'
-              : h.type === 'events'
-                ? '/calendar'
-                : '/tasks';
+            : h.type === 'chapters'
+              ? `/bible/${h.id}`
+              : h.type === 'radar'
+                ? '/radar'
+                : h.type === 'captures'
+                  ? '/inbox'
+                  : h.type === 'events'
+                    ? '/calendar'
+                    : '/tasks';
 
 /** ⌘K: go to, create, capture, search everything, ask the Secretary. Fully keyboard driven. */
 export function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -90,7 +103,8 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
 
   const go = (to: string) => () => {
     onClose();
-    void navigate({ to });
+    const [path, qs] = to.split('?');
+    void navigate({ to: path!, ...(qs ? { search: Object.fromEntries(new URLSearchParams(qs)) } : {}) });
   };
   const opts: Opt[] = useMemo(() => {
     const ql = q.toLowerCase();
@@ -200,6 +214,11 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
         ['g-cal', '/calendar', <CalendarDays key="i" size={15} />, 'G A', 'nav.calendar'],
         ['g-lib', '/library', <BookOpen key="i" size={15} />, 'G L', 'nav.library'],
         ['g-ins', '/insights', <LineChart key="i" size={15} />, 'G N', 'nav.insights'],
+        ['g-week', '/week', <CalendarRange key="i" size={15} />, 'G W', 'nav.week'],
+        ['g-work', '/workshop', <Wand2 key="i" size={15} />, 'G O', 'nav.workshop'],
+        ['g-bible', '/bible', <BookMarked key="i" size={15} />, 'G B', 'nav.bible'],
+        ['g-radar', '/radar', <Radar key="i" size={15} />, 'G R', 'nav.radar'],
+        ['g-import', '/settings?section=import', <FileUp key="i" size={15} />, '', 'import.title'],
         ['g-tasks', '/tasks', <CheckSquare key="i" size={15} />, 'G K', 'nav.tasks_all'],
         ['g-set', '/settings', <Settings key="i" size={15} />, 'G S', 'nav.settings'],
         ['g-search', '/search', <Search key="i" size={15} />, '', 'search.everything'],

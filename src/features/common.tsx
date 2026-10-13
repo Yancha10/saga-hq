@@ -372,6 +372,26 @@ export function TaskEditor({ open, onClose, task }: { open: boolean; onClose: ()
           onChange={(v) => void update(s, 'tasks', task.id, { projectId: v })}
         />
       </div>
+      <div className="form-grid">
+        <div className="field">
+          <span className="lbl">{t('task.category')}</span>
+          <AutoText
+            value={task.category}
+            onSave={(v) => update(s, 'tasks', task.id, { category: v || null })}
+            ariaLabel={t('task.category')}
+          />
+        </div>
+        <div className="field">
+          <span className="lbl">{t('task.assignee')}</span>
+          <AutoText
+            value={task.assignee}
+            onSave={(v) => update(s, 'tasks', task.id, { assignee: v || null })}
+            ariaLabel={t('task.assignee')}
+          />
+        </div>
+      </div>
+      <TaskChecklist task={task} />
+      <TaskDependencies task={task} />
       {task.kind === 'decision' && (
         <div className="field">
           <span className="lbl">{t('task.resolution')}</span>
@@ -397,6 +417,131 @@ export function TaskEditor({ open, onClose, task }: { open: boolean; onClose: ()
         />
       </div>
     </Sheet>
+  );
+}
+
+function TaskChecklist({ task }: { task: Task }) {
+  const { t } = useT();
+  const s = useSession();
+  const [text, setText] = useState('');
+  const items = task.checklist ?? [];
+  const save = (next: NonNullable<Task['checklist']>) =>
+    update(s, 'tasks', task.id, { checklist: next }, { coalesceKey: `t:${task.id}:cl` });
+  return (
+    <div className="field">
+      <span className="lbl">
+        {t('task.checklist')}
+        {items.length ? ` · ${items.filter((i) => i.done).length}/${items.length}` : ''}
+      </span>
+      <ul className="check-list">
+        {items.map((i) => (
+          <li key={i.id} className="hstack">
+            <label className="check grow">
+              <input
+                type="checkbox"
+                checked={i.done}
+                onChange={(e) =>
+                  void save(items.map((x) => (x.id === i.id ? { ...x, done: e.target.checked } : x)))
+                }
+              />{' '}
+              {i.text}
+            </label>
+            <IconButton
+              size="sm"
+              label={t('common.remove')}
+              onClick={() => void save(items.filter((x) => x.id !== i.id))}
+            >
+              <X size={13} />
+            </IconButton>
+          </li>
+        ))}
+      </ul>
+      <input
+        className="input"
+        value={text}
+        placeholder={t('task.checklist_add')}
+        aria-label={t('task.checklist_add')}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && text.trim()) {
+            void save([
+              ...items,
+              { id: Math.random().toString(36).slice(2, 10), text: text.trim().slice(0, 500), done: false },
+            ]);
+            setText('');
+          }
+        }}
+      />
+    </div>
+  );
+}
+
+function TaskDependencies({ task }: { task: Task }) {
+  const { t } = useT();
+  const s = useSession();
+  const others = useLive(
+    (ss) =>
+      ss.db.tasks
+        .filter(
+          (x) =>
+            !x.deletedAt &&
+            x.id !== task.id &&
+            (x.status !== 'done' || (task.dependsOn ?? []).includes(x.id)),
+        )
+        .limit(300)
+        .toArray(),
+    [task.id],
+    [] as Task[],
+  );
+  const deps = task.dependsOn ?? [];
+  const open = others.filter((x) => deps.includes(x.id) && x.status !== 'done');
+  return (
+    <div className="field">
+      <span className="lbl">{t('task.depends_on')}</span>
+      {deps.length > 0 && (
+        <ul className="check-list">
+          {others
+            .filter((x) => deps.includes(x.id))
+            .map((x) => (
+              <li key={x.id} className="hstack">
+                <span className="grow">
+                  {x.status === 'done' ? '✓ ' : '○ '}
+                  {x.title}
+                </span>
+                <IconButton
+                  size="sm"
+                  label={t('common.remove')}
+                  onClick={() =>
+                    void update(s, 'tasks', task.id, { dependsOn: deps.filter((d) => d !== x.id) })
+                  }
+                >
+                  <X size={13} />
+                </IconButton>
+              </li>
+            ))}
+        </ul>
+      )}
+      {open.length > 0 && (
+        <div className="meta warn-text">{t('task.waiting_on', { count: open.length })}</div>
+      )}
+      <select
+        className="select"
+        value=""
+        aria-label={t('task.add_dependency')}
+        onChange={(e) =>
+          e.target.value && void update(s, 'tasks', task.id, { dependsOn: [...deps, e.target.value] })
+        }
+      >
+        <option value="">{t('task.add_dependency')}</option>
+        {others
+          .filter((x) => !deps.includes(x.id) && x.status !== 'done')
+          .map((x) => (
+            <option key={x.id} value={x.id}>
+              {x.title.slice(0, 80)}
+            </option>
+          ))}
+      </select>
+    </div>
   );
 }
 

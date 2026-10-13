@@ -9,7 +9,8 @@ import { SCHEMA_VERSION } from './schema';
  * (Session.open refuses them), so an old client can never overwrite newer data.
  */
 export const MIGRATIONS: Record<number, (s: Session) => Promise<void>> = {
-  // 2: async (s) => { ... }  // example: backfill a new optional field with a default
+  // 2 (Saga Lai): new optional fields and tables only — nothing to rewrite.
+  2: async () => {},
 };
 
 export async function runMigrations(s: Session, from: number): Promise<number> {

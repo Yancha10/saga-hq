@@ -20,6 +20,7 @@ import { Button, Empty, IconButton, Section, Sheet } from '../../ui/kit';
 import { PageHeader } from '../../ui/PageHeader';
 import { useNow } from '../common';
 import { MetricsForm } from '../insights/MetricsForm';
+import { NextPiece } from './NextPiece';
 import { Onboarding } from './Onboarding';
 
 const CAP = 5;
@@ -33,7 +34,7 @@ function useToday(now: number): TodayModel | null {
           s.db.tasks.where('status').anyOf('todo', 'doing').toArray(),
           s.db.content
             .where('status')
-            .anyOf('planned', 'producing', 'ready', 'scheduled', 'published')
+            .anyOf('planned', 'script', 'producing', 'ready', 'scheduled', 'published')
             .toArray(),
           s.db.projects.toArray(),
           s.db.publications
@@ -223,6 +224,7 @@ export function TodayPage() {
           </Link>
         </nav>
       )}
+      {ws?.onboardedAt && <NextPiece now={now} />}
       <div className="today-grid">
         <div>
           <Section

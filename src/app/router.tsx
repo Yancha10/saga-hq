@@ -72,6 +72,26 @@ const routeTree = root.addChildren([
     lazyRouteComponent(() => import('../features/insights/LearningDetail'), 'LearningDetail'),
   ),
   r(
+    '/week',
+    lazyRouteComponent(() => import('../features/week/WeekPage'), 'WeekPage'),
+  ),
+  r(
+    '/workshop',
+    lazyRouteComponent(() => import('../features/workshop/WorkshopPage'), 'WorkshopPage'),
+  ),
+  r(
+    '/bible',
+    lazyRouteComponent(() => import('../features/bible/BiblePage'), 'BiblePage'),
+  ),
+  r(
+    '/bible/$id',
+    lazyRouteComponent(() => import('../features/bible/BiblePage'), 'ChapterPage'),
+  ),
+  r(
+    '/radar',
+    lazyRouteComponent(() => import('../features/radar/RadarPage'), 'RadarPage'),
+  ),
+  r(
     '/search',
     lazyRouteComponent(() => import('../features/search/SearchPage'), 'SearchPage'),
   ),

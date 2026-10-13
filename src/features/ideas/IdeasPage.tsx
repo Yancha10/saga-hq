@@ -10,7 +10,15 @@ import { Button, Empty, Pill, Tabs } from '../../ui/kit';
 import { PageHeader } from '../../ui/PageHeader';
 import { ProjectSelect, useProjects } from '../common';
 
-type Filter = 'active' | 'shortlisted' | 'new' | 'parked' | 'committed' | 'archived';
+type Filter =
+  | 'active'
+  | 'shortlisted'
+  | 'new'
+  | 'parked'
+  | 'committed'
+  | 'archived'
+  | 'favorites'
+  | 'emergency';
 const PAGE = 100;
 
 export function IdeasPage() {
@@ -37,7 +45,11 @@ export function IdeasPage() {
     if (i.archivedAt) return false;
     if (i.parentIdeaId && filter === 'active') return false;
     if (filter === 'active' && (i.status === 'parked' || i.status === 'committed')) return false;
-    if (filter !== 'active' && i.status !== filter) return false;
+    if (filter === 'favorites') {
+      if (!i.favorite) return false;
+    } else if (filter === 'emergency') {
+      if (!i.emergency) return false;
+    } else if (filter !== 'active' && i.status !== filter) return false;
     if (project && i.projectId !== project) return false;
     if (q && !`${i.title} ${i.hook ?? ''} ${i.raw ?? ''}`.toLowerCase().includes(q.toLowerCase()))
       return false;
@@ -66,6 +78,8 @@ export function IdeasPage() {
             { value: 'new', label: t('ideas.filter.new') },
             { value: 'committed', label: t('ideas.filter.committed') },
             { value: 'parked', label: t('ideas.filter.parked') },
+            { value: 'favorites', label: t('ideas.filter.favorites') },
+            { value: 'emergency', label: t('ideas.filter.emergency') },
             { value: 'archived', label: t('ideas.filter.archived') },
           ]}
         />
@@ -114,12 +128,15 @@ export function IdeasPage() {
             <Link key={i.id} to="/ideas/$id" params={{ id: i.id }} className="row">
               <div className="grow">
                 <div className="title">
+                  {i.favorite ? '♥ ' : ''}
                   {i.status === 'shortlisted' ? '★ ' : ''}
                   {i.title || t('ideas.untitled')}
                 </div>
                 <div className="sub">
                   {[
+                    i.emergency && t('idea.emergency'),
                     i.hook,
+                    i.pillar,
                     i.projectId && pName.get(i.projectId),
                     i.format,
                     i.variantLabel && t('ideas.variant_of', { label: i.variantLabel }),

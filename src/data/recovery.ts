@@ -10,7 +10,14 @@ const KEEP = 7;
 
 export async function createRecoveryPoint(
   s: Session,
-  reason: 'import_local' | 'upgrade' | 'restore_point' | 'restore_backup' | 'merge_backup' | 'sync_merge',
+  reason:
+    | 'import_local'
+    | 'import_package'
+    | 'upgrade'
+    | 'restore_point'
+    | 'restore_backup'
+    | 'merge_backup'
+    | 'sync_merge',
   reasonParams?: Record<string, string | number>,
 ): Promise<RecoveryPoint> {
   const data = await serializeWorkspace(s.db);

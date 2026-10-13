@@ -5,7 +5,7 @@ import { platformName } from '../../i18n/render';
 import { COMMON_METRICS } from '../../rules/analytics';
 import { Button } from '../../ui/kit';
 
-const PRIMARY = ['views', 'likes', 'comments', 'shares', 'saves'];
+const PRIMARY = ['reach', 'views', 'likes', 'comments', 'shares', 'saves'];
 
 /** Quick manual entry. Only fill what the platform shows; nothing is required. */
 export function MetricsForm({
