@@ -47,3 +47,13 @@ Switching is instant and never touches workspace data, Drive files, backups or S
 See [`docs/i18n-glossary.md`](docs/i18n-glossary.md) for the architecture, the rules for adding
 strings and the Spanish glossary. CI guards parity, missing keys, plurals and hard-coded strings
 (`tests/unit/i18n.test.ts`) and runs Spanish browser flows (`e2e/i18n*.spec.ts`).
+
+## Cómo se publica (una sola vez)
+
+1. GitHub → repo `saga-hq` → **Settings → General → Default branch** → cambia a `main` → *Update*.
+2. **Settings → Pages** → Source: **GitHub Actions**.
+3. Listo: cada cambio que llega a `main` se prueba, se compila y se publica solo en
+   `https://<tu-usuario>.github.io/saga-hq/` (pestaña **Actions** para ver el progreso).
+
+Google Drive es opcional: crea un cliente OAuth (ver `docs/deploy.md`) y guarda su Client ID como variable
+del repositorio `VITE_GOOGLE_CLIENT_ID` (Settings → Secrets and variables → Actions → Variables).

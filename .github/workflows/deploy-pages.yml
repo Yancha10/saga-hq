@@ -1,8 +1,11 @@
-# Initial personal/dev deployment to GitHub Pages. MANUAL ONLY (workflow_dispatch) — never on push.
+# Personal deployment to GitHub Pages: every push to main is tested, built and published; can also be run by hand.
+# One-time setup: Settings › Pages › Source: "GitHub Actions" (and main as the default branch).
 # Host-specific files (.nojekyll) are added here, not in the application (host neutrality, revision 3).
-# Requires: repository variable VITE_GOOGLE_CLIENT_ID (public OAuth client id of the DEV Google project).
-name: Deploy (GitHub Pages, dev)
+# Optional: repository variable VITE_GOOGLE_CLIENT_ID (public OAuth client id). Empty = local workspaces only.
+name: Deploy (GitHub Pages)
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read

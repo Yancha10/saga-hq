@@ -12,8 +12,10 @@ same artifact runs at `/` or any subpath on any static host. No server, database
 
 ## GitHub Pages (initial personal/dev deployment)
 1. Free GitHub plans serve Pages only from **public** repositories. The repo contains no secrets (OAuth client ids are public).
-2. Settings › Pages › Source: *GitHub Actions*. Add repository variable `VITE_GOOGLE_CLIENT_ID` (dev client).
-3. Run the **Deploy (GitHub Pages, dev)** workflow manually. It adds `.nojekyll` (host-specific file) in the job.
+2. Settings › General › Default branch: `main`. Settings › Pages › Source: *GitHub Actions*.
+   Optionally add the repository variable `VITE_GOOGLE_CLIENT_ID`.
+3. Every push to `main` runs the **Deploy (GitHub Pages)** workflow (tests, build, publish). It can also be run by
+   hand from the Actions tab. It adds `.nojekyll` (host-specific file) in the job.
 4. Recommended: host under a free GitHub **organization** so the origin differs from Saga Studio's (storage/XSS isolation).
 
 ## Cloudflare Pages (zero-cost fallback; allows commercial use / private repos)
