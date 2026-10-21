@@ -252,6 +252,7 @@ test('Saga Lai screens fit phone widths', async ({ page }) => {
       '#/more',
       '#/settings?section=import',
       '#/settings?section=voice',
+      '#/settings?section=plan',
     ]) {
       await go(page, hash);
       await page.waitForTimeout(300);
@@ -319,4 +320,20 @@ test('Quick capture page sends the text a Shortcut passes in #t= once, without a
   await page.reload();
   await page.waitForTimeout(500);
   expect(sent).toHaveLength(1);
+});
+
+test('Plan: pause everything, see it on Today, resume; reminders section passes axe', async ({ page }) => {
+  await start(page);
+  await go(page, '#/settings?section=plan');
+  await expect(page.getByRole('heading', { name: 'Pausar el plan' })).toBeVisible();
+  await expect(page.getByRole('checkbox', { name: /Si algo se retrasa/ })).toBeChecked();
+  const r = await new AxeBuilder({ page: page as never }).withTags(['wcag2a', 'wcag2aa']).analyze();
+  expect(r.violations.map((v) => v.id)).toEqual([]);
+  await page.getByRole('button', { name: 'Pausar todo el plan' }).click();
+  await page.getByRole('button', { name: 'Pausar', exact: true }).click();
+  await expect(page.getByText(/En pausa desde/).first()).toBeVisible();
+  await go(page, '#/');
+  await expect(page.getByRole('heading', { name: 'Plan en pausa' })).toBeVisible();
+  await page.getByRole('button', { name: /Reanudar/ }).click();
+  await expect(page.getByRole('heading', { name: 'Plan en pausa' })).toHaveCount(0);
 });

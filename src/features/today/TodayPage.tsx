@@ -20,6 +20,7 @@ import { Button, Empty, IconButton, Section, Sheet } from '../../ui/kit';
 import { PageHeader } from '../../ui/PageHeader';
 import { useNow } from '../common';
 import { MetricsForm } from '../insights/MetricsForm';
+import { PlanToday } from '../plan/Plan';
 import { Arrivals } from './Arrivals';
 import { NextPiece } from './NextPiece';
 import { Onboarding } from './Onboarding';
@@ -225,6 +226,7 @@ export function TodayPage() {
           </Link>
         </nav>
       )}
+      <PlanToday now={now} />
       <Arrivals now={now} />
       {ws?.onboardedAt && <NextPiece now={now} />}
       <div className="today-grid">

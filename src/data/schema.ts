@@ -101,6 +101,10 @@ export const workspaceSchema = z.looseObject({
   voiceKey: opt(z.string().max(80)),
   voiceUrl: opt(z.string().max(500)),
   voiceVerifiedAt: opt(iso),
+  /** Whole plan on hold since this instant; resuming moves pending dates forward by the days paused. */
+  planPausedAt: opt(iso),
+  /** Overdue work slides forward with everything after it (default on). */
+  autoReschedule: z.boolean().optional(),
 });
 
 export const PROJECT_KINDS = ['project', 'series', 'campaign', 'season'] as const;
@@ -124,6 +128,8 @@ export const projectSchema = z.looseObject({
   budget: opt(z.string().max(500)),
   continuity: opt(z.string().max(50000)),
   externalId: opt(z.string().max(120)),
+  /** When the project was paused (status 'paused'); resuming moves its pending dates by the days paused. */
+  pausedAt: opt(iso),
 });
 
 const score = z.object({

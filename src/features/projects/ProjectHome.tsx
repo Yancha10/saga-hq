@@ -2,6 +2,8 @@ import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import { Sparkles, Star } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useApp, useLive, useSession } from '../../app/context';
+import { toast } from '../../app/status';
+import { pausePlan, resumePlan } from '../../data/plan';
 import {
   CONTENT_STATUSES,
   type Content,
@@ -369,7 +371,16 @@ export function ProjectHome() {
                     id="pst"
                     className="select"
                     value={p.status}
-                    onChange={(e) => void up({ status: e.target.value as Project['status'] })}
+                    onChange={(e) => {
+                      const next = e.target.value as Project['status'];
+                      // Pausing remembers the day; resuming moves the project's pending dates by the days paused.
+                      if (next === 'paused') void pausePlan(s, p.id);
+                      else if (p.status === 'paused' && next === 'active')
+                        void resumePlan(s, p.id).then(
+                          (n) => n && toast(t('plan.project_resumed', { count: n })),
+                        );
+                      else void up({ status: next, pausedAt: null } as never);
+                    }}
                   >
                     <option value="active">{t('project.status.active')}</option>
                     <option value="paused">{t('project.status.paused')}</option>

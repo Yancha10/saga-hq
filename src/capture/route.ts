@@ -199,7 +199,7 @@ function radarPeriod(text: string): Route['period'] | undefined {
 }
 
 /** Structured block that ChatGPT/Claude are asked to end ideas with. */
-function parseBlock(text: string): Route | null {
+function parseBlock(text: string, now: Date): Route | null {
   const m = text.match(/\[SAGA\]([\s\S]*?)(\[\/SAGA\]|$)/i);
   if (!m) return null;
   const kv: Record<string, string> = {};
@@ -227,7 +227,7 @@ function parseBlock(text: string): Route | null {
   if (kv.giro ?? kv.twist) r.twist = (kv.giro ?? kv.twist)!;
   if (kv.remate ?? kv.payoff) r.payoff = (kv.remate ?? kv.payoff)!;
   if (when && kind === 'task') {
-    const w = /^\d{4}-\d{2}-\d{2}/.test(when) ? { date: when.slice(0, 10) } : parseWhen(when);
+    const w = /^\d{4}-\d{2}-\d{2}/.test(when) ? { date: when.slice(0, 10) } : parseWhen(when, now);
     if (w.date) r.due = w.date;
   }
   if (when && kind === 'radar') r.period = { text: when, ...parsePeriod(when) };
@@ -236,7 +236,7 @@ function parseBlock(text: string): Route | null {
 
 export function routeText(input: string, now = new Date()): Route {
   const text = input.replace(/\r\n?/g, '\n').trim();
-  const block = parseBlock(text);
+  const block = parseBlock(text, now);
   if (block) return block;
 
   const v = text.match(VARIANT_RE);

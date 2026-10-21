@@ -54,3 +54,10 @@ item id, so several devices converge without duplicates. The capture key (it onl
 the inbox) is shared by the user's devices through the workspace; the settings page can adopt the
 key shown in the script if they ever diverge. The script prunes items older
 than 60 days. The app keeps only the `drive.file` scope.
+
+## Plan keeper: pause, late work and reminders
+
+- **Pause** (Settings › Plan & reminders, or a project's Status › Paused): nothing counts as late while paused. Resuming moves every pending date from the pause day on forward by the days paused. A project paused on its own keeps its own pause.
+- **Late work slides** (on by default): when an unfinished task or planned piece is overdue, it moves to today and everything after it in the same root project moves by the same number of days (spacing kept). Loose items only move themselves. Today shows what moved, with Undo (undo also stops sliding for the rest of that day). On synced workspaces it runs only after this device has pulled the latest changes.
+- **Never moved:** fixed-date tasks (hard deadline), deadlines and external events, Radar dates, platform-scheduled or published pieces.
+- **Big events:** milestones, deadlines and external events, Radar dates (not discarded) and fixed-date tasks. Today lists those in the next 14 days. Reminders 14 and 7 days before: as system notifications while the app is open (permission needed; iOS requires the home-screen app), and as Calendar alerts through the .ics export, which work with the app closed.

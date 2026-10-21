@@ -469,6 +469,8 @@ export interface IcsItem {
   description?: string;
   url?: string;
   updatedAt?: string;
+  /** Calendar alerts this many days before (all-day items: at 9:00 that morning). */
+  alarms?: number[];
 }
 /** RFC 5545 calendar. Times are written in `tz` (with its VTIMEZONE) when known, else in UTC. */
 export function buildIcs(items: IcsItem[], tz: string, name: string): string {
@@ -508,6 +510,13 @@ export function buildIcs(items: IcsItem[], tz: string, name: string): string {
       `SUMMARY:${icsEsc(it.title)}`,
       ...(it.description ? [`DESCRIPTION:${icsEsc(it.description)}`] : []),
       ...(it.url ? [`URL:${it.url.replace(/[\r\n]/g, '')}`] : []),
+      ...(it.alarms ?? []).flatMap((n) => [
+        'BEGIN:VALARM',
+        'ACTION:DISPLAY',
+        `DESCRIPTION:${icsEsc(it.title)}`,
+        it.allDay ? `TRIGGER:-PT${n * 24 - 9}H` : `TRIGGER:-P${n}D`,
+        'END:VALARM',
+      ]),
       'END:VEVENT',
     );
   }

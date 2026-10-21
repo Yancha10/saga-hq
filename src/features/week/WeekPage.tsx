@@ -12,7 +12,7 @@ import { useMemo, useState } from 'react';
 import { useLive, useSession } from '../../app/context';
 import { toast } from '../../app/status';
 import { schedulePublication, toggleTask } from '../../data/domain';
-import { buildIcs, capacityOf, nextActionFor, publicationIcsItems, workspaceTz } from '../../data/saga';
+import { capacityOf, nextActionFor } from '../../data/saga';
 import type { Content, HQEvent, Publication, Task, Workspace } from '../../data/schema';
 import { update } from '../../data/store';
 import { fmt, t, useT } from '../../i18n';
@@ -20,7 +20,8 @@ import { platformName } from '../../i18n/render';
 import { addDays, DAY, sameDay, startOfWeek } from '../../rules/time';
 import { Button, IconButton, Pill } from '../../ui/kit';
 import { PageHeader } from '../../ui/PageHeader';
-import { contentTitle, downloadText } from '../common';
+import { contentTitle } from '../common';
+import { downloadPlanIcs } from '../plan/Plan';
 
 interface Data {
   ws: Workspace | undefined;
@@ -293,7 +294,7 @@ function MoveSelect({
   );
 }
 
-/** Export planned and published pieces as an .ics file in the workspace time zone (DST-aware). */
+/** Export pieces, open tasks and big events (with alerts) as an .ics file in the workspace time zone. */
 export function IcsButton() {
   useT();
   const s = useSession();
@@ -302,28 +303,7 @@ export function IcsButton() {
       size="sm"
       aria-label={t('week.ics')}
       title={t('week.ics')}
-      onClick={async () => {
-        const ws = await s.db.workspace.get('workspace');
-        const pubs = (await s.db.publications.toArray()).filter((p) => !p.deletedAt);
-        const contents = await s.db.content.bulkGet([...new Set(pubs.map((p) => p.contentId))]);
-        const cmap = new Map(contents.filter((c): c is Content => !!c).map((c) => [c.id, c]));
-        const items = publicationIcsItems(pubs, cmap, (c, p) =>
-          p.status === 'published' ? `✓ ${contentTitle(c)}` : contentTitle(c),
-        );
-        const tasks = (await s.db.tasks.toArray()).filter(
-          (x) => !x.deletedAt && x.dueAt && x.status !== 'done',
-        );
-        for (const x of tasks)
-          items.push({
-            uid: `task-${x.id}@saga-hq`,
-            start: x.dueAt!,
-            allDay: true,
-            title: `☐ ${x.title}`,
-            updatedAt: x.updatedAt,
-          });
-        downloadText('saga-hq.ics', buildIcs(items, workspaceTz(ws), ws?.name || 'Saga HQ'), 'text/calendar');
-        toast(t('week.ics_done', { count: items.length }));
-      }}
+      onClick={() => void downloadPlanIcs(s)}
     >
       <CalendarArrowDown size={15} aria-hidden /> <span className="hide-mobile">{t('week.ics')}</span>
     </Button>

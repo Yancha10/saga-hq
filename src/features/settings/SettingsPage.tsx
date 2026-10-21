@@ -1,6 +1,7 @@
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import {
   Bot,
+  CalendarClock,
   ChevronRight,
   Cloud,
   DatabaseBackup,
@@ -57,6 +58,7 @@ import { syncStatus } from '../../sync/runner';
 import { Button, Confirm, Section, Sheet } from '../../ui/kit';
 import { PageHeader } from '../../ui/PageHeader';
 import { downloadText, PlatformPicker, templateName } from '../common';
+import { PlanSec } from '../plan/Plan';
 import { ImportPackageSec } from './ImportPackage';
 import { LanguageSelect } from './LanguageSelect';
 import { PlanningPrefs } from './PlanningPrefs';
@@ -66,6 +68,7 @@ const SECTIONS = [
   'workspace',
   'language',
   'account',
+  'plan',
   'voice',
   'import',
   'storage',
@@ -83,6 +86,7 @@ const SEC_ICON: Record<Sec, LucideIcon> = {
   workspace: SlidersHorizontal,
   language: Languages,
   account: Cloud,
+  plan: CalendarClock,
   voice: Mic,
   import: FileUp,
   storage: HardDrive,
@@ -98,7 +102,7 @@ const SEC_ICON: Record<Sec, LucideIcon> = {
 /** Phone menu groups, iOS Settings style. Keyboard shortcuts are desktop-only. */
 const PHONE_GROUPS: Sec[][] = [
   ['account', 'workspace', 'language'],
-  ['voice', 'ai', 'integrations'],
+  ['plan', 'voice', 'ai', 'integrations'],
   ['import', 'backup', 'recovery', 'storage', 'trash'],
   ['diagnostics', 'about'],
 ];
@@ -166,6 +170,7 @@ export function SettingsPage() {
           {sec === 'workspace' && <WorkspaceSec />}
           {sec === 'language' && <LanguageSec />}
           {sec === 'account' && <AccountSec />}
+          {sec === 'plan' && <PlanSec />}
           {sec === 'voice' && <VoiceCaptureSec />}
           {sec === 'import' && <ImportPackageSec />}
           {sec === 'storage' && <StorageSec />}

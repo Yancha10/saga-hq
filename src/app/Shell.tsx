@@ -33,6 +33,7 @@ import { syncStatus } from '../sync/runner';
 import { Button, IconButton } from '../ui/kit';
 import { useApp, useIsPhone, useLive, useOnline, useStore } from './context';
 import { useShortcuts } from './keys';
+import { startPlanKeeper } from './planKeeper';
 import { applyUpdate, updateReady } from './pwa';
 import { banners, dismissToast, toast, toasts } from './status';
 import { captureState, paletteState, secretaryState } from './ui';
@@ -170,6 +171,9 @@ export function Shell({ children }: { children: ReactNode }) {
     [openPalette, toggleSecretary, openCapture, navigate, session],
   );
   useShortcuts(shortcuts);
+
+  // Late work slides forward and big-event reminders fire while the app is open.
+  useEffect(() => startPlanKeeper(session), [session]);
 
   // ?capture=1 (PWA shortcut) opens capture
   useEffect(() => {
